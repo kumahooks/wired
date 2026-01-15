@@ -1,21 +1,15 @@
-# Wire
-A minimalistic TUI music player made with Bubbletea.
+# Wire(d)
+A minimalistic, opionated, keyboard-focused music player for your terminal.
 
-## The core is under development
-I believe these are the points for a minimal working version:
-- [X] View for the "Songs" menu
-  - [X] Menu View
-  - [X] Library View
-    - [X] Skeleton of the View
-  - [X] Tracks View
-  - [X] Footer View
-- [ ] View for the "Playlist" menu
-- [ ] View for the "Configuration" menu
-- [ ] View for the "(?) help" screen
-- [X] Dynamic View Size
-  - [X] Dynamically resize view on window size
-- [ ] Playlist core logic (add, remove, etc)
-- [ ] Init screen to set user config
-- [ ] Music player core logic (play, pause, next, before, modes (shuffle, sequential)
-- [ ] Last.fm scrobbling support
+## Why?
+Despite my efforts, I've not found a TUI music player exactly how I wanted it to be. So why not do it myself?
+The goal is to be extremely simple, minimalistic, lain-themed, and have the following features:
+- viewing of song files given a directory
+- separation between albums and artists
+- visualization of an album or song image
+- vim motions
+- config as a file first and foremost
+- last.fm scrobble support
+- personal radio server support
+- system agnostic
 
