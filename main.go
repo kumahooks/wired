@@ -1,13 +1,13 @@
 package main
 
 import (
-	log "log"
+	"log"
 
-	wired "wired/src"
+	"wired/internal/ui"
 )
 
 func main() {
-	if err := wired.Run(); err != nil {
+	if err := ui.Start(); err != nil {
 		log.Fatal(err)
 	}
 }
