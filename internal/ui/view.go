@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 	"wired/internal/config"
-	"wired/internal/ui/components"
+	"wired/internal/ui/notification"
 )
 
 func (model Model) View() string {
@@ -16,8 +16,8 @@ func (model Model) View() string {
 	if model.Config == nil {
 		// TODO: maybe msg bubble with the msg?
 		base = "Loading configuration..."
-	} else if model.Prompt.Visible() {
-		base = model.Prompt.View(model.Config)
+	} else if model.Modal.Visible() {
+		base = model.Modal.View(model.Config)
 	} else if model.Error != nil {
 		// TODO: maybe msg bubble with the error?
 		base = fmt.Sprintf("Error: %v", model.Error)
@@ -39,11 +39,11 @@ func (model Model) View() string {
 	return base
 }
 
-func renderNotifications(notifications []components.Notification, cfg *config.Config) string {
+func renderNotifications(notifications []notification.Notification, cfg *config.Config) string {
 	bubbles := make([]string, 0, len(notifications))
 
 	for _, n := range notifications {
-		bubble := components.RenderNotification(n, cfg)
+		bubble := notification.Render(n, cfg)
 		bubbles = append(bubbles, bubble)
 	}
 
