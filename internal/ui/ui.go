@@ -3,13 +3,14 @@ package ui
 
 import (
 	bubbletea "github.com/charmbracelet/bubbletea"
-	"wired/internal/cli"
+
+	cli "wired/internal/cli"
 )
 
 func Start() error {
 	cli.ClearScreen()
 
-	p := bubbletea.NewProgram(New(), bubbletea.WithAltScreen())
+	p := bubbletea.NewProgram(NewModel(), bubbletea.WithAltScreen())
 	_, err := p.Run()
 
 	return err
