@@ -11,13 +11,14 @@ import (
 )
 
 func (model Model) View() string {
+	contentHeight := max(model.height-1, 0)
+
 	var base string
 
 	if model.Dialog.Visible() {
 		base = model.Dialog.View()
 	} else if model.Config == nil {
-		// TODO: loading footer
-		base = "Loading configuration..."
+		base = ""
 	} else if model.Modal.Visible() {
 		base = model.Modal.View(model.Config)
 	} else {
@@ -26,16 +27,27 @@ func (model Model) View() string {
 		base = fmt.Sprintf("Welcome to %s\nPress [%s] to quit.", model.Config.Title, quitKeys)
 	}
 
+	// Pad base to exactly contentHeight lines
+	baseLines := strings.Split(base, "\n")
+	for len(baseLines) < contentHeight {
+		baseLines = append(baseLines, "")
+	}
+	if len(baseLines) > contentHeight {
+		baseLines = baseLines[:contentHeight]
+	}
+
+	base = strings.Join(baseLines, "\n")
+
 	if model.Config != nil {
 		visibleNotifications := model.Notifications.Visible(model.Config.Notification.NotificationShownMax)
 
 		if len(visibleNotifications) > 0 {
 			notifications := renderNotifications(visibleNotifications, model.Config)
-			return overlayBottomRight(base, notifications, model.width, model.height)
+			base = overlayBottomRight(base, notifications, model.width, contentHeight)
 		}
 	}
 
-	return base
+	return base + "\n" + model.Footer.View(model.Config)
 }
 
 func renderNotifications(notifications []notification.Notification, cfg *config.Config) string {

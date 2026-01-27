@@ -36,12 +36,6 @@ type Dialog struct {
 	height   int
 }
 
-func New() Dialog {
-	return Dialog{
-		viewport: viewport.New(0, 0),
-	}
-}
-
 func (dialog *Dialog) Show(opts Options) {
 	dialog.header = opts.Header
 	dialog.body = opts.Body
@@ -135,4 +129,10 @@ func (dialog *Dialog) recalcViewport() {
 	dialog.viewport.Height = viewportHeight
 	dialog.viewport.SetContent(wrapped)
 	dialog.viewport.GotoTop()
+}
+
+func New() Dialog {
+	return Dialog{
+		viewport: viewport.New(0, 0),
+	}
 }

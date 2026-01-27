@@ -8,7 +8,7 @@ import (
 
 type LoadConfigMsg struct {
 	Config *config.Config
-	Err    error
+	Errors []error
 }
 
 type HeartbeatMsg time.Time
