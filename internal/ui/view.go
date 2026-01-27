@@ -3,20 +3,96 @@ package ui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
+	"wired/internal/config"
+	"wired/internal/ui/components"
 )
 
 func (model Model) View() string {
-	// TODO: create custom component to show a message like this in the center of the screen
-	if model.Error != nil {
-		return fmt.Sprintf("Error: %v", model.Error)
-	}
+	var base string
 
 	if model.Config == nil {
-		// TODO: create custom component to show a message like this in the center of the screen
-		return "Loading configuration..."
+		// TODO: maybe msg bubble with the msg?
+		base = "Loading configuration..."
+	} else if model.Prompt.Visible() {
+		base = model.Prompt.View(model.Config)
+	} else if model.Error != nil {
+		// TODO: maybe msg bubble with the error?
+		base = fmt.Sprintf("Error: %v", model.Error)
+	} else {
+		// TODO: player view
+		quitKeys := strings.Join(model.Config.Keybinds.Quit, ", ")
+		base = fmt.Sprintf("Welcome to %s\nPress [%s] to quit.", model.Config.Title, quitKeys)
 	}
 
-	// TODO: draw ui
-	quitKeys := strings.Join(model.Config.Keybinds.Quit, ", ")
-	return fmt.Sprintf("Welcome to %s\nPress [%s] to quit.", model.Config.Title, quitKeys)
+	if model.Config != nil {
+		visibleNotifications := model.Notifications.Visible(model.Config.Notification.NotificationShownMax)
+
+		if len(visibleNotifications) > 0 {
+			notifications := renderNotifications(visibleNotifications, model.Config)
+			return overlayBottomRight(base, notifications, model.width, model.height)
+		}
+	}
+
+	return base
+}
+
+func renderNotifications(notifications []components.Notification, cfg *config.Config) string {
+	bubbles := make([]string, 0, len(notifications))
+
+	for _, n := range notifications {
+		bubble := components.RenderNotification(n, cfg)
+		bubbles = append(bubbles, bubble)
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Right, bubbles...)
+}
+
+// TODO: notification block could exceed terminal height
+func overlayBottomRight(base string, overlay string, width int, height int) string {
+	baseLines := strings.Split(base, "\n")
+	overlayLines := strings.Split(overlay, "\n")
+
+	for len(baseLines) < height {
+		baseLines = append(baseLines, "")
+	}
+
+	if len(baseLines) > height {
+		baseLines = baseLines[:height]
+	}
+
+	overlayWidth := lipgloss.Width(overlay)
+	overlayHeight := len(overlayLines)
+
+	startRow := height - overlayHeight
+	startCol := max(width-overlayWidth, 0)
+
+	// Merge overlay onto base, preserving base content to the left
+	for i, overlayLine := range overlayLines {
+		rowIdx := startRow + i
+		if rowIdx < 0 || rowIdx >= height {
+			continue
+		}
+
+		baseLine := baseLines[rowIdx]
+		baseVisualWidth := lipgloss.Width(baseLine)
+
+		if baseVisualWidth <= startCol {
+			// Base line is shorter than where overlay starts, just pad and append
+			padding := strings.Repeat(" ", startCol-baseVisualWidth)
+			baseLines[rowIdx] = baseLine + padding + overlayLine
+		} else {
+			truncated := ansi.Truncate(baseLine, startCol, "")
+
+			truncatedWidth := lipgloss.Width(truncated)
+			paddingLength := max(startCol-truncatedWidth, 0)
+			padding := strings.Repeat(" ", paddingLength)
+
+			baseLines[rowIdx] = truncated + padding + overlayLine
+		}
+	}
+
+	return strings.Join(baseLines, "\n")
 }
