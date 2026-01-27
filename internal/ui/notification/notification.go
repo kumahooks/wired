@@ -1,4 +1,5 @@
-package components
+// Package notification implements a timed notification queue with fade-out rendering
+package notification
 
 import (
 	"fmt"
@@ -11,58 +12,58 @@ import (
 	config "wired/internal/config"
 )
 
-type NotificationType int
+type Type int
 
 const (
-	NotificationInfo NotificationType = iota
-	NotificationError
-	NotificationSuccess
+	Info Type = iota
+	Error
+	Success
 )
 
 type Notification struct {
 	Message       string
-	Type          NotificationType
+	Type          Type
 	Sequence      int
 	ExpiresAt     time.Time
 	TotalDuration time.Duration
 }
 
-type Notifications struct {
-	queue    []Notification
+type Queue struct {
+	pQueue   []Notification
 	sequence int
 }
 
-func (notifications *Notifications) Enqueue(message string, notificationType NotificationType, duration time.Duration) {
-	if len(notifications.queue) == 0 {
-		notifications.sequence = 0
+func (queue *Queue) Enqueue(message string, notificationType Type, duration time.Duration) {
+	if len(queue.pQueue) == 0 {
+		queue.sequence = 0
 	}
 
-	notifications.sequence++
-	notifications.queue = append(
-		notifications.queue,
-		NewNotification(message, notificationType, notifications.sequence, duration),
+	queue.sequence++
+	queue.pQueue = append(
+		queue.pQueue,
+		New(message, notificationType, queue.sequence, duration),
 	)
 }
 
-func (notifications *Notifications) Prune() {
-	if len(notifications.queue) == 0 {
+func (queue *Queue) Prune() {
+	if len(queue.pQueue) == 0 {
 		return
 	}
 
-	notifications.queue = pruneExpired(notifications.queue)
+	queue.pQueue = pruneExpired(queue.pQueue)
 }
 
-func (notifications *Notifications) Visible(shownMax int) []Notification {
-	return visibleNotifications(notifications.queue, shownMax)
+func (queue *Queue) Visible(shownMax int) []Notification {
+	return visibleNotifications(queue.pQueue, shownMax)
 }
 
-func (notification Notification) Expired() bool {
-	return time.Now().After(notification.ExpiresAt)
+func (n Notification) Expired() bool {
+	return time.Now().After(n.ExpiresAt)
 }
 
-func NewNotification(
+func New(
 	message string,
-	notificationType NotificationType,
+	notificationType Type,
 	sequence int,
 	duration time.Duration,
 ) Notification {
@@ -75,13 +76,13 @@ func NewNotification(
 	}
 }
 
-func RenderNotification(notification Notification, cfg *config.Config) string {
+func Render(n Notification, cfg *config.Config) string {
 	var colorHex string
 
-	switch notification.Type {
-	case NotificationError:
+	switch n.Type {
+	case Error:
 		colorHex = cfg.Colors.NotificationError
-	case NotificationSuccess:
+	case Success:
 		colorHex = cfg.Colors.NotificationSuccess
 	default:
 		colorHex = cfg.Colors.NotificationInfo
@@ -89,13 +90,13 @@ func RenderNotification(notification Notification, cfg *config.Config) string {
 
 	// Fade out to black
 	// TODO: do we really want to fade out to black? is there a better way?
-	remainingTime := time.Until(notification.ExpiresAt)
+	remainingTime := time.Until(n.ExpiresAt)
 
 	var ratio float64
-	if notification.TotalDuration <= 0 {
+	if n.TotalDuration <= 0 {
 		ratio = 1
 	} else {
-		ratio = float64(remainingTime) / float64(notification.TotalDuration)
+		ratio = float64(remainingTime) / float64(n.TotalDuration)
 		ratio = math.Max(0.05, math.Min(1, ratio))
 	}
 
@@ -107,7 +108,7 @@ func RenderNotification(notification Notification, cfg *config.Config) string {
 		BorderForeground(color).
 		Padding(0, 1)
 
-	prefixedMsg := fmt.Sprintf("[%d] %s", notification.Sequence, notification.Message)
+	prefixedMsg := fmt.Sprintf("[%d] %s", n.Sequence, n.Message)
 
 	// Padding + border = 4 (2+2=4)
 	contentWidth := cfg.Notification.NotificationMaxWidth - 4

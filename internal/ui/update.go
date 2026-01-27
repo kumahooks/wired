@@ -6,7 +6,8 @@ import (
 
 	bubbletea "github.com/charmbracelet/bubbletea"
 
-	components "wired/internal/ui/components"
+	modal "wired/internal/ui/modal"
+	notification "wired/internal/ui/notification"
 )
 
 // TODO: observe if 100ms heartbeat is good or not
@@ -25,7 +26,7 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 	case bubbletea.WindowSizeMsg:
 		model.width = msg.Width
 		model.height = msg.Height
-		model.Prompt.SetSize(msg.Width, msg.Height)
+		model.Modal.SetSize(msg.Width, msg.Height)
 
 		return model, nil
 
@@ -40,7 +41,7 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 		cmds := []bubbletea.Cmd{heartbeatCmd()}
 
 		if model.Config.MusicLibraryPath == "" {
-			cmds = append(cmds, model.GetUserInput(components.PromptMusicPath, "Music library path:", "~/Music"))
+			cmds = append(cmds, model.GetUserInput(modal.MusicPath, "Music library path:", "~/Music"))
 		}
 
 		return model, bubbletea.Batch(cmds...)
@@ -49,40 +50,40 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 		model.Notifications.Prune()
 		return model, heartbeatCmd()
 
-	case components.PromptSubmitMsg:
+	case modal.SubmitMsg:
 		switch msg.Type {
-		case components.PromptMusicPath:
+		case modal.MusicPath:
 			if err := model.Config.SetAndSaveMusicLibraryPath(msg.Value); err != nil {
 				model.EnqueueNotification(
 					err.Error(),
-					components.NotificationError,
+					notification.Error,
 					time.Second*time.Duration(model.Config.Notification.NotificationDurationSecs),
 				)
 
-				return model, model.GetUserInput(components.PromptMusicPath, "Music library path:", "~/Music")
+				return model, model.GetUserInput(modal.MusicPath, "Music library path:", "~/Music")
 			}
 
 			model.EnqueueNotification(
 				"library path saved successfully",
-				components.NotificationSuccess,
+				notification.Success,
 				time.Second*time.Duration(model.Config.Notification.NotificationDurationSecs),
 			)
 		}
 
 		return model, nil
 
-	case components.PromptCancelMsg:
+	case modal.CancelMsg:
 		// Quits if the user skips music path prompting
-		if msg.Type == components.PromptMusicPath {
+		if msg.Type == modal.MusicPath {
 			return model, bubbletea.Quit
 		}
 
 		return model, nil
 
 	case bubbletea.KeyMsg:
-		if model.Prompt.Visible() {
+		if model.Modal.Visible() {
 			if model.Config != nil {
-				cmd := model.Prompt.Update(msg, model.Config.Keybinds)
+				cmd := model.Modal.Update(msg, model.Config.Keybinds)
 				return model, cmd
 			}
 		}
@@ -106,8 +107,8 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 		// TODO: further keybinds functionality
 
 	default:
-		if model.Prompt.Visible() && model.Config != nil {
-			cmd := model.Prompt.Update(msg, model.Config.Keybinds)
+		if model.Modal.Visible() && model.Config != nil {
+			cmd := model.Modal.Update(msg, model.Config.Keybinds)
 			return model, cmd
 		}
 	}
