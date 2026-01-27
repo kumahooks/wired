@@ -50,7 +50,6 @@ func renderNotifications(notifications []components.Notification, cfg *config.Co
 	return lipgloss.JoinVertical(lipgloss.Right, bubbles...)
 }
 
-// TODO: notification block could exceed terminal height
 func overlayBottomRight(base string, overlay string, width int, height int) string {
 	baseLines := strings.Split(base, "\n")
 	overlayLines := strings.Split(overlay, "\n")
@@ -65,6 +64,10 @@ func overlayBottomRight(base string, overlay string, width int, height int) stri
 
 	overlayWidth := lipgloss.Width(overlay)
 	overlayHeight := len(overlayLines)
+	if overlayHeight > height {
+		overlayLines = overlayLines[overlayHeight-height:]
+		overlayHeight = height
+	}
 
 	startRow := height - overlayHeight
 	startCol := max(width-overlayWidth, 0)
