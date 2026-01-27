@@ -6,13 +6,15 @@ import (
 	bubbletea "github.com/charmbracelet/bubbletea"
 
 	config "wired/internal/config"
+	dialog "wired/internal/ui/dialog"
 	modal "wired/internal/ui/modal"
 	notification "wired/internal/ui/notification"
 )
 
 type Model struct {
 	Config        *config.Config
-	Error         error
+	Errors        []error
+	Dialog        dialog.Dialog
 	Modal         modal.Modal
 	Notifications notification.Queue
 	width         int
@@ -22,7 +24,8 @@ type Model struct {
 
 func NewModel() Model {
 	return Model{
-		Modal: modal.New(),
+		Dialog: dialog.New(),
+		Modal:  modal.New(),
 	}
 }
 

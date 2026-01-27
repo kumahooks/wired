@@ -13,14 +13,13 @@ import (
 func (model Model) View() string {
 	var base string
 
-	if model.Config == nil {
-		// TODO: maybe msg bubble with the msg?
+	if model.Dialog.Visible() {
+		base = model.Dialog.View()
+	} else if model.Config == nil {
+		// TODO: loading footer
 		base = "Loading configuration..."
 	} else if model.Modal.Visible() {
 		base = model.Modal.View(model.Config)
-	} else if model.Error != nil {
-		// TODO: maybe msg bubble with the error?
-		base = fmt.Sprintf("Error: %v", model.Error)
 	} else {
 		// TODO: player view
 		quitKeys := strings.Join(model.Config.Keybinds.Quit, ", ")

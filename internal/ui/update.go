@@ -1,11 +1,14 @@
 package ui
 
 import (
+	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	bubbletea "github.com/charmbracelet/bubbletea"
 
+	dialog "wired/internal/ui/dialog"
 	modal "wired/internal/ui/modal"
 	notification "wired/internal/ui/notification"
 )
@@ -26,13 +29,21 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 	case bubbletea.WindowSizeMsg:
 		model.width = msg.Width
 		model.height = msg.Height
+		model.Dialog.SetSize(msg.Width, msg.Height)
 		model.Modal.SetSize(msg.Width, msg.Height)
 
 		return model, nil
 
 	case LoadConfigMsg:
 		if msg.Err != nil {
-			model.Error = msg.Err
+			model.Errors = unwrapErrors(msg.Err)
+
+			model.Dialog.Show(dialog.Options{
+				Header: "Configuration Error",
+				Body:   formatErrors(model.Errors),
+				Footer: "ctrl+c to quit",
+			})
+
 			return model, nil
 		}
 
@@ -81,6 +92,15 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 		return model, nil
 
 	case bubbletea.KeyMsg:
+		if model.Dialog.Visible() {
+			if msg.String() == "ctrl+c" {
+				return model, bubbletea.Quit
+			}
+
+			cmd := model.Dialog.Update(msg)
+			return model, cmd
+		}
+
 		if model.Modal.Visible() {
 			if model.Config != nil {
 				cmd := model.Modal.Update(msg, model.Config.Keybinds)
@@ -114,4 +134,25 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 	}
 
 	return model, nil
+}
+
+func unwrapErrors(err error) []error {
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		return joined.Unwrap()
+	}
+
+	return []error{err}
+}
+
+func formatErrors(errs []error) string {
+	if len(errs) == 1 {
+		return errs[0].Error()
+	}
+
+	lines := make([]string, len(errs))
+	for i, e := range errs {
+		lines[i] = fmt.Sprintf("• %s", e.Error())
+	}
+
+	return strings.Join(lines, "\n")
 }

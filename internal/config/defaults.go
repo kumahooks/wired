@@ -1,28 +1,37 @@
 package config
 
-const DefaultConfig = `title = "wire(d)"
-music_library_path = ""
-input_char_limit = 256
+import "github.com/pelletier/go-toml/v2"
 
-[notification]
-notification_max_width = 44
-notification_max_height = 10
-notification_shown_max = 3
-notification_duration_secs = 4
+func DefaultValues() Config {
+	return Config{
+		Title:          "wire(d)",
+		InputCharLimit: 256,
+		Notification: Notification{
+			NotificationMaxWidth:     44,
+			NotificationMaxHeight:    10,
+			NotificationShownMax:     3,
+			NotificationDurationSecs: 4,
+		},
+		Colors: ColorPalette{
+			Border:              "#6f3d49",
+			TextInactive:        "#44262d",
+			CursorForeground:    "#965363",
+			NotificationInfo:    "#539686",
+			NotificationError:   "#774a86",
+			NotificationSuccess: "#639653",
+		},
+		Keybinds: KeybindMapping{
+			MoveLeft: []string{"h", "left"},
+			MoveDown: []string{"j", "down"},
+			MoveUp:   []string{"k", "up"},
+			Select:   []string{"enter", "l", "right"},
+			Quit:     []string{"ctrl+c", "q"},
+			Cancel:   []string{"ctrl+c", "esc"},
+		},
+	}
+}
 
-[colors]
-border = "#6f3d49"
-text_inactive = "#44262d"
-cursor_fg = "#965363"
-notification_info = "#539686"
-notification_error = "#774a86"
-notification_success = "#639653"
-
-[keybinds]
-move_left = ["h", "left"]
-move_down = ["j", "down"]
-move_up = ["k", "up"]
-select = ["enter", "l", "right"]
-quit = ["ctrl+c", "q"]
-cancel = ["ctrl+c", "esc"]
-`
+func DefaultTOML() ([]byte, error) {
+	cfg := DefaultValues()
+	return toml.Marshal(&cfg)
+}
