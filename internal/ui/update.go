@@ -9,6 +9,7 @@ import (
 	bubbletea "github.com/charmbracelet/bubbletea"
 
 	dialog "wired/internal/ui/dialog"
+	footer "wired/internal/ui/footer"
 	modal "wired/internal/ui/modal"
 	notification "wired/internal/ui/notification"
 )
@@ -29,14 +30,28 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 	case bubbletea.WindowSizeMsg:
 		model.width = msg.Width
 		model.height = msg.Height
-		model.Dialog.SetSize(msg.Width, msg.Height)
-		model.Modal.SetSize(msg.Width, msg.Height)
+		model.Dialog.SetSize(msg.Width, msg.Height-1)
+		model.Modal.SetSize(msg.Width, msg.Height-1)
+		model.Footer.SetWidth(msg.Width)
 
 		return model, nil
 
+	case footer.StartCompleteMsg:
+		var cmd bubbletea.Cmd
+
+		if model.Footer.State() == footer.Starting {
+			cmd = model.Footer.SetState(footer.ConfigLoading)
+		}
+
+		return model, cmd
+
+	case footer.SpinnerTickMsg:
+		cmd := model.Footer.Update(msg)
+		return model, cmd
+
 	case LoadConfigMsg:
-		if msg.Err != nil {
-			model.Errors = unwrapErrors(msg.Err)
+		if len(msg.Errors) > 0 {
+			model.Errors = msg.Errors
 
 			model.Dialog.Show(dialog.Options{
 				Header: "Configuration Error",
@@ -44,12 +59,14 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 				Footer: "ctrl+c to quit",
 			})
 
-			return model, nil
+			footerCmd := model.Footer.SetState(footer.Error)
+			return model, footerCmd
 		}
 
 		model.Config = msg.Config
 
-		cmds := []bubbletea.Cmd{heartbeatCmd()}
+		footerCmd := model.Footer.SetState(footer.Idle)
+		cmds := []bubbletea.Cmd{heartbeatCmd(), footerCmd}
 
 		if model.Config.MusicLibraryPath == "" {
 			cmds = append(cmds, model.GetUserInput(modal.MusicPath, "Music library path:", "~/Music"))
@@ -81,7 +98,8 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 			)
 		}
 
-		return model, nil
+		footerCmd := model.Footer.SetState(footer.Idle)
+		return model, footerCmd
 
 	case modal.CancelMsg:
 		// Quits if the user skips music path prompting
@@ -134,14 +152,6 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 	}
 
 	return model, nil
-}
-
-func unwrapErrors(err error) []error {
-	if joined, ok := err.(interface{ Unwrap() []error }); ok {
-		return joined.Unwrap()
-	}
-
-	return []error{err}
 }
 
 func formatErrors(errs []error) string {

@@ -42,6 +42,12 @@ type ColorPalette struct {
 	NotificationInfo    string `toml:"notification_info"`
 	NotificationError   string `toml:"notification_error"`
 	NotificationSuccess string `toml:"notification_success"`
+	FooterBarFg         string `toml:"footer_bar_fg"`
+	FooterLabelBg       string `toml:"footer_label_bg"`
+	FooterLabelFg       string `toml:"footer_label_fg"`
+	FooterErrorBg       string `toml:"footer_error_bg"`
+	FooterErrorFg       string `toml:"footer_error_fg"`
+	FooterHintFg        string `toml:"footer_hint_fg"`
 }
 
 type KeybindMapping struct {
@@ -89,7 +95,49 @@ func (cfg *Config) IsMusicLibraryPathValid(path string) (string, error) {
 	return expanded, nil
 }
 
-func (cfg *Config) Validate() error {
+func Load() (*Config, []error) {
+	path, err := getPath()
+	if err != nil {
+		return nil, []error{err}
+	}
+
+	_, err = os.Stat(path)
+	if os.IsNotExist(err) {
+		if err = ensureExists(path); err != nil {
+			return nil, []error{err}
+		}
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, []error{err}
+	}
+
+	cfg := DefaultValues()
+	if err = toml.Unmarshal(data, &cfg); err != nil {
+		return nil, []error{err}
+	}
+
+	if errs := Validate(cfg); errs != nil {
+		return nil, errs
+	}
+
+	// Persist so any newly-added default keys are written to the file
+	if err = cfg.Save(); err != nil {
+		return nil, []error{err}
+	}
+
+	// If music library is not correct, we clear it so the prompt shows up
+	if cfg.MusicLibraryPath != "" {
+		if _, err = cfg.IsMusicLibraryPathValid(cfg.MusicLibraryPath); err != nil {
+			cfg.MusicLibraryPath = ""
+		}
+	}
+
+	return &cfg, nil
+}
+
+func Validate(cfg Config) []error {
 	var errs []error
 
 	positive := func(name string, val int) {
@@ -123,6 +171,8 @@ func (cfg *Config) Validate() error {
 		}
 	}
 
+	// TODO: maybe there's a better way to do this?
+
 	nonEmpty("title", cfg.Title)
 	positive("input_char_limit", cfg.InputCharLimit)
 	maxLimit("input_char_limit", cfg.InputCharLimit, 2056)
@@ -145,54 +195,22 @@ func (cfg *Config) Validate() error {
 	hexColor("colors.notification_info", cfg.Colors.NotificationInfo)
 	hexColor("colors.notification_error", cfg.Colors.NotificationError)
 	hexColor("colors.notification_success", cfg.Colors.NotificationSuccess)
+	hexColor("colors.footer_bar_fg", cfg.Colors.FooterBarFg)
+	hexColor("colors.footer_label_bg", cfg.Colors.FooterLabelBg)
+	hexColor("colors.footer_label_fg", cfg.Colors.FooterLabelFg)
+	hexColor("colors.footer_error_bg", cfg.Colors.FooterErrorBg)
+	hexColor("colors.footer_error_fg", cfg.Colors.FooterErrorFg)
+	hexColor("colors.footer_hint_fg", cfg.Colors.FooterHintFg)
 
 	keybind("keybinds.select", cfg.Keybinds.Select)
 	keybind("keybinds.cancel", cfg.Keybinds.Cancel)
 	keybind("keybinds.quit", cfg.Keybinds.Quit)
 
-	return errors.Join(errs...)
-}
-
-func Load() (*Config, error) {
-	path, err := getPath()
-	if err != nil {
-		return nil, err
+	if len(errs) == 0 {
+		return nil
 	}
 
-	_, err = os.Stat(path)
-	if os.IsNotExist(err) {
-		if err = ensureExists(path); err != nil {
-			return nil, err
-		}
-	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	cfg := DefaultValues()
-	if err = toml.Unmarshal(data, &cfg); err != nil {
-		return nil, err
-	}
-
-	if err = cfg.Validate(); err != nil {
-		return nil, err
-	}
-
-	// Persist so any newly-added default keys are written to the file
-	if err = cfg.Save(); err != nil {
-		return nil, err
-	}
-
-	// If music library is not correct, we clear it so the prompt shows up
-	if cfg.MusicLibraryPath != "" {
-		if _, err = cfg.IsMusicLibraryPathValid(cfg.MusicLibraryPath); err != nil {
-			cfg.MusicLibraryPath = ""
-		}
-	}
-
-	return &cfg, nil
+	return errs
 }
 
 func getPath() (string, error) {
