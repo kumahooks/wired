@@ -26,6 +26,12 @@ type CancelMsg struct {
 	Type Type
 }
 
+type Style struct {
+	BorderColor  lipgloss.Color
+	CursorFg     lipgloss.Color
+	InactiveText lipgloss.Color
+}
+
 type Modal struct {
 	input      textinput.Model
 	title      string
@@ -33,6 +39,7 @@ type Modal struct {
 	visible    bool
 	width      int
 	height     int
+	style      Style
 }
 
 func (modal *Modal) Show(promptType Type, title string, placeholder string, charLimit int) bubbletea.Cmd {
@@ -61,6 +68,18 @@ func (modal *Modal) SetSize(width int, height int) {
 	modal.height = height
 
 	modal.input.Width = min(width-10, 36)
+}
+
+func (modal *Modal) ApplyColors(cfg *config.Config) {
+	modal.style = Style{
+		BorderColor:  lipgloss.Color(cfg.Colors.Border),
+		CursorFg:     lipgloss.Color(cfg.Colors.CursorForeground),
+		InactiveText: lipgloss.Color(cfg.Colors.TextInactive),
+	}
+
+	modal.input.Cursor.Style = lipgloss.NewStyle().Foreground(modal.style.CursorFg)
+	modal.input.PlaceholderStyle = lipgloss.NewStyle().Foreground(modal.style.InactiveText)
+	modal.input.PromptStyle = lipgloss.NewStyle().Foreground(modal.style.InactiveText)
 }
 
 func (modal *Modal) Update(msg bubbletea.Msg, keybinds config.KeybindMapping) bubbletea.Cmd {
@@ -95,32 +114,19 @@ func (modal *Modal) Update(msg bubbletea.Msg, keybinds config.KeybindMapping) bu
 	return cmd
 }
 
-func (modal Modal) View(cfg *config.Config) string {
+func (modal Modal) View() string {
 	if !modal.visible {
 		return ""
 	}
 
-	borderColor := lipgloss.Color(cfg.Colors.Border)
-	cursorFg := lipgloss.Color(cfg.Colors.CursorForeground)
-	inactiveText := lipgloss.Color(cfg.Colors.TextInactive)
-
-	modal.input.Cursor.Style = lipgloss.NewStyle().
-		Foreground(cursorFg)
-
-	modal.input.PlaceholderStyle = lipgloss.NewStyle().
-		Foreground(inactiveText)
-
-	modal.input.PromptStyle = lipgloss.NewStyle().
-		Foreground(inactiveText)
-
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(borderColor).
+		BorderForeground(modal.style.BorderColor).
 		Padding(1, 2)
 
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
-		Foreground(cursorFg)
+		Foreground(modal.style.CursorFg)
 
 	content := titleStyle.Render(modal.title) + "\n\n" + modal.input.View()
 	box := boxStyle.Render(content)
@@ -129,5 +135,16 @@ func (modal Modal) View(cfg *config.Config) string {
 }
 
 func New() Modal {
-	return Modal{input: textinput.New()}
+	return Modal{
+		input: textinput.New(),
+		style: defaultStyle(),
+	}
+}
+
+func defaultStyle() Style {
+	return Style{
+		BorderColor:  lipgloss.Color("#6f3d49"),
+		CursorFg:     lipgloss.Color("#965363"),
+		InactiveText: lipgloss.Color("#44262d"),
+	}
 }

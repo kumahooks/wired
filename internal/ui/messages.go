@@ -7,8 +7,9 @@ import (
 )
 
 type LoadConfigMsg struct {
-	Config *config.Config
-	Errors []error
+	Config                  *config.Config
+	Errors                  []error
+	MusicLibraryPathCleared bool
 }
 
 type HeartbeatMsg time.Time

@@ -66,6 +66,17 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 		}
 
 		model.Config = msg.Config
+		model.Modal.ApplyColors(msg.Config)
+		model.Footer.ApplyColors(msg.Config)
+		model.Notifications.ApplyColors(msg.Config)
+
+		if msg.MusicLibraryPathCleared {
+			model.EnqueueNotification(
+				"music library path was invalid and has been cleared",
+				notification.Error,
+				time.Second*time.Duration(model.Config.Notification.NotificationDurationSecs),
+			)
+		}
 
 		footerCmd := model.Footer.SetState(footer.Idle)
 		cmds := []bubbletea.Cmd{heartbeatCmd(), footerCmd}

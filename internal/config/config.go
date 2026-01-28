@@ -33,6 +33,7 @@ type Notification struct {
 	NotificationMaxHeight    int `toml:"notification_max_height"`
 	NotificationShownMax     int `toml:"notification_shown_max"`
 	NotificationDurationSecs int `toml:"notification_duration_secs"`
+	NotificationStackMax     int `toml:"notification_stack_max"`
 }
 
 type ColorPalette struct {
@@ -95,46 +96,48 @@ func (cfg *Config) IsMusicLibraryPathValid(path string) (string, error) {
 	return expanded, nil
 }
 
-func Load() (*Config, []error) {
+func Load() (*Config, []error, bool) {
 	path, err := getPath()
 	if err != nil {
-		return nil, []error{err}
+		return nil, []error{err}, false
 	}
 
 	_, err = os.Stat(path)
 	if os.IsNotExist(err) {
 		if err = ensureExists(path); err != nil {
-			return nil, []error{err}
+			return nil, []error{err}, false
 		}
 	}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, []error{err}
+		return nil, []error{err}, false
 	}
 
 	cfg := DefaultValues()
 	if err = toml.Unmarshal(data, &cfg); err != nil {
-		return nil, []error{err}
+		return nil, []error{err}, false
 	}
 
 	if errs := Validate(cfg); errs != nil {
-		return nil, errs
+		return nil, errs, false
 	}
 
 	// Persist so any newly-added default keys are written to the file
 	if err = cfg.Save(); err != nil {
-		return nil, []error{err}
+		return nil, []error{err}, false
 	}
 
 	// If music library is not correct, we clear it so the prompt shows up
+	var musicLibraryPathCleared bool
 	if cfg.MusicLibraryPath != "" {
 		if _, err = cfg.IsMusicLibraryPathValid(cfg.MusicLibraryPath); err != nil {
 			cfg.MusicLibraryPath = ""
+			musicLibraryPathCleared = true
 		}
 	}
 
-	return &cfg, nil
+	return &cfg, nil, musicLibraryPathCleared
 }
 
 func Validate(cfg Config) []error {
@@ -188,6 +191,9 @@ func Validate(cfg Config) []error {
 
 	positive("notification.notification_duration_secs", cfg.Notification.NotificationDurationSecs)
 	maxLimit("notification.notification_duration_secs", cfg.Notification.NotificationDurationSecs, 60)
+
+	positive("notification.notification_stack_max", cfg.Notification.NotificationStackMax)
+	maxLimit("notification.notification_stack_max", cfg.Notification.NotificationStackMax, 128)
 
 	hexColor("colors.border", cfg.Colors.Border)
 	hexColor("colors.text_inactive", cfg.Colors.TextInactive)

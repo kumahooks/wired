@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"wired/internal/config"
 	"wired/internal/ui/notification"
 )
 
@@ -20,7 +19,7 @@ func (model Model) View() string {
 	} else if model.Config == nil {
 		base = ""
 	} else if model.Modal.Visible() {
-		base = model.Modal.View(model.Config)
+		base = model.Modal.View()
 	} else {
 		// TODO: player view
 		quitKeys := strings.Join(model.Config.Keybinds.Quit, ", ")
@@ -42,19 +41,19 @@ func (model Model) View() string {
 		visibleNotifications := model.Notifications.Visible(model.Config.Notification.NotificationShownMax)
 
 		if len(visibleNotifications) > 0 {
-			notifications := renderNotifications(visibleNotifications, model.Config)
+			notifications := model.renderNotifications(visibleNotifications)
 			base = overlayBottomRight(base, notifications, model.width, contentHeight)
 		}
 	}
 
-	return base + "\n" + model.Footer.View(model.Config)
+	return base + "\n" + model.Footer.View()
 }
 
-func renderNotifications(notifications []notification.Notification, cfg *config.Config) string {
+func (model Model) renderNotifications(notifications []notification.Notification) string {
 	bubbles := make([]string, 0, len(notifications))
 
 	for _, n := range notifications {
-		bubble := notification.Render(n, cfg)
+		bubble := model.Notifications.Render(n)
 		bubbles = append(bubbles, bubble)
 	}
 
