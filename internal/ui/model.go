@@ -17,7 +17,7 @@ type Model struct {
 	Errors        []error
 	Dialog        dialog.Dialog
 	Modal         modal.Modal
-	Notifications notification.Queue
+	Notifications notification.NotificationStack
 	Footer        footer.Footer
 	width         int
 	height        int
@@ -41,7 +41,7 @@ func (model *Model) EnqueueNotification(
 	notificationType notification.Type,
 	duration time.Duration,
 ) {
-	model.Notifications.Enqueue(message, notificationType, duration)
+	model.Notifications.Push(message, notificationType, duration)
 }
 
 func (model Model) Init() bubbletea.Cmd {
@@ -60,8 +60,9 @@ func (model Model) Init() bubbletea.Cmd {
 
 func NewModel() Model {
 	return Model{
-		Dialog: dialog.New(),
-		Modal:  modal.New(),
-		Footer: footer.New(),
+		Dialog:        dialog.New(),
+		Modal:         modal.New(),
+		Footer:        footer.New(),
+		Notifications: notification.NewStack(),
 	}
 }

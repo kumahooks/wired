@@ -19,6 +19,8 @@ import (
 // Should also think if this approach is better than an event-driven approach
 // we could schedule a prune command whenever a notification is added, timed to expire
 // when the oldest notification expires
+// also the heartbeat for the current fading solution is kinda necessary
+// a better fade out solution would be necessary to remove this heartbeat completely
 func heartbeatCmd() bubbletea.Cmd {
 	return bubbletea.Tick(time.Millisecond*100, func(t time.Time) bubbletea.Msg {
 		return HeartbeatMsg(t)

@@ -1,4 +1,4 @@
-// Package notification implements a timed notification queue with fade-out rendering
+// Package notification implements a timed notification stack with fade-out rendering
 package notification
 
 import (
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	lipgloss "github.com/charmbracelet/lipgloss"
+
 	config "wired/internal/config"
 )
 
@@ -21,65 +22,115 @@ const (
 )
 
 type Notification struct {
-	Message       string
-	Type          Type
-	Sequence      int
-	ExpiresAt     time.Time
-	TotalDuration time.Duration
-}
-
-type Queue struct {
-	pQueue   []Notification
-	sequence int
-}
-
-func (queue *Queue) Enqueue(message string, notificationType Type, duration time.Duration) {
-	if len(queue.pQueue) == 0 {
-		queue.sequence = 0
-	}
-
-	queue.sequence++
-	queue.pQueue = append(
-		queue.pQueue,
-		New(message, notificationType, queue.sequence, duration),
-	)
-}
-
-func (queue *Queue) Prune() {
-	if len(queue.pQueue) == 0 {
-		return
-	}
-
-	queue.pQueue = pruneExpired(queue.pQueue)
-}
-
-func (queue *Queue) Visible(shownMax int) []Notification {
-	return visibleNotifications(queue.pQueue, shownMax)
+	message       string
+	nType         Type
+	sequence      int
+	expiresAt     time.Time
+	totalDuration time.Duration
 }
 
 func (n Notification) Expired() bool {
-	return time.Now().After(n.ExpiresAt)
+	return time.Now().After(n.expiresAt)
 }
 
-func New(
-	message string,
-	notificationType Type,
-	sequence int,
-	duration time.Duration,
-) Notification {
-	return Notification{
-		Message:       message,
-		Type:          notificationType,
-		Sequence:      sequence,
-		ExpiresAt:     time.Now().Add(duration),
-		TotalDuration: duration,
+type StackNode struct {
+	notification Notification
+	prev         *StackNode
+	next         *StackNode
+}
+
+type NotificationStack struct {
+	head     *StackNode
+	tail     *StackNode
+	capacity int
+	count    int
+	sequence int
+}
+
+func (stack *NotificationStack) Push(message string, notificationType Type, duration time.Duration) {
+	if stack.capacity <= 0 {
+		return
+	}
+
+	stack.sequence++
+
+	n := Notification{
+		message:       message,
+		nType:         notificationType,
+		sequence:      stack.sequence,
+		expiresAt:     time.Now().Add(duration),
+		totalDuration: duration,
+	}
+
+	newNode := &StackNode{notification: n}
+
+	if stack.head == nil {
+		stack.head = newNode
+		stack.tail = newNode
+	} else {
+		newNode.next = stack.head
+		stack.head.prev = newNode
+		stack.head = newNode
+	}
+
+	stack.count++
+
+	if stack.count > stack.capacity {
+		stack.removeTail()
+	}
+}
+
+func (stack *NotificationStack) removeTail() {
+	if stack.tail == nil {
+		return
+	}
+
+	if stack.tail == stack.head {
+		stack.head = nil
+		stack.tail = nil
+		stack.sequence = 0
+	} else {
+		stack.tail = stack.tail.prev
+		stack.tail.next = nil
+	}
+
+	stack.count--
+}
+
+func (stack *NotificationStack) Prune() {
+	for stack.tail != nil && stack.tail.notification.Expired() {
+		stack.removeTail()
+	}
+}
+
+func (stack *NotificationStack) Visible(maxShown int) []Notification {
+	if stack.count == 0 || maxShown <= 0 {
+		return nil
+	}
+
+	toShow := min(maxShown, stack.count)
+
+	result := make([]Notification, toShow)
+	current := stack.head
+
+	for i := toShow - 1; i >= 0 && current != nil; i-- {
+		result[i] = current.notification
+		current = current.next
+	}
+
+	return result
+}
+
+func NewStack() NotificationStack {
+	return NotificationStack{
+		capacity: 32,
 	}
 }
 
 func Render(n Notification, cfg *config.Config) string {
 	var colorHex string
 
-	switch n.Type {
+	switch n.nType {
 	case Error:
 		colorHex = cfg.Colors.NotificationError
 	case Success:
@@ -88,15 +139,13 @@ func Render(n Notification, cfg *config.Config) string {
 		colorHex = cfg.Colors.NotificationInfo
 	}
 
-	// Fade out to black
-	// TODO: do we really want to fade out to black? is there a better way?
-	remainingTime := time.Until(n.ExpiresAt)
+	remainingTime := time.Until(n.expiresAt)
 
 	var ratio float64
-	if n.TotalDuration <= 0 {
+	if n.totalDuration <= 0 {
 		ratio = 1
 	} else {
-		ratio = float64(remainingTime) / float64(n.TotalDuration)
+		ratio = float64(remainingTime) / float64(n.totalDuration)
 		ratio = math.Max(0.05, math.Min(1, ratio))
 	}
 
@@ -108,39 +157,13 @@ func Render(n Notification, cfg *config.Config) string {
 		BorderForeground(color).
 		Padding(0, 1)
 
-	prefixedMsg := fmt.Sprintf("[%d] %s", n.Sequence, n.Message)
+	prefixedMsg := fmt.Sprintf("[%d] %s", n.sequence, n.message)
 
-	// Padding + border = 4 (2+2=4)
 	contentWidth := cfg.Notification.NotificationMaxWidth - 4
 	lines := wrapText(prefixedMsg, contentWidth, cfg.Notification.NotificationMaxHeight)
 	content := strings.Join(lines, "\n")
 
 	return style.Render(content)
-}
-
-// TODO: for now we are acting like a stack, it's better to rewrite as a priority queue
-func visibleNotifications(notifications []Notification, shownMax int) []Notification {
-	if len(notifications) == 0 {
-		return nil
-	}
-
-	start := 0
-	if len(notifications) > shownMax {
-		start = len(notifications) - shownMax
-	}
-
-	return notifications[start:]
-}
-
-func pruneExpired(notifications []Notification) []Notification {
-	result := make([]Notification, 0, len(notifications))
-	for _, n := range notifications {
-		if !n.Expired() {
-			result = append(result, n)
-		}
-	}
-
-	return result
 }
 
 func wrapText(text string, width int, maxHeight int) []string {
@@ -202,7 +225,6 @@ func wrapText(text string, width int, maxHeight int) []string {
 	return lines
 }
 
-// TODO: maybe this is too naive, or there's a better way to fade out I'm not seeing
 func fadeColor(hex string, ratio float64) lipgloss.Color {
 	if len(hex) > 0 && hex[0] == '#' {
 		hex = hex[1:]
