@@ -14,19 +14,6 @@ import (
 	notification "wired/internal/ui/notification"
 )
 
-// TODO: observe if 100ms heartbeat is good or not
-// could potentially need to increase this number
-// Should also think if this approach is better than an event-driven approach
-// we could schedule a prune command whenever a notification is added, timed to expire
-// when the oldest notification expires
-// also the heartbeat for the current fading solution is kinda necessary
-// a better fade out solution would be necessary to remove this heartbeat completely
-func heartbeatCmd() bubbletea.Cmd {
-	return bubbletea.Tick(time.Millisecond*100, func(t time.Time) bubbletea.Msg {
-		return HeartbeatMsg(t)
-	})
-}
-
 func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 	switch msg := msg.(type) {
 	case bubbletea.WindowSizeMsg:
@@ -68,7 +55,7 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 		model.Config = msg.Config
 		model.Modal.ApplyColors(msg.Config)
 		model.Footer.ApplyColors(msg.Config)
-		model.Notifications.ApplyColors(msg.Config)
+		model.Notifications.ApplyConfig(msg.Config)
 
 		if msg.MusicLibraryPathCleared {
 			model.EnqueueNotification(
@@ -165,6 +152,19 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 	}
 
 	return model, nil
+}
+
+// TODO: observe if 100ms heartbeat is good or not
+// could potentially need to increase this number
+// Should also think if this approach is better than an event-driven approach
+// we could schedule a prune command whenever a notification is added, timed to expire
+// when the oldest notification expires
+// also the heartbeat for the current fading solution is kinda necessary
+// a better fade out solution would be necessary to remove this heartbeat completely
+func heartbeatCmd() bubbletea.Cmd {
+	return bubbletea.Tick(time.Millisecond*100, func(t time.Time) bubbletea.Msg {
+		return HeartbeatMsg(t)
+	})
 }
 
 func formatErrors(errs []error) string {

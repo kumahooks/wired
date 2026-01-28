@@ -27,13 +27,6 @@ type SpinnerTickMsg struct {
 	inner spinner.TickMsg
 }
 
-type Content struct {
-	Title     string
-	Message   string
-	Hint      string
-	Separator string
-}
-
 type Style struct {
 	BarFg   lipgloss.Color
 	HintFg  lipgloss.Color
@@ -41,6 +34,24 @@ type Style struct {
 	LabelFg lipgloss.Color
 	ErrorBg lipgloss.Color
 	ErrorFg lipgloss.Color
+}
+
+func defaultStyle() Style {
+	return Style{
+		BarFg:   lipgloss.Color("#965363"),
+		HintFg:  lipgloss.Color("#44262d"),
+		LabelBg: lipgloss.Color("#6f3d49"),
+		LabelFg: lipgloss.Color("#1a0f12"),
+		ErrorBg: lipgloss.Color("#a52a2a"),
+		ErrorFg: lipgloss.Color("#1a0f12"),
+	}
+}
+
+type Content struct {
+	Title     string
+	Message   string
+	Hint      string
+	Separator string
 }
 
 type Footer struct {
@@ -51,8 +62,16 @@ type Footer struct {
 	style   Style
 }
 
-func (footer *Footer) Init() bubbletea.Cmd {
-	return wrapTickCmd(footer.spinner.Tick)
+func New() Footer {
+	s := spinner.New()
+	s.Spinner = spinner.MiniDot
+
+	return Footer{
+		state:   Starting,
+		spinner: s,
+		content: Content{Title: "Starting...", Separator: " · "},
+		style:   defaultStyle(),
+	}
 }
 
 func (footer *Footer) SetState(state State) bubbletea.Cmd {
@@ -196,29 +215,6 @@ func (footer Footer) getContent() Content {
 
 func (footer Footer) isSpinning() bool {
 	return footer.state == Starting || footer.state == ConfigLoading || footer.state == WaitingUserInput
-}
-
-func New() Footer {
-	s := spinner.New()
-	s.Spinner = spinner.MiniDot
-
-	return Footer{
-		state:   Starting,
-		spinner: s,
-		content: Content{Title: "Starting...", Separator: " · "},
-		style:   defaultStyle(),
-	}
-}
-
-func defaultStyle() Style {
-	return Style{
-		BarFg:   lipgloss.Color("#965363"),
-		HintFg:  lipgloss.Color("#44262d"),
-		LabelBg: lipgloss.Color("#6f3d49"),
-		LabelFg: lipgloss.Color("#1a0f12"),
-		ErrorBg: lipgloss.Color("#a52a2a"),
-		ErrorFg: lipgloss.Color("#1a0f12"),
-	}
 }
 
 func wrapTickCmd(cmd bubbletea.Cmd) bubbletea.Cmd {

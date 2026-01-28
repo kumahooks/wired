@@ -12,21 +12,12 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-var ErrInvalidMusicPath = errors.New("music path does not exist or is not a directory")
-
 const (
 	dirPerm  = 0o755
 	filePerm = 0o644
 )
 
-type Config struct {
-	Title            string         `toml:"title"`
-	MusicLibraryPath string         `toml:"music_library_path"`
-	InputCharLimit   int            `toml:"input_char_limit"`
-	Notification     Notification   `toml:"notification"`
-	Colors           ColorPalette   `toml:"colors"`
-	Keybinds         KeybindMapping `toml:"keybinds"`
-}
+var ErrInvalidMusicPath = errors.New("music path does not exist or is not a directory")
 
 type Notification struct {
 	NotificationMaxWidth     int `toml:"notification_max_width"`
@@ -58,6 +49,59 @@ type KeybindMapping struct {
 	Select   []string `toml:"select"`
 	Cancel   []string `toml:"cancel"`
 	Quit     []string `toml:"quit"`
+}
+
+type Config struct {
+	Title            string         `toml:"title"`
+	MusicLibraryPath string         `toml:"music_library_path"`
+	InputCharLimit   int            `toml:"input_char_limit"`
+	Notification     Notification   `toml:"notification"`
+	Colors           ColorPalette   `toml:"colors"`
+	Keybinds         KeybindMapping `toml:"keybinds"`
+}
+
+func Load() (*Config, []error, bool) {
+	path, err := getPath()
+	if err != nil {
+		return nil, []error{err}, false
+	}
+
+	_, err = os.Stat(path)
+	if os.IsNotExist(err) {
+		if err = ensureExists(path); err != nil {
+			return nil, []error{err}, false
+		}
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, []error{err}, false
+	}
+
+	cfg := DefaultValues()
+	if err = toml.Unmarshal(data, &cfg); err != nil {
+		return nil, []error{err}, false
+	}
+
+	if errs := validateValues(cfg); errs != nil {
+		return nil, errs, false
+	}
+
+	// Persist so any newly-added default keys are written to the file
+	if err = cfg.Save(); err != nil {
+		return nil, []error{err}, false
+	}
+
+	// If music library is not correct, we clear it so the prompt shows up
+	var musicLibraryPathCleared bool
+	if cfg.MusicLibraryPath != "" {
+		if _, err = cfg.IsMusicLibraryPathValid(cfg.MusicLibraryPath); err != nil {
+			cfg.MusicLibraryPath = ""
+			musicLibraryPathCleared = true
+		}
+	}
+
+	return &cfg, nil, musicLibraryPathCleared
 }
 
 func (cfg *Config) Save() error {
@@ -96,51 +140,7 @@ func (cfg *Config) IsMusicLibraryPathValid(path string) (string, error) {
 	return expanded, nil
 }
 
-func Load() (*Config, []error, bool) {
-	path, err := getPath()
-	if err != nil {
-		return nil, []error{err}, false
-	}
-
-	_, err = os.Stat(path)
-	if os.IsNotExist(err) {
-		if err = ensureExists(path); err != nil {
-			return nil, []error{err}, false
-		}
-	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, []error{err}, false
-	}
-
-	cfg := DefaultValues()
-	if err = toml.Unmarshal(data, &cfg); err != nil {
-		return nil, []error{err}, false
-	}
-
-	if errs := Validate(cfg); errs != nil {
-		return nil, errs, false
-	}
-
-	// Persist so any newly-added default keys are written to the file
-	if err = cfg.Save(); err != nil {
-		return nil, []error{err}, false
-	}
-
-	// If music library is not correct, we clear it so the prompt shows up
-	var musicLibraryPathCleared bool
-	if cfg.MusicLibraryPath != "" {
-		if _, err = cfg.IsMusicLibraryPathValid(cfg.MusicLibraryPath); err != nil {
-			cfg.MusicLibraryPath = ""
-			musicLibraryPathCleared = true
-		}
-	}
-
-	return &cfg, nil, musicLibraryPathCleared
-}
-
-func Validate(cfg Config) []error {
+func validateValues(cfg Config) []error {
 	var errs []error
 
 	positive := func(name string, val int) {

@@ -32,6 +32,14 @@ type Style struct {
 	InactiveText lipgloss.Color
 }
 
+func defaultStyle() Style {
+	return Style{
+		BorderColor:  lipgloss.Color("#6f3d49"),
+		CursorFg:     lipgloss.Color("#965363"),
+		InactiveText: lipgloss.Color("#44262d"),
+	}
+}
+
 type Modal struct {
 	input      textinput.Model
 	title      string
@@ -40,6 +48,13 @@ type Modal struct {
 	width      int
 	height     int
 	style      Style
+}
+
+func New() Modal {
+	return Modal{
+		input: textinput.New(),
+		style: defaultStyle(),
+	}
 }
 
 func (modal *Modal) Show(promptType Type, title string, placeholder string, charLimit int) bubbletea.Cmd {
@@ -132,19 +147,4 @@ func (modal Modal) View() string {
 	box := boxStyle.Render(content)
 
 	return lipgloss.Place(modal.width, modal.height, lipgloss.Center, lipgloss.Center, box)
-}
-
-func New() Modal {
-	return Modal{
-		input: textinput.New(),
-		style: defaultStyle(),
-	}
-}
-
-func defaultStyle() Style {
-	return Style{
-		BorderColor:  lipgloss.Color("#6f3d49"),
-		CursorFg:     lipgloss.Color("#965363"),
-		InactiveText: lipgloss.Color("#44262d"),
-	}
 }

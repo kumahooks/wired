@@ -23,6 +23,15 @@ type Model struct {
 	height        int
 }
 
+func NewModel() Model {
+	return Model{
+		Dialog:        dialog.New(),
+		Modal:         modal.New(),
+		Footer:        footer.New(),
+		Notifications: notification.New(),
+	}
+}
+
 func (model *Model) GetUserInput(promptType modal.Type, title string, placeholder string) bubbletea.Cmd {
 	charLimit := 256
 	if model.Config != nil && model.Config.InputCharLimit > 0 {
@@ -46,7 +55,6 @@ func (model *Model) EnqueueNotification(
 func (model Model) Init() bubbletea.Cmd {
 	return bubbletea.Batch(
 		bubbletea.SetWindowTitle("wire(d)"),
-		model.Footer.Init(),
 		func() bubbletea.Msg {
 			return footer.StartCompleteMsg{}
 		},
@@ -55,13 +63,4 @@ func (model Model) Init() bubbletea.Cmd {
 			return LoadConfigMsg{Config: cfg, Errors: errs, MusicLibraryPathCleared: pathCleared}
 		},
 	)
-}
-
-func NewModel() Model {
-	return Model{
-		Dialog:        dialog.New(),
-		Modal:         modal.New(),
-		Footer:        footer.New(),
-		Notifications: notification.NewStack(),
-	}
 }

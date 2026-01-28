@@ -33,18 +33,28 @@ func (n Notification) Expired() bool {
 	return time.Now().After(n.expiresAt)
 }
 
-type StackNode struct {
-	notification Notification
-	prev         *StackNode
-	next         *StackNode
-}
-
 type Style struct {
 	InfoColor    string
 	ErrorColor   string
 	SuccessColor string
 	MaxWidth     int
 	MaxHeight    int
+}
+
+func defaultStyle() Style {
+	return Style{
+		InfoColor:    "#539686",
+		ErrorColor:   "#a52a2a",
+		SuccessColor: "#639653",
+		MaxWidth:     44,
+		MaxHeight:    10,
+	}
+}
+
+type StackNode struct {
+	notification Notification
+	prev         *StackNode
+	next         *StackNode
 }
 
 type NotificationStack struct {
@@ -54,6 +64,13 @@ type NotificationStack struct {
 	count    int
 	sequence int
 	style    Style
+}
+
+func New() NotificationStack {
+	return NotificationStack{
+		capacity: 32,
+		style:    defaultStyle(),
+	}
 }
 
 func (stack *NotificationStack) Push(message string, notificationType Type, duration time.Duration) {
@@ -89,23 +106,6 @@ func (stack *NotificationStack) Push(message string, notificationType Type, dura
 	}
 }
 
-func (stack *NotificationStack) removeTail() {
-	if stack.tail == nil {
-		return
-	}
-
-	if stack.tail == stack.head {
-		stack.head = nil
-		stack.tail = nil
-		stack.sequence = 0
-	} else {
-		stack.tail = stack.tail.prev
-		stack.tail.next = nil
-	}
-
-	stack.count--
-}
-
 func (stack *NotificationStack) Prune() {
 	for stack.tail != nil && stack.tail.notification.Expired() {
 		stack.removeTail()
@@ -130,19 +130,9 @@ func (stack *NotificationStack) Visible(maxShown int) []Notification {
 	return result
 }
 
-func NewStack() NotificationStack {
-	return NotificationStack{
-		capacity: 32,
-		style:    defaultStyle(),
-	}
-}
-
-func (stack *NotificationStack) SetCapacity(capacity int) {
-	stack.capacity = capacity
-}
-
-func (stack *NotificationStack) ApplyColors(cfg *config.Config) {
+func (stack *NotificationStack) ApplyConfig(cfg *config.Config) {
 	stack.capacity = cfg.Notification.NotificationStackMax
+
 	stack.style = Style{
 		InfoColor:    cfg.Colors.NotificationInfo,
 		ErrorColor:   cfg.Colors.NotificationError,
@@ -191,14 +181,21 @@ func (stack NotificationStack) Render(n Notification) string {
 	return style.Render(content)
 }
 
-func defaultStyle() Style {
-	return Style{
-		InfoColor:    "#539686",
-		ErrorColor:   "#a52a2a",
-		SuccessColor: "#639653",
-		MaxWidth:     44,
-		MaxHeight:    10,
+func (stack *NotificationStack) removeTail() {
+	if stack.tail == nil {
+		return
 	}
+
+	if stack.tail == stack.head {
+		stack.head = nil
+		stack.tail = nil
+		stack.sequence = 0
+	} else {
+		stack.tail = stack.tail.prev
+		stack.tail.next = nil
+	}
+
+	stack.count--
 }
 
 // wrapText wraps text to fit within width, counting single bytes per character
