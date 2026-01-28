@@ -21,7 +21,6 @@ type Model struct {
 	Footer        footer.Footer
 	width         int
 	height        int
-	// TODO: parse hex colors from config into lipgloss.Color types?
 }
 
 func (model *Model) GetUserInput(promptType modal.Type, title string, placeholder string) bubbletea.Cmd {
@@ -52,8 +51,8 @@ func (model Model) Init() bubbletea.Cmd {
 			return footer.StartCompleteMsg{}
 		},
 		func() bubbletea.Msg {
-			cfg, errs := config.Load()
-			return LoadConfigMsg{Config: cfg, Errors: errs}
+			cfg, errs, pathCleared := config.Load()
+			return LoadConfigMsg{Config: cfg, Errors: errs, MusicLibraryPathCleared: pathCleared}
 		},
 	)
 }

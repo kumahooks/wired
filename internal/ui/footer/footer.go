@@ -34,20 +34,21 @@ type Content struct {
 	Separator string
 }
 
-var (
-	fallbackBarFg   = lipgloss.Color("#965363")
-	fallbackLabelBg = lipgloss.Color("#6f3d49")
-	fallbackLabelFg = lipgloss.Color("#1a0f12")
-	fallbackErrorBg = lipgloss.Color("#4b2f55")
-	fallbackErrorFg = lipgloss.Color("#1a0f12")
-	fallbackHintFg  = lipgloss.Color("#44262d")
-)
+type Style struct {
+	BarFg   lipgloss.Color
+	HintFg  lipgloss.Color
+	LabelBg lipgloss.Color
+	LabelFg lipgloss.Color
+	ErrorBg lipgloss.Color
+	ErrorFg lipgloss.Color
+}
 
 type Footer struct {
 	state   State
 	spinner spinner.Model
 	content Content
 	width   int
+	style   Style
 }
 
 func (footer *Footer) Init() bubbletea.Cmd {
@@ -75,6 +76,17 @@ func (footer *Footer) SetWidth(width int) {
 	footer.width = width
 }
 
+func (footer *Footer) ApplyColors(cfg *config.Config) {
+	footer.style = Style{
+		BarFg:   lipgloss.Color(cfg.Colors.FooterBarFg),
+		HintFg:  lipgloss.Color(cfg.Colors.FooterHintFg),
+		LabelBg: lipgloss.Color(cfg.Colors.FooterLabelBg),
+		LabelFg: lipgloss.Color(cfg.Colors.FooterLabelFg),
+		ErrorBg: lipgloss.Color(cfg.Colors.FooterErrorBg),
+		ErrorFg: lipgloss.Color(cfg.Colors.FooterErrorFg),
+	}
+}
+
 func (footer Footer) State() State {
 	return footer.state
 }
@@ -94,32 +106,17 @@ func (footer *Footer) Update(msg bubbletea.Msg) bubbletea.Cmd {
 	return nil
 }
 
-func (footer Footer) View(cfg *config.Config) string {
-	barFg := fallbackBarFg
-	hintFg := fallbackHintFg
-	labelBg := fallbackLabelBg
-	labelFg := fallbackLabelFg
+func (footer Footer) View() string {
+	labelBg := footer.style.LabelBg
+	labelFg := footer.style.LabelFg
 
 	if footer.state == Error {
-		labelBg = fallbackErrorBg
-		labelFg = fallbackErrorFg
+		labelBg = footer.style.ErrorBg
+		labelFg = footer.style.ErrorFg
 	}
 
-	if cfg != nil {
-		barFg = lipgloss.Color(cfg.Colors.FooterBarFg)
-		hintFg = lipgloss.Color(cfg.Colors.FooterHintFg)
-
-		if footer.state == Error {
-			labelBg = lipgloss.Color(cfg.Colors.FooterErrorBg)
-			labelFg = lipgloss.Color(cfg.Colors.FooterErrorFg)
-		} else {
-			labelBg = lipgloss.Color(cfg.Colors.FooterLabelBg)
-			labelFg = lipgloss.Color(cfg.Colors.FooterLabelFg)
-		}
-	}
-
-	barStyle := lipgloss.NewStyle().Foreground(barFg)
-	hintStyle := lipgloss.NewStyle().Foreground(hintFg)
+	barStyle := lipgloss.NewStyle().Foreground(footer.style.BarFg)
+	hintStyle := lipgloss.NewStyle().Foreground(footer.style.HintFg)
 	labelStyle := lipgloss.NewStyle().Background(labelBg).Foreground(labelFg).Bold(true)
 
 	sep := footer.content.Separator
@@ -209,6 +206,18 @@ func New() Footer {
 		state:   Starting,
 		spinner: s,
 		content: Content{Title: "Starting...", Separator: " · "},
+		style:   defaultStyle(),
+	}
+}
+
+func defaultStyle() Style {
+	return Style{
+		BarFg:   lipgloss.Color("#965363"),
+		HintFg:  lipgloss.Color("#44262d"),
+		LabelBg: lipgloss.Color("#6f3d49"),
+		LabelFg: lipgloss.Color("#1a0f12"),
+		ErrorBg: lipgloss.Color("#a52a2a"),
+		ErrorFg: lipgloss.Color("#1a0f12"),
 	}
 }
 

@@ -39,12 +39,21 @@ type StackNode struct {
 	next         *StackNode
 }
 
+type Style struct {
+	InfoColor    string
+	ErrorColor   string
+	SuccessColor string
+	MaxWidth     int
+	MaxHeight    int
+}
+
 type NotificationStack struct {
 	head     *StackNode
 	tail     *StackNode
 	capacity int
 	count    int
 	sequence int
+	style    Style
 }
 
 func (stack *NotificationStack) Push(message string, notificationType Type, duration time.Duration) {
@@ -124,19 +133,35 @@ func (stack *NotificationStack) Visible(maxShown int) []Notification {
 func NewStack() NotificationStack {
 	return NotificationStack{
 		capacity: 32,
+		style:    defaultStyle(),
 	}
 }
 
-func Render(n Notification, cfg *config.Config) string {
+func (stack *NotificationStack) SetCapacity(capacity int) {
+	stack.capacity = capacity
+}
+
+func (stack *NotificationStack) ApplyColors(cfg *config.Config) {
+	stack.capacity = cfg.Notification.NotificationStackMax
+	stack.style = Style{
+		InfoColor:    cfg.Colors.NotificationInfo,
+		ErrorColor:   cfg.Colors.NotificationError,
+		SuccessColor: cfg.Colors.NotificationSuccess,
+		MaxWidth:     cfg.Notification.NotificationMaxWidth,
+		MaxHeight:    cfg.Notification.NotificationMaxHeight,
+	}
+}
+
+func (stack NotificationStack) Render(n Notification) string {
 	var colorHex string
 
 	switch n.nType {
 	case Error:
-		colorHex = cfg.Colors.NotificationError
+		colorHex = stack.style.ErrorColor
 	case Success:
-		colorHex = cfg.Colors.NotificationSuccess
+		colorHex = stack.style.SuccessColor
 	default:
-		colorHex = cfg.Colors.NotificationInfo
+		colorHex = stack.style.InfoColor
 	}
 
 	remainingTime := time.Until(n.expiresAt)
@@ -159,13 +184,24 @@ func Render(n Notification, cfg *config.Config) string {
 
 	prefixedMsg := fmt.Sprintf("[%d] %s", n.sequence, n.message)
 
-	contentWidth := cfg.Notification.NotificationMaxWidth - 4
-	lines := wrapText(prefixedMsg, contentWidth, cfg.Notification.NotificationMaxHeight)
+	contentWidth := stack.style.MaxWidth - 4
+	lines := wrapText(prefixedMsg, contentWidth, stack.style.MaxHeight)
 	content := strings.Join(lines, "\n")
 
 	return style.Render(content)
 }
 
+func defaultStyle() Style {
+	return Style{
+		InfoColor:    "#539686",
+		ErrorColor:   "#a52a2a",
+		SuccessColor: "#639653",
+		MaxWidth:     44,
+		MaxHeight:    10,
+	}
+}
+
+// wrapText wraps text to fit within width, counting single bytes per character
 func wrapText(text string, width int, maxHeight int) []string {
 	if width <= 0 {
 		return []string{text}
@@ -225,6 +261,7 @@ func wrapText(text string, width int, maxHeight int) []string {
 	return lines
 }
 
+// TODO: do I really want to do it this way...
 func fadeColor(hex string, ratio float64) lipgloss.Color {
 	if len(hex) > 0 && hex[0] == '#' {
 		hex = hex[1:]
