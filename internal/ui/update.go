@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	spinner "github.com/charmbracelet/bubbles/spinner"
 	bubbletea "github.com/charmbracelet/bubbletea"
 
 	dialog "wired/internal/ui/dialog"
@@ -34,7 +35,7 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 
 		return model, cmd
 
-	case footer.SpinnerTickMsg:
+	case spinner.TickMsg:
 		cmd := model.Footer.Update(msg)
 		return model, cmd
 
@@ -53,8 +54,8 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 		}
 
 		model.Config = msg.Config
-		model.Modal.ApplyColors(msg.Config)
-		model.Footer.ApplyColors(msg.Config)
+		model.Modal.ApplyConfig(msg.Config)
+		model.Footer.ApplyConfig(msg.Config)
 		model.Notifications.ApplyConfig(msg.Config)
 
 		if msg.MusicLibraryPathCleared {
@@ -121,7 +122,7 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 
 		if model.Modal.Visible() {
 			if model.Config != nil {
-				cmd := model.Modal.Update(msg, model.Config.Keybinds)
+				cmd := model.Modal.Update(msg)
 				return model, cmd
 			}
 		}
@@ -146,7 +147,7 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 
 	default:
 		if model.Modal.Visible() && model.Config != nil {
-			cmd := model.Modal.Update(msg, model.Config.Keybinds)
+			cmd := model.Modal.Update(msg)
 			return model, cmd
 		}
 	}

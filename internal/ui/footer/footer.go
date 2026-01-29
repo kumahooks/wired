@@ -23,10 +23,6 @@ const (
 
 type StartCompleteMsg struct{}
 
-type SpinnerTickMsg struct {
-	inner spinner.TickMsg
-}
-
 type Style struct {
 	BarFg   lipgloss.Color
 	HintFg  lipgloss.Color
@@ -81,7 +77,7 @@ func (footer *Footer) SetState(state State) bubbletea.Cmd {
 	footer.content = footer.getContent()
 
 	if footer.isSpinning() && !wasSpinning {
-		return wrapTickCmd(footer.spinner.Tick)
+		return footer.spinner.Tick
 	}
 
 	return nil
@@ -95,7 +91,7 @@ func (footer *Footer) SetWidth(width int) {
 	footer.width = width
 }
 
-func (footer *Footer) ApplyColors(cfg *config.Config) {
+func (footer *Footer) ApplyConfig(cfg *config.Config) {
 	footer.style = Style{
 		BarFg:   lipgloss.Color(cfg.Colors.FooterBarFg),
 		HintFg:  lipgloss.Color(cfg.Colors.FooterHintFg),
@@ -115,14 +111,10 @@ func (footer *Footer) Update(msg bubbletea.Msg) bubbletea.Cmd {
 		return nil
 	}
 
-	if stm, ok := msg.(SpinnerTickMsg); ok {
-		var cmd bubbletea.Cmd
-		footer.spinner, cmd = footer.spinner.Update(stm.inner)
+	var cmd bubbletea.Cmd
+	footer.spinner, cmd = footer.spinner.Update(msg)
 
-		return wrapTickCmd(cmd)
-	}
-
-	return nil
+	return cmd
 }
 
 func (footer Footer) View() string {
@@ -215,20 +207,4 @@ func (footer Footer) getContent() Content {
 
 func (footer Footer) isSpinning() bool {
 	return footer.state == Starting || footer.state == ConfigLoading || footer.state == WaitingUserInput
-}
-
-func wrapTickCmd(cmd bubbletea.Cmd) bubbletea.Cmd {
-	if cmd == nil {
-		return nil
-	}
-
-	return func() bubbletea.Msg {
-		msg := cmd()
-
-		if tm, ok := msg.(spinner.TickMsg); ok {
-			return SpinnerTickMsg{inner: tm}
-		}
-
-		return msg
-	}
 }

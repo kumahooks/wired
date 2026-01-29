@@ -48,6 +48,7 @@ type Modal struct {
 	width      int
 	height     int
 	style      Style
+	keybinds   config.KeybindMapping
 }
 
 func New() Modal {
@@ -85,7 +86,8 @@ func (modal *Modal) SetSize(width int, height int) {
 	modal.input.Width = min(width-10, 36)
 }
 
-func (modal *Modal) ApplyColors(cfg *config.Config) {
+func (modal *Modal) ApplyConfig(cfg *config.Config) {
+	modal.keybinds = cfg.Keybinds
 	modal.style = Style{
 		BorderColor:  lipgloss.Color(cfg.Colors.Border),
 		CursorFg:     lipgloss.Color(cfg.Colors.CursorForeground),
@@ -97,7 +99,7 @@ func (modal *Modal) ApplyColors(cfg *config.Config) {
 	modal.input.PromptStyle = lipgloss.NewStyle().Foreground(modal.style.InactiveText)
 }
 
-func (modal *Modal) Update(msg bubbletea.Msg, keybinds config.KeybindMapping) bubbletea.Cmd {
+func (modal *Modal) Update(msg bubbletea.Msg) bubbletea.Cmd {
 	if !modal.visible {
 		return nil
 	}
@@ -108,7 +110,7 @@ func (modal *Modal) Update(msg bubbletea.Msg, keybinds config.KeybindMapping) bu
 		promptType := modal.promptType
 
 		// Confirm input
-		if slices.Contains(keybinds.Select, key) {
+		if slices.Contains(modal.keybinds.Select, key) {
 			value := modal.input.Value()
 			modal.Hide()
 
@@ -116,7 +118,7 @@ func (modal *Modal) Update(msg bubbletea.Msg, keybinds config.KeybindMapping) bu
 		}
 
 		// Leave input screen
-		if slices.Contains(keybinds.Cancel, key) {
+		if slices.Contains(modal.keybinds.Cancel, key) {
 			modal.Hide()
 
 			return func() bubbletea.Msg { return CancelMsg{Type: promptType} }
