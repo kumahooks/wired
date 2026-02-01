@@ -74,6 +74,14 @@ func New() Footer {
 	}
 }
 
+func (footer Footer) Init() bubbletea.Cmd {
+	if footer.isSpinning() {
+		return footer.spinner.Tick
+	}
+
+	return nil
+}
+
 func (footer *Footer) SetState(state State) bubbletea.Cmd {
 	wasSpinning := footer.isSpinning()
 
@@ -123,6 +131,7 @@ func (footer *Footer) Update(msg bubbletea.Msg) bubbletea.Cmd {
 }
 
 func (footer Footer) View() string {
+	padding := 1
 	labelBg := footer.style.LabelBg
 	labelFg := footer.style.LabelFg
 
@@ -140,12 +149,14 @@ func (footer Footer) View() string {
 		sep = " "
 	}
 
+	innerWidth := max(footer.width-padding*2, 0)
+
 	var parts []string
 	var contentWidth int
 
 	// Title
 	if footer.isSpinning() {
-		titlePart := " " + footer.spinner.View() + " " + footer.content.Title
+		titlePart := footer.spinner.View() + " " + footer.content.Title
 		titleRendered := barStyle.Render(titlePart)
 
 		parts = append(parts, titleRendered)
@@ -155,10 +166,9 @@ func (footer Footer) View() string {
 		labelText := " " + footer.content.Title + " "
 		label := labelStyle.Render(labelText)
 
-		parts = append(parts, " ")
 		parts = append(parts, label)
 
-		contentWidth = 1 + lipgloss.Width(label)
+		contentWidth = lipgloss.Width(label)
 	}
 
 	// Message
@@ -177,20 +187,19 @@ func (footer Footer) View() string {
 
 		hintTotalWidth := lipgloss.Width(sep) + lipgloss.Width(hintRendered)
 
-		if contentWidth+hintTotalWidth <= footer.width {
+		if contentWidth+hintTotalWidth <= innerWidth {
 			parts = append(parts, sep)
 			parts = append(parts, hintRendered)
 			contentWidth += hintTotalWidth
 		}
 	}
 
-	// Padding
-	if contentWidth < footer.width {
-		pad := barStyle.Render(strings.Repeat(" ", footer.width-contentWidth))
-		parts = append(parts, pad)
-	}
+	inner := strings.Join(parts, "")
 
-	return strings.Join(parts, "")
+	return lipgloss.NewStyle().
+		PaddingLeft(padding).
+		PaddingRight(padding).
+		Render(inner)
 }
 
 func (footer Footer) getContent() Content {

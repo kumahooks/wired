@@ -23,8 +23,8 @@ var audioExtensions = map[string]bool{
 }
 
 type songScanResult struct {
-	Path string
-	Song *Song
+	path string
+	song *Song
 }
 
 type FileScanningResult struct {
@@ -198,8 +198,8 @@ func Scan(ctx context.Context, libraryPath string, channel chan<- int) (*Library
 
 				select {
 				case resultsChannel <- songScanResult{
-					Path: path,
-					Song: &Song{
+					path: path,
+					song: &Song{
 						FileName: filepath.Base(path),
 						Metadata: metadata,
 					},
@@ -238,7 +238,7 @@ func Scan(ctx context.Context, libraryPath string, channel chan<- int) (*Library
 		default:
 		}
 
-		library.AddSong(result.Path, result.Song)
+		library.AddSong(result.path, result.song)
 
 		count++
 

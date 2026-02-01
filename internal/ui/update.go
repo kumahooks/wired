@@ -14,6 +14,7 @@ import (
 	library "wired/internal/library"
 	dialog "wired/internal/ui/dialog"
 	footer "wired/internal/ui/footer"
+	header "wired/internal/ui/header"
 	modal "wired/internal/ui/modal"
 	notification "wired/internal/ui/notification"
 )
@@ -24,8 +25,11 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 		model.width = msg.Width
 		model.height = msg.Height
 
-		model.Dialog.SetSize(msg.Width, msg.Height-1)
-		model.Modal.SetSize(msg.Width, msg.Height-1)
+		contentHeight := max(msg.Height-2, 0)
+
+		model.Dialog.SetSize(msg.Width, contentHeight)
+		model.Modal.SetSize(msg.Width, contentHeight)
+		model.Header.SetWidth(msg.Width)
 		model.Footer.SetWidth(msg.Width)
 
 		return model, nil
@@ -58,6 +62,7 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 		model.Modal.ApplyConfig(msg.Config)
 		model.Footer.ApplyConfig(msg.Config)
 		model.Notifications.ApplyConfig(msg.Config)
+		model.Header.ApplyConfig(msg.Config)
 
 		if msg.MusicLibraryPathCleared {
 			model.EnqueueNotification(
@@ -281,7 +286,20 @@ func (model Model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 			return model, bubbletea.Batch(footerCmd, scanLibraryCmd(ctx, model.Config.MusicLibraryPath))
 		}
 
-		// TODO: further keybinds functionality
+		if slices.Contains(keybinds.ViewLibrary, messageStr) {
+			model.Header.SetActive(header.Library)
+			return model, nil
+		}
+
+		if slices.Contains(keybinds.ViewPlaylist, messageStr) {
+			model.Header.SetActive(header.Playlist)
+			return model, nil
+		}
+
+		if slices.Contains(keybinds.ViewStatistics, messageStr) {
+			model.Header.SetActive(header.Statistics)
+			return model, nil
+		}
 
 	default:
 		if model.Modal.Visible() && model.Config != nil {
