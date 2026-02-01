@@ -12,16 +12,16 @@ const (
 	cacheVersion = 7
 )
 
-type songCache struct {
+type SongCache struct {
 	FileName   string `json:"file_name"`
 	SongName   string `json:"song_name"`
 	ArtistName string `json:"artist_name"`
 	AlbumName  string `json:"album_name"`
 }
 
-type libraryCache struct {
+type LibraryCache struct {
 	Version int                   `json:"version"`
-	Songs   map[string]*songCache `json:"songs"` // file_path -> song metadata
+	Songs   map[string]*SongCache `json:"songs"` // file_path -> song metadata
 }
 
 func (library *Library) SaveCache() error {
@@ -30,13 +30,13 @@ func (library *Library) SaveCache() error {
 		return err
 	}
 
-	cache := libraryCache{
+	cache := LibraryCache{
 		Version: cacheVersion,
-		Songs:   make(map[string]*songCache, len(library.Songs)),
+		Songs:   make(map[string]*SongCache, len(library.Songs)),
 	}
 
 	for filePath, song := range library.Songs {
-		cache.Songs[filePath] = &songCache{
+		cache.Songs[filePath] = &SongCache{
 			FileName:   song.FileName,
 			SongName:   song.Metadata.SongName,
 			ArtistName: song.Metadata.ArtistName,
@@ -67,7 +67,7 @@ func LoadCache() *Library {
 		return nil
 	}
 
-	var cache libraryCache
+	var cache LibraryCache
 	if err := json.Unmarshal(data, &cache); err != nil {
 		return nil
 	}

@@ -34,6 +34,9 @@ type ColorPalette struct {
 	NotificationInfo    string `toml:"notification_info"`
 	NotificationError   string `toml:"notification_error"`
 	NotificationSuccess string `toml:"notification_success"`
+	HeaderActiveBg      string `toml:"header_active_bg"`
+	HeaderActiveFg      string `toml:"header_active_fg"`
+	HeaderInactiveFg    string `toml:"header_inactive_fg"`
 	FooterBarFg         string `toml:"footer_bar_fg"`
 	FooterLabelBg       string `toml:"footer_label_bg"`
 	FooterLabelFg       string `toml:"footer_label_fg"`
@@ -43,13 +46,16 @@ type ColorPalette struct {
 }
 
 type KeybindMapping struct {
-	MoveLeft  []string `toml:"move_left"`
-	MoveDown  []string `toml:"move_down"`
-	MoveUp    []string `toml:"move_up"`
-	Select    []string `toml:"select"`
-	Cancel    []string `toml:"cancel"`
-	Quit      []string `toml:"quit"`
-	ScanFiles []string `toml:"scan_files"`
+	MoveLeft       []string `toml:"move_left"`
+	MoveDown       []string `toml:"move_down"`
+	MoveUp         []string `toml:"move_up"`
+	Select         []string `toml:"select"`
+	Cancel         []string `toml:"cancel"`
+	Quit           []string `toml:"quit"`
+	ScanFiles      []string `toml:"scan_files"`
+	ViewLibrary    []string `toml:"view_library"`
+	ViewPlaylist   []string `toml:"view_playlist"`
+	ViewStatistics []string `toml:"view_statistics"`
 }
 
 type Config struct {
@@ -202,6 +208,9 @@ func validateValues(cfg Config) []error {
 	hexColor("colors.notification_info", cfg.Colors.NotificationInfo)
 	hexColor("colors.notification_error", cfg.Colors.NotificationError)
 	hexColor("colors.notification_success", cfg.Colors.NotificationSuccess)
+	hexColor("colors.header_active_bg", cfg.Colors.HeaderActiveBg)
+	hexColor("colors.header_active_fg", cfg.Colors.HeaderActiveFg)
+	hexColor("colors.header_inactive_fg", cfg.Colors.HeaderInactiveFg)
 	hexColor("colors.footer_bar_fg", cfg.Colors.FooterBarFg)
 	hexColor("colors.footer_label_bg", cfg.Colors.FooterLabelBg)
 	hexColor("colors.footer_label_fg", cfg.Colors.FooterLabelFg)
@@ -216,6 +225,9 @@ func validateValues(cfg Config) []error {
 	keybind("keybinds.cancel", cfg.Keybinds.Cancel)
 	keybind("keybinds.quit", cfg.Keybinds.Quit)
 	keybind("keybinds.scan_files", cfg.Keybinds.ScanFiles)
+	keybind("keybinds.view_library", cfg.Keybinds.ViewLibrary)
+	keybind("keybinds.view_playlist", cfg.Keybinds.ViewPlaylist)
+	keybind("keybinds.view_statistics", cfg.Keybinds.ViewStatistics)
 
 	if len(errs) == 0 {
 		return nil

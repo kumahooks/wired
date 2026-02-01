@@ -9,6 +9,7 @@ import (
 	library "wired/internal/library"
 	dialog "wired/internal/ui/dialog"
 	footer "wired/internal/ui/footer"
+	header "wired/internal/ui/header"
 	modal "wired/internal/ui/modal"
 	notification "wired/internal/ui/notification"
 )
@@ -18,6 +19,7 @@ type Model struct {
 	FileScanState *FileScanningState
 	Library       *library.Library
 	Errors        []error
+	Header        header.Header
 	Dialog        dialog.Dialog
 	Modal         modal.Modal
 	Notifications notification.NotificationStack
@@ -28,10 +30,11 @@ type Model struct {
 
 func NewModel() Model {
 	return Model{
+		Header:        header.New(),
 		Dialog:        dialog.New(),
 		Modal:         modal.New(),
-		Footer:        footer.New(),
 		Notifications: notification.New(),
+		Footer:        footer.New(),
 	}
 }
 
@@ -64,6 +67,7 @@ func LoadLibraryCmd() bubbletea.Cmd {
 func (model Model) Init() bubbletea.Cmd {
 	return bubbletea.Batch(
 		bubbletea.SetWindowTitle("wire(d)"),
+		model.Footer.Init(),
 		func() bubbletea.Msg {
 			return footer.StartCompleteMsg{}
 		},
