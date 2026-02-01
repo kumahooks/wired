@@ -28,12 +28,13 @@ func DefaultValues() Config {
 			FooterHintFg:        "#44262d",
 		},
 		Keybinds: KeybindMapping{
-			MoveLeft: []string{"h", "left"},
-			MoveDown: []string{"j", "down"},
-			MoveUp:   []string{"k", "up"},
-			Select:   []string{"enter", "l", "right"},
-			Quit:     []string{"ctrl+c", "q"},
-			Cancel:   []string{"ctrl+c", "esc"},
+			MoveLeft:  []string{"h", "left"},
+			MoveDown:  []string{"j", "down"},
+			MoveUp:    []string{"k", "up"},
+			Select:    []string{"enter", "l", "right"},
+			Cancel:    []string{"ctrl+c", "esc"},
+			Quit:      []string{"ctrl+c", "q"},
+			ScanFiles: []string{"ctrl+s"},
 		},
 	}
 }

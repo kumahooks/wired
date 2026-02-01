@@ -6,6 +6,7 @@ import (
 	bubbletea "github.com/charmbracelet/bubbletea"
 
 	config "wired/internal/config"
+	library "wired/internal/library"
 	dialog "wired/internal/ui/dialog"
 	footer "wired/internal/ui/footer"
 	modal "wired/internal/ui/modal"
@@ -14,6 +15,8 @@ import (
 
 type Model struct {
 	Config        *config.Config
+	FileScanState *FileScanningState
+	Library       *library.Library
 	Errors        []error
 	Dialog        dialog.Dialog
 	Modal         modal.Modal
@@ -50,6 +53,12 @@ func (model *Model) EnqueueNotification(
 	duration time.Duration,
 ) {
 	model.Notifications.Push(message, notificationType, duration)
+}
+
+func LoadLibraryCmd() bubbletea.Cmd {
+	return func() bubbletea.Msg {
+		return LoadLibraryMsg{Library: library.LoadLibrary()}
+	}
 }
 
 func (model Model) Init() bubbletea.Cmd {

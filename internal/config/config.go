@@ -43,12 +43,13 @@ type ColorPalette struct {
 }
 
 type KeybindMapping struct {
-	MoveLeft []string `toml:"move_left"`
-	MoveDown []string `toml:"move_down"`
-	MoveUp   []string `toml:"move_up"`
-	Select   []string `toml:"select"`
-	Cancel   []string `toml:"cancel"`
-	Quit     []string `toml:"quit"`
+	MoveLeft  []string `toml:"move_left"`
+	MoveDown  []string `toml:"move_down"`
+	MoveUp    []string `toml:"move_up"`
+	Select    []string `toml:"select"`
+	Cancel    []string `toml:"cancel"`
+	Quit      []string `toml:"quit"`
+	ScanFiles []string `toml:"scan_files"`
 }
 
 type Config struct {
@@ -208,9 +209,13 @@ func validateValues(cfg Config) []error {
 	hexColor("colors.footer_error_fg", cfg.Colors.FooterErrorFg)
 	hexColor("colors.footer_hint_fg", cfg.Colors.FooterHintFg)
 
+	keybind("keybinds.move_left", cfg.Keybinds.MoveLeft)
+	keybind("keybinds.move_down", cfg.Keybinds.MoveDown)
+	keybind("keybinds.move_up", cfg.Keybinds.MoveUp)
 	keybind("keybinds.select", cfg.Keybinds.Select)
 	keybind("keybinds.cancel", cfg.Keybinds.Cancel)
 	keybind("keybinds.quit", cfg.Keybinds.Quit)
+	keybind("keybinds.scan_files", cfg.Keybinds.ScanFiles)
 
 	if len(errs) == 0 {
 		return nil
