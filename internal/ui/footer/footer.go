@@ -2,6 +2,7 @@
 package footer
 
 import (
+	"fmt"
 	"strings"
 
 	spinner "github.com/charmbracelet/bubbles/spinner"
@@ -17,6 +18,8 @@ const (
 	Starting State = iota
 	ConfigLoading
 	WaitingUserInput
+	LibraryLoading
+	LibraryScanning
 	Idle
 	Error
 )
@@ -51,11 +54,12 @@ type Content struct {
 }
 
 type Footer struct {
-	state   State
-	spinner spinner.Model
-	content Content
-	width   int
-	style   Style
+	state    State
+	spinner  spinner.Model
+	content  Content
+	width    int
+	style    Style
+	keybinds config.KeybindMapping
 }
 
 func New() Footer {
@@ -83,8 +87,8 @@ func (footer *Footer) SetState(state State) bubbletea.Cmd {
 	return nil
 }
 
-func (footer *Footer) SetContent(content Content) {
-	footer.content = content
+func (footer *Footer) SetScanState(current int, total int) {
+	footer.content.Message = fmt.Sprintf("%d/%d", current, total)
 }
 
 func (footer *Footer) SetWidth(width int) {
@@ -92,6 +96,7 @@ func (footer *Footer) SetWidth(width int) {
 }
 
 func (footer *Footer) ApplyConfig(cfg *config.Config) {
+	footer.keybinds = cfg.Keybinds
 	footer.style = Style{
 		BarFg:   lipgloss.Color(cfg.Colors.FooterBarFg),
 		HintFg:  lipgloss.Color(cfg.Colors.FooterHintFg),
@@ -189,22 +194,45 @@ func (footer Footer) View() string {
 }
 
 func (footer Footer) getContent() Content {
+	quitHint := footer.keybindHint(footer.keybinds.Quit, "to quit", "ctrl+c to quit")
+	scanHint := footer.keybindHint(footer.keybinds.ScanFiles, "to stop", "ctrl+s to stop")
+
 	switch footer.state {
 	case Starting:
-		return Content{Title: "Starting...", Message: "", Hint: "ctrl+c to quit", Separator: " · "}
+		return Content{Title: "Starting...", Hint: quitHint, Separator: " · "}
 	case ConfigLoading:
-		return Content{Title: "Loading config...", Message: "", Hint: "ctrl+c to quit", Separator: " · "}
+		return Content{Title: "Loading config...", Hint: quitHint, Separator: " · "}
+	case LibraryLoading:
+		return Content{Title: "Loading library...", Hint: quitHint, Separator: " · "}
+	case LibraryScanning:
+		return Content{
+			Title:     "Scanning library...",
+			Hint:      scanHint,
+			Separator: " · ",
+		}
 	case WaitingUserInput:
-		return Content{Title: "Waiting for user input...", Message: "", Hint: "ctrl+c to quit", Separator: " · "}
+		return Content{Title: "Waiting for user input...", Hint: quitHint, Separator: " · "}
 	case Error:
-		return Content{Title: "ERROR", Message: "", Hint: "ctrl+c to quit", Separator: " · "}
+		return Content{Title: "ERROR", Hint: quitHint, Separator: " · "}
 	case Idle:
-		return Content{Title: "NORMAL", Message: "", Hint: "ctrl+c to quit", Separator: " · "}
+		return Content{Title: "NORMAL", Hint: quitHint, Separator: " · "}
 	default:
-		return Content{Title: "", Message: "", Hint: "ctrl+c to quit", Separator: " · "}
+		return Content{Title: "", Hint: quitHint, Separator: " · "}
 	}
 }
 
+func (footer Footer) keybindHint(keys []string, action string, fallback string) string {
+	if len(keys) == 0 {
+		return fallback
+	}
+
+	return keys[0] + " " + action
+}
+
 func (footer Footer) isSpinning() bool {
-	return footer.state == Starting || footer.state == ConfigLoading || footer.state == WaitingUserInput
+	return footer.state == Starting ||
+		footer.state == ConfigLoading ||
+		footer.state == WaitingUserInput ||
+		footer.state == LibraryLoading ||
+		footer.state == LibraryScanning
 }

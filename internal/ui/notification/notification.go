@@ -3,7 +3,6 @@ package notification
 
 import (
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -161,7 +160,7 @@ func (stack NotificationStack) Render(n Notification) string {
 		ratio = 1
 	} else {
 		ratio = float64(remainingTime) / float64(n.totalDuration)
-		ratio = math.Max(0.05, math.Min(1, ratio))
+		ratio = max(0.05, min(1, ratio))
 	}
 
 	color := fadeColor(colorHex, ratio)
