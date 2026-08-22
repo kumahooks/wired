@@ -10,6 +10,7 @@ import (
 	"wired/internal/core/keymap"
 )
 
+// UIModel holds the tea model state, primitives, and components.
 type UIModel struct {
 	keyMap keymap.KeyMap
 
@@ -17,6 +18,7 @@ type UIModel struct {
 	debugRender tea.Msg
 }
 
+// New Initializes the UIModel.
 func New() (*UIModel, error) {
 	keyMap := keymap.New()
 
@@ -46,14 +48,23 @@ func (model *UIModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (model *UIModel) View() tea.View {
-	return tea.NewView(fmt.Sprintf("%s", model.debugRender))
+	var render string
+
+	if model.debugRender != "" {
+		render += fmt.Sprint(model.debugRender)
+	}
+
+	return tea.NewView(render)
 }
 
+// handleKeyPressMsg is responsible for managing every keyboard action in the program.
 func (model *UIModel) handleKeyPressMsg(message tea.KeyPressMsg) tea.Cmd {
 	var commands []tea.Cmd
 
 	if key.Matches(message, model.keyMap.Quit) {
 		commands = append(commands, tea.Quit)
+	} else {
+		model.debugRender = fmt.Sprintf("Pressed: %v", message)
 	}
 
 	return tea.Batch(commands...)

@@ -1,30 +1,19 @@
-// Package main is the entry point of our application.
+// Package main is the entry point of our application. It initiates and runs the application's orchestrator.
 package main
 
 import (
-	"fmt"
-	"os"
+	"log"
 
-	tea "charm.land/bubbletea/v2"
-
-	"wired/internal/ui"
-	"wired/internal/wired"
+	"wired/internal"
 )
 
 func main() {
-	wired, err := wired.New()
+	orchestrator, err := wired.New()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Oof: %v\n", err)
+		log.Fatal(err)
 	}
 
-	uiModel, err := ui.New()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Oof: %v\n", err)
-	}
-
-	wired.Foo()
-	wiredProgram := tea.NewProgram(uiModel)
-	if _, err := wiredProgram.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Oof: %v\n", err)
+	if _, err := orchestrator.Run(); err != nil {
+		log.Fatal(err)
 	}
 }
