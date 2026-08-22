@@ -19,9 +19,7 @@ type UIModel struct {
 }
 
 // New Initializes the UIModel.
-func New() (*UIModel, error) {
-	keyMap := keymap.New()
-
+func New(keyMap keymap.KeyMap) (*UIModel, error) {
 	model := &UIModel{
 		keyMap: keyMap,
 	}

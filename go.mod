@@ -5,6 +5,7 @@ go 1.27
 require (
 	charm.land/bubbles/v2 v2.2.0
 	charm.land/bubbletea/v2 v2.0.9
+	github.com/pelletier/go-toml/v2 v2.4.3
 )
 
 require (
@@ -25,3 +26,4 @@ require (
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 )
+
