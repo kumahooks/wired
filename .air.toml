@@ -1,0 +1,11 @@
+
+[build]
+	cmd = "go build -o ./tmp/wire_d ./cmd/wire_d"
+	bin = "./tmp/wire_d"
+	include_ext = ["go"]
+	exclude_dir = ["tmp", "tests"]
+	delay = 500
+
+[misc]
+	clean_on_exit = true
+
