@@ -1,8 +1,6 @@
 package ui
 
 import (
-	"fmt"
-
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 )
@@ -11,9 +9,13 @@ func (model *UIModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	var commands []tea.Cmd
 
 	switch message := message.(type) {
+	case tea.WindowSizeMsg:
+		if command := model.handleWindowResize(message); command != nil {
+			commands = append(commands, command)
+		}
 	case tea.KeyPressMsg:
-		if cmd := model.handleKeyPressMsg(message); cmd != nil {
-			commands = append(commands, cmd)
+		if command := model.handleKeyPressMsg(message); command != nil {
+			commands = append(commands, command)
 		}
 	}
 
@@ -26,9 +28,14 @@ func (model *UIModel) handleKeyPressMsg(message tea.KeyPressMsg) tea.Cmd {
 
 	if key.Matches(message, model.keyMap.Quit) {
 		commands = append(commands, tea.Quit)
-	} else {
-		model.debugRender = fmt.Sprintf("Pressed: %v", message)
 	}
 
 	return tea.Batch(commands...)
+}
+
+func (model *UIModel) handleWindowResize(message tea.WindowSizeMsg) tea.Cmd {
+	model.windowHeight = message.Height
+	model.windowWidth = message.Width
+
+	return nil
 }

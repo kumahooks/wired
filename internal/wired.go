@@ -27,7 +27,7 @@ func New() (*WiredOrchestrator, error) {
 	configData, _ := config.Load()
 
 	keyMaps := keymap.New(configData.Keybinds)
-	uiModel, err := ui.New(keyMaps)
+	uiModel, err := ui.New(*configData, keyMaps)
 	if err != nil {
 		return nil, err
 	}

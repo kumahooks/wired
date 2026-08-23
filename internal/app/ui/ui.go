@@ -4,31 +4,30 @@ package ui
 import (
 	tea "charm.land/bubbletea/v2"
 
+	"wired/internal/core/config"
 	"wired/internal/core/keymap"
-)
-
-// The view is drawn based on these states below.
-type uiState uint8
-
-const (
-	uiInitializing uiState = iota
-	uiIdle
 )
 
 // UIModel holds the tea model state, primitives, and components.
 type UIModel struct {
-	state  uiState
-	keyMap keymap.KeyMap
+	// windowHeight and windowWidth are actual view space excluding borders.
+	windowTitle  string
+	windowHeight int
+	windowWidth  int
 
-	// TODO: this is purely for debugging purposes, remove it eventually?
-	debugRender tea.Msg
+	// state decides what state the view is, essentially separating between initialization and idle.
+	state uiState
+
+	// keymaps are either the default shortcuts, or the ones the user configured for each action there is.
+	keyMap keymap.KeyMap
 }
 
 // New Initializes the UIModel.
-func New(keyMap keymap.KeyMap) (*UIModel, error) {
+func New(config config.Config, keyMap keymap.KeyMap) (*UIModel, error) {
 	model := &UIModel{
-		state:  uiInitializing,
-		keyMap: keyMap,
+		windowTitle: config.Title,
+		state:       uiInitializing,
+		keyMap:      keyMap,
 	}
 
 	return model, nil
@@ -37,4 +36,8 @@ func New(keyMap keymap.KeyMap) (*UIModel, error) {
 func (model *UIModel) Init() tea.Cmd {
 	var command tea.Cmd
 	return command
+}
+
+func (model *UIModel) setState(state uiState) {
+	model.state = state
 }
