@@ -2,18 +2,25 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"wired/internal"
 )
 
 func main() {
-	orchestrator, err := wired.New()
+	ctx := context.Background()
+	orchestrator, err := wired.New(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if _, err := orchestrator.Run(); err != nil {
+	model, err := orchestrator.Run()
+	if err != nil {
+		orchestrator.Shutdown()
 		log.Fatal(err)
 	}
+
+	_ = model
+	orchestrator.Shutdown()
 }

@@ -2,6 +2,8 @@
 package wired
 
 import (
+	"context"
+
 	tea "charm.land/bubbletea/v2"
 
 	"wired/internal/app/ui"
@@ -9,48 +11,60 @@ import (
 	"wired/internal/core/keymap"
 )
 
-// WiredOrchestrator holds the whole application state.
+// WiredOrchestrator holds the whole application state. It is kinda like "game state": config, library, playlist, and
+// other domain states live here.
 type WiredOrchestrator struct {
-	teaProgram             *tea.Program
-	uiModel                *ui.UIModel
-	config                 *config.Config
-	initialized            bool
-	initializationProgress int
+	ctx        context.Context
+	cancel     context.CancelFunc
+	teaProgram *tea.Program
+	uiModel    *ui.UIModel
+	config     *config.Config
 }
 
 // New initializes the WiredOrchestrator structure.
-func New() (*WiredOrchestrator, error) {
-	// TODO: we need to catch these errors. They are not a problem.
-	// Two types of errors:
-	// 1. File is unreadable, we must then show the user the errors and offer the option to reload or rewrite to defaults;
-	// 2. Library Path is empty/invalid, which in this case we will allow the user to input their libraries through the UI.
-	configData, _ := config.Load()
+func New(ctx context.Context) (*WiredOrchestrator, error) {
+	orchestrator := &WiredOrchestrator{}
 
-	keyMaps := keymap.New(configData.Keybinds)
-	uiModel, err := ui.New(*configData, keyMaps)
+	configDefaults := config.Defaults()
+	defaultKeyMap := keymap.New(configDefaults.Keybinds)
+	orchestrator.config = &configDefaults
+
+	uiModel, err := ui.New(defaultKeyMap, orchestrator.config)
 	if err != nil {
 		return nil, err
 	}
+	orchestrator.uiModel = uiModel
 
-	orchestrator := &WiredOrchestrator{
-		uiModel:                uiModel,
-		config:                 configData,
-		initialized:            true,
-		initializationProgress: 100,
-	}
+	orchestrator.ctx, orchestrator.cancel = context.WithCancel(ctx)
 
 	return orchestrator, nil
 }
 
-// Run creates and run the bubbletea's terminal program based on the initialized UIModel.
+// Run creates and runs the bubbletea terminal program based on the initialized UIModel.
 func (orchestrator *WiredOrchestrator) Run() (tea.Model, error) {
-	orchestrator.teaProgram = tea.NewProgram(orchestrator.uiModel)
+	orchestrator.teaProgram = tea.NewProgram(orchestrator.uiModel, tea.WithContext(orchestrator.ctx))
 
 	model, err := orchestrator.teaProgram.Run()
 	return model, err
 }
 
-// NotifyTea sends to the already initialized bubbletea program a `tea.Msg`.
+// Config returns the currently loaded config.
+func (orchestrator *WiredOrchestrator) Config() *config.Config {
+	return orchestrator.config
+}
+
+// NotifyTea sends to the already initialized bubbletea program a tea.Msg.
 func (orchestrator *WiredOrchestrator) NotifyTea(message tea.Msg) {
+	if orchestrator.teaProgram == nil {
+		return
+	}
+
 	orchestrator.teaProgram.Send(message)
+}
+
+// Shutdown cancels the orchestrator context and stops the tea program.
+func (orchestrator *WiredOrchestrator) Shutdown() {
+	if orchestrator.cancel != nil {
+		orchestrator.cancel()
+	}
 }
