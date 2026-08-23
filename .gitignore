@@ -1,5 +1,6 @@
 __debug_bin*
 /wired
+/wired.exe
 misc/*
 tmp/*
 

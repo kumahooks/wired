@@ -7,6 +7,7 @@ import (
 	"wired/internal/app/ui/components/initializing"
 	"wired/internal/core/config"
 	"wired/internal/core/keymap"
+	"wired/internal/core/theme"
 )
 
 // UIModel holds the tea model state, primitives, and components.
@@ -18,23 +19,29 @@ type UIModel struct {
 	// state decides what state the view is, essentially separating between initialization and idle.
 	state uiState
 
-	// keymaps are either the default shortcuts, or the ones the user configured for each action there is.
+	// keymaps are the shortcuts (default or user's) for the application's actions.
 	keyMap keymap.KeyMap
+
+	// theme is the resolved (default or user's) color palette shared with every component.
+	theme theme.Theme
 
 	// config is the shared config pointer.
 	config *config.Config
 
-	// Components models
+	// Components models.
 	initializationModel *initializing.Model
 }
 
-// New initializes the UIModel with the default keymap and a config pointer.
+// New initializes the UIModel, which is basically the UI orchestrator of the application.
+// It initializes the state to `uiInitializing`. To avoid locking the user out of actions, default configs, keymaps, and
+// styles are loaded at first.
 func New(defaultKeyMap keymap.KeyMap, config *config.Config) (*UIModel, error) {
 	model := &UIModel{
 		state:               uiInitializing,
 		keyMap:              defaultKeyMap,
+		theme:               theme.Default(),
 		config:              config,
-		initializationModel: initializing.New(),
+		initializationModel: initializing.New(defaultKeyMap),
 	}
 
 	return model, nil

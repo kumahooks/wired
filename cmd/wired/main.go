@@ -15,12 +15,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	model, err := orchestrator.Run()
+	_, err = orchestrator.Run()
 	if err != nil {
 		orchestrator.Shutdown()
 		log.Fatal(err)
 	}
 
-	_ = model
 	orchestrator.Shutdown()
 }

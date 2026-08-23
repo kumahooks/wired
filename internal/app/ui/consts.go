@@ -5,7 +5,6 @@ type uiState uint8
 
 const (
 	uiInitializing uiState = iota
-	uiInitializingLibraryChoice
 	uiIdle
 )
 
