@@ -26,6 +26,9 @@ type WiredOrchestrator struct {
 func New(ctx context.Context) (*WiredOrchestrator, error) {
 	orchestrator := &WiredOrchestrator{}
 
+	// We store a cancel context mainly just to shutdown cleanly.
+	orchestrator.cancelContext, orchestrator.cancelFunction = context.WithCancel(ctx)
+
 	// Loads the default configs and keymaps, so the user is not left stuck in case their custom config is broken.
 	configDefaults := config.Defaults()
 	defaultKeyMap, err := keymap.New(configDefaults.Keybinds)
@@ -34,15 +37,13 @@ func New(ctx context.Context) (*WiredOrchestrator, error) {
 	}
 	orchestrator.config = &configDefaults
 
-	// UI's model is created as per bubbletea pattern, which includes a reference to every UI component in the application.
-	uiModel, err := ui.New(defaultKeyMap, orchestrator.config)
+	// UI's model is created as per bubbletea pattern. It includes a reference to every UI component in the application.
+	// The orchestrator is passed down in order for background operations the UI spawns to be canceled elegantly.
+	uiModel, err := ui.New(orchestrator.cancelContext, defaultKeyMap, orchestrator.config)
 	if err != nil {
 		return nil, err
 	}
 	orchestrator.uiModel = uiModel
-
-	// We store a cancel context mainly just to shutdown cleanly.
-	orchestrator.cancelContext, orchestrator.cancelFunction = context.WithCancel(ctx)
 
 	return orchestrator, nil
 }

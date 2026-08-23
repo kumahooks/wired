@@ -56,6 +56,7 @@ type Config struct {
 }
 
 // Load reads the config file from disk, validates it, prunes invalid library paths, and persists the pruned form back.
+// The returned bool is true when no config file existed and one was just created from defaults.
 func Load() (*Config, bool, error) {
 	var isConfigDefaults bool = false
 
@@ -101,7 +102,7 @@ func Load() (*Config, bool, error) {
 }
 
 func (config *Config) validateConfigValues() error {
-	var errs []error
+	var errs []error = []error{}
 
 	nonEmptyString := func(field string, value string) {
 		if trimmed := strings.Trim(value, " "); trimmed == "" {
@@ -160,7 +161,7 @@ func (config *Config) validateConfigValues() error {
 }
 
 func (config *Config) clearInvalidLibraryPaths() {
-	var validPaths []string
+	var validPaths []string = []string{}
 
 	for _, path := range config.LibrariesPaths {
 		expandedPath := expandPath(path)

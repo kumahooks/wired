@@ -34,11 +34,15 @@ type logLine struct {
 
 // Model holds the init view state and data.
 type Model struct {
-	// We show a log of all the actions so far, including errors.
+	// log lines is a textarea showing a log of all the actions so far, including errors.
 	// TODO: In the future I plan to have a log service in order to save the app's logs to a file. I like the idea of this
 	// pulling the logs from this service then.
 	logLines []logLine
 	logCount int
+
+	// countFilesProgress is the live counter shown between the log area and the hint while the files are being counted.
+	// A negative value means no count is in progress and the line is hidden.
+	countFilesProgress int
 
 	// There are two types of actions in the initializitation screen, depending on the config/libraries state. Either the
 	// user reloads the config while trying to fix a problem, or chooses to proceed which in this case will use the defaults.

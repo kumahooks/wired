@@ -2,6 +2,8 @@
 package ui
 
 import (
+	"context"
+
 	tea "charm.land/bubbletea/v2"
 
 	"wired/internal/app/ui/components/initializing"
@@ -28,19 +30,28 @@ type UIModel struct {
 	// config is the shared config pointer.
 	config *config.Config
 
+	// orchestratorContext is the application's context, used to propagate cancel everywhere else.
+	orchestratorContext context.Context
+
+	// cancelInitializationCount aborts the current file counting.
+	cancelInitializationCount context.CancelFunc
+
+	// countGeneration tags the counter, with new counts incrementing it.
+	countGeneration uint64
+
 	// Components models.
 	initializationModel *initializing.Model
 }
 
-// New initializes the UIModel, which is basically the UI orchestrator of the application.
-// It initializes the state to `uiInitializing`. To avoid locking the user out of actions, default configs, keymaps, and
-// styles are loaded at first.
-func New(defaultKeyMap keymap.KeyMap, config *config.Config) (*UIModel, error) {
+// New initializes the UIModel, which is basically the UI orchestrator of the application. It initializes the state to
+// `uiInitializing`. To avoid locking the user out of actions, default configs, keymaps, and styles are loaded at first.
+func New(orchestratorCtx context.Context, defaultKeyMap keymap.KeyMap, config *config.Config) (*UIModel, error) {
 	model := &UIModel{
 		state:               uiInitializing,
 		keyMap:              defaultKeyMap,
 		theme:               theme.Default(),
 		config:              config,
+		orchestratorContext: orchestratorCtx,
 		initializationModel: initializing.New(defaultKeyMap),
 	}
 
@@ -49,7 +60,7 @@ func New(defaultKeyMap keymap.KeyMap, config *config.Config) (*UIModel, error) {
 
 // Init sends a tea.Cmd message to load the user's config.
 func (model *UIModel) Init() tea.Cmd {
-	return loadConfigCmd()
+	return initializationLoadConfigCommand()
 }
 
 func (model *UIModel) setState(state uiState) {

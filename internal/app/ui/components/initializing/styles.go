@@ -15,6 +15,7 @@ type Style struct {
 	logError  lipgloss.Style // logError renders an error log line.
 
 	header        lipgloss.Style // header renders the "wire(d) is starting..." title line.
+	progress      lipgloss.Style // progress renders the live "counting N audio files..." line.
 	buttonFocused lipgloss.Style // buttonFocused is the button the cursor is at.
 	buttonBlurred lipgloss.Style // buttonBlurred is the button the cursor is NOT at.
 	hint          lipgloss.Style // hint renders the navigation hint line below the buttons.
@@ -34,6 +35,9 @@ func newStyle(resolvedTheme theme.Theme) Style {
 
 		// Header currently renders a short text telling the user what is this component goal.
 		header: lipgloss.NewStyle().Foreground(resolvedTheme.TextStrong).Bold(true),
+
+		// Progress renders the live counter line ("counting N audio files...") while a counting is happening.
+		progress: lipgloss.NewStyle().Foreground(resolvedTheme.AccentInteractive),
 
 		// Buttons in this component have two states: either the cursor is selecting them, or not.
 		buttonFocused: lipgloss.NewStyle().

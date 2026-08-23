@@ -13,3 +13,6 @@ const (
 	minWindowHeight = 20
 	minWindowWidth  = 20
 )
+
+// countFilesProgressChannelBuffer is the size of the count progress channel.
+const countFilesProgressChannelBuffer = 64

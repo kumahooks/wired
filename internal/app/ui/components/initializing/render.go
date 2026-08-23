@@ -1,6 +1,7 @@
 package initializing
 
 import (
+	"fmt"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -13,14 +14,23 @@ func (model *Model) Render(width int, height int) string {
 	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, panel)
 }
 
-// buildPanel assembles the initialization panel, rendering title, log area, button row, and the navigation hint.
+// buildPanel assembles the initialization panel, rendering title, log area, progress line, button row, and the hint.
 func (model *Model) buildPanel() string {
 	sections := []string{
 		model.style.header.Render("wire(d) is starting..."),
 		model.renderLogArea(),
+	}
+
+	// The progress line only exists while a count is running.
+	if model.countFilesProgress >= 0 {
+		sections = append(sections, model.renderProgressLine())
+	}
+
+	sections = append(
+		sections,
 		model.renderButtonRow(),
 		model.style.hint.Render(model.renderHint()),
-	}
+	)
 
 	content := strings.Join(sections, "\n\n")
 
@@ -61,6 +71,11 @@ func (model *Model) visibleLogRows() []string {
 	}
 
 	return logRows
+}
+
+// renderProgressLine shows the live count while files are being counted.
+func (model *Model) renderProgressLine() string {
+	return model.style.progress.Render(fmt.Sprintf("counting %d audio files...", model.countFilesProgress))
 }
 
 // renderButtonRow renders the buttons horizontally with spacing between them.

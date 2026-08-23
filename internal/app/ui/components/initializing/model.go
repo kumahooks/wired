@@ -71,3 +71,8 @@ func (model *Model) HandleMessage(message tea.Msg) action.Action {
 
 	return action.NoAction{}
 }
+
+// SetCountFilesProgress stores the latest counted-files total for rendering.
+func (model *Model) SetCountFilesProgress(count int) {
+	model.countFilesProgress = count
+}
