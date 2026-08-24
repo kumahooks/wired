@@ -12,6 +12,17 @@ import (
 	"wired/internal/core/theme"
 )
 
+type Library struct {
+	countingGeneration uint64             // tags the counter, with new counts incrementing it.
+	countingCancel     context.CancelFunc // aborts the current file counting
+
+	// TODO: this is just what we treat as "this is the library" currently.
+	// eventually, we will implement a more complex data structure once we get metatag parsing.
+	// furthermore, we will load this data from a cache before asking to scan.
+	countingResult int
+	filePaths      []string
+}
+
 // UIModel holds the tea model state, primitives, and components.
 type UIModel struct {
 	// windowHeight and windowWidth are actual view space excluding borders.
@@ -33,11 +44,8 @@ type UIModel struct {
 	// orchestratorContext is the application's context, used to propagate cancel everywhere else.
 	orchestratorContext context.Context
 
-	// cancelInitializationCount aborts the current file counting.
-	cancelInitializationCount context.CancelFunc
-
-	// countGeneration tags the counter, with new counts incrementing it.
-	countGeneration uint64
+	// library is the user's loaded library data.
+	library Library
 
 	// Components models.
 	initializationModel *initializing.Model

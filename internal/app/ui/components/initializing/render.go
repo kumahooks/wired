@@ -65,6 +65,8 @@ func (model *Model) visibleLogRows() []string {
 		switch entry.logType {
 		case LogError:
 			logRows = append(logRows, model.style.logError.Render(entry.text))
+		case LogWarning:
+			logRows = append(logRows, model.style.logWarning.Render(entry.text))
 		default:
 			logRows = append(logRows, model.style.logNormal.Render(entry.text))
 		}
@@ -78,21 +80,30 @@ func (model *Model) renderProgressLine() string {
 	return model.style.progress.Render(fmt.Sprintf("counting %d audio files...", model.countFilesProgress))
 }
 
-// renderButtonRow renders the buttons horizontally with spacing between them.
+// renderButtonRow renders the buttons visible in the current mode horizontally with spacing between them.
 func (model *Model) renderButtonRow() string {
-	buttonsRendering := make([]string, 0, len(model.buttons)*2)
+	visibleActions := model.visibleActions()
+	buttonsRendering := make([]string, 0, len(visibleActions)*2)
 
-	for index, button := range model.buttons {
+	for position, action := range visibleActions {
+		buttonIndex := model.canonicalIndexForVisible(action)
+
 		// Between every button we add the spacer.
-		if index > 0 {
+		if position > 0 {
 			buttonsRendering = append(buttonsRendering, buttonSpacing)
 		}
 
-		// Buttons are styled dynamicaly based on whether they are currently selected by the cursor or not.
-		if index == model.cursorPosition {
-			buttonsRendering = append(buttonsRendering, model.style.buttonFocused.Render(button.label))
+		// Buttons are styled dynamically based on whether they are currently selected by the cursor or not.
+		if buttonIndex == model.cursorPosition {
+			buttonsRendering = append(
+				buttonsRendering,
+				model.style.buttonFocused.Render(model.buttons[buttonIndex].label),
+			)
 		} else {
-			buttonsRendering = append(buttonsRendering, model.style.buttonBlurred.Render(button.label))
+			buttonsRendering = append(
+				buttonsRendering,
+				model.style.buttonBlurred.Render(model.buttons[buttonIndex].label),
+			)
 		}
 	}
 

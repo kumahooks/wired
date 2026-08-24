@@ -184,6 +184,7 @@ func TestHandleInitializationLoadConfigResultHappyPath(t *testing.T) {
 
 	wantKeyMap, err := keymap.New(customConfig.Keybinds)
 	require.NoError(t, err)
+
 	assert.Equal(t, wantKeyMap, model.keyMap)
 	assert.NotEqual(t, initialKeyMap, model.keyMap, "model.keyMap unchanged after loading custom keybinds")
 
@@ -213,8 +214,11 @@ func TestHandleInitializationLoadConfigResultKeymapParseFailure(t *testing.T) {
 
 	assert.True(t, initLogContains(model, "[keymap:New]"))
 	assert.True(t, initLogContains(model, "falling back to default keybindings"))
+	assert.True(t, initLogContains(model, "keybindings loaded successfully~"))
+
 	assert.Equal(t, initialKeyMap, model.keyMap, "model.keyMap changed on parse failure")
-	assert.NotNil(t, command, "returned cmd = nil, want non-nil (libraries present, count still starts)")
+	assert.True(t, model.initializationModel.IsConfigError(), "expected modeConfigError on keymap parse failure")
+	assert.Nil(t, command, "returned cmd = nil, want nil on keymap parse failure")
 }
 
 func TestHandleInitializationLoadConfigResultNoLibrariesNoCountCmd(t *testing.T) {
@@ -231,14 +235,22 @@ func TestHandleInitializationLoadConfigResultNoLibrariesNoCountCmd(t *testing.T)
 		err:              nil,
 	})
 
-	assert.Nil(t, command, "returned cmd should be nil when no library paths")
+	require.NotNil(t, command, "returned cmd = nil, want a cache load command after config")
+
+	_, command = model.Update(initializationLoadLibraryCacheResultMessage{
+		library: Library{},
+		err:     nil,
+	})
+
+	assert.Nil(t, command, "returned cmd should be nil on empty cache with no library paths")
 	assert.True(t, initLogContains(model, "no library paths found"))
+	assert.True(t, model.initializationModel.IsConfigError(), "expected modeConfigError when no library paths")
 
 	text, logType := initLastLog(model)
 	assert.Equal(t, initializing.LogError, logType, "last log type = %v, want LogError (text: %q)", logType, text)
 }
 
-func TestHandleInitializationLoadConfigResultLibrariesEmitsCountStart(t *testing.T) {
+func TestHandleInitializationLoadConfigResultLibrariesEmitsCacheLoad(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
@@ -252,25 +264,45 @@ func TestHandleInitializationLoadConfigResultLibrariesEmitsCountStart(t *testing
 		err:              nil,
 	})
 
-	require.NotNil(t, command, "returned cmd = nil, want a count start command")
-	assert.Equal(t, uint64(1), model.countGeneration)
+	require.NotNil(t, command, "returned cmd = nil, want a cache load command")
 
 	message := executeCmd(t, command)
-	startMessage, ok := message.(initializationCountFilesStartMessage)
-	require.True(t, ok, "cmd produced %T, want initializationCountFilesStartMessage", message)
+	_, ok := message.(initializationLoadLibraryCacheResultMessage)
+	require.True(t, ok, "cmd produced %T, want initializationLoadLibraryCacheResultMessage", message)
+}
 
-	assert.Equal(t, model.countGeneration, startMessage.generation)
+func TestHandleEmptyLibraryCacheOffersScan(t *testing.T) {
+	t.Parallel()
 
-	if startMessage.countCancel != nil {
-		startMessage.countCancel()
-	}
+	model := newTestUI(t)
+
+	loadedConfig := config.Defaults()
+	loadedConfig.LibrariesPaths = []string{t.TempDir()}
+
+	_, command := model.Update(initializationLoadConfigResultMessage{
+		config:           &loadedConfig,
+		isConfigDefaults: false,
+		err:              nil,
+	})
+	require.NotNil(t, command)
+
+	message := executeCmd(t, command)
+	_, command = model.Update(message)
+
+	assert.Nil(t, command, "returned cmd should be nil on empty cache")
+	assert.True(t, initLogContains(model, "no scanned library found, do you want to scan now?"))
+	assert.False(
+		t,
+		model.initializationModel.IsConfigError(),
+		"empty cache with library paths should not be a config error",
+	)
 }
 
 func TestHandleInitializationCountFilesStartMessage(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
-	model.countGeneration = 5
+	model.library.countingGeneration = 5
 
 	_, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -287,10 +319,11 @@ func TestHandleInitializationCountFilesStartMessage(t *testing.T) {
 
 	_, command := model.Update(message)
 
-	require.NotNil(t, model.cancelInitializationCount, "cancelInitializationCount = nil, want the cancel func")
-	assert.Equal(t, uint64(7), model.countGeneration)
+	require.NotNil(t, model.library.countingCancel, "cancelInitializationCount = nil, want the cancel func")
+
+	assert.Equal(t, uint64(7), model.library.countingGeneration)
 	assert.Equal(t, 0, initProgress(model))
-	assert.True(t, initLogContains(model, "counting total library files"))
+
 	require.NotNil(t, command, "returned cmd = nil, want the drainer cmd")
 }
 
@@ -317,11 +350,11 @@ func TestHandleInitializationCountFilesResultMessageStaleGeneration(t *testing.T
 	t.Parallel()
 
 	model := newTestUI(t)
-	model.countGeneration = 10
+	model.library.countingGeneration = 10
 	model.initializationModel.SetCountFilesProgress(50)
 
 	sentinelCanceled := false
-	model.cancelInitializationCount = func() { sentinelCanceled = true }
+	model.library.countingCancel = func() { sentinelCanceled = true }
 
 	initialLogCount := len(model.initializationModel.LogLines())
 
@@ -333,11 +366,13 @@ func TestHandleInitializationCountFilesResultMessageStaleGeneration(t *testing.T
 
 	assert.Nil(t, command, "returned cmd should be nil on stale generation")
 	assert.False(t, sentinelCanceled, "stale result cleared cancelInitializationCount")
+
 	assert.NotNil(
 		t,
-		model.cancelInitializationCount,
+		model.library.countingCancel,
 		"cancelInitializationCount = nil, want unchanged sentinel on stale generation",
 	)
+
 	assert.Equal(t, 50, initProgress(model), "countFilesProgress changed on stale")
 	assert.Len(t, model.initializationModel.LogLines(), initialLogCount, "logCount changed on stale")
 }
@@ -346,10 +381,10 @@ func TestHandleInitializationCountFilesResultMessageCurrentGeneration(t *testing
 	t.Parallel()
 
 	model := newTestUI(t)
-	model.countGeneration = 10
+	model.library.countingGeneration = 10
 
 	sentinelCanceled := false
-	model.cancelInitializationCount = func() { sentinelCanceled = true }
+	model.library.countingCancel = func() { sentinelCanceled = true }
 
 	_, command := model.Update(initializationCountFilesResultMessage{
 		filesCount: 137,
@@ -361,21 +396,21 @@ func TestHandleInitializationCountFilesResultMessageCurrentGeneration(t *testing
 	assert.False(t, sentinelCanceled, "current result should set cancelInitializationCount to nil, not call it")
 	assert.Nil(
 		t,
-		model.cancelInitializationCount,
+		model.library.countingCancel,
 		"cancelInitializationCount = non-nil, want nil after current generation result",
 	)
 	assert.Equal(t, -1, initProgress(model))
 
 	text, logType := initLastLog(model)
 	assert.Equal(t, initializing.LogNormal, logType, "last log type = %v, want LogNormal (text: %q)", logType, text)
-	assert.True(t, strings.Contains(text, "counted a total of 137 audio files successfully"))
+	assert.True(t, strings.Contains(text, "a total of 137 audio files have been found~"))
 }
 
 func TestHandleInitializationCountFilesResultMessageError(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
-	model.countGeneration = 10
+	model.library.countingGeneration = 10
 	model.initializationModel.SetCountFilesProgress(50)
 
 	countError := errors.New("[audio:CountFiles] walk failed")
@@ -411,13 +446,13 @@ func TestHandleKeyPressMsgQuit(t *testing.T) {
 	model := newTestUI(t)
 
 	sentinelCanceled := false
-	model.cancelInitializationCount = func() { sentinelCanceled = true }
+	model.library.countingCancel = func() { sentinelCanceled = true }
 
 	_, command := model.Update(tea.KeyPressMsg{Mod: tea.ModCtrl, Code: 'd'})
 
 	require.True(t, isTeaQuit(command), "returned cmd is not tea.Quit")
 	assert.True(t, sentinelCanceled, "cancelInitializationCount was not called on quit")
-	assert.Nil(t, model.cancelInitializationCount, "cancelInitializationCount = non-nil, want nil after quit")
+	assert.Nil(t, model.library.countingCancel, "cancelInitializationCount = non-nil, want nil after quit")
 }
 
 func TestHandleKeyPressMsgQuitDoesNotMatchNonQuitKey(t *testing.T) {
@@ -434,13 +469,15 @@ func TestHandleKeyPressMsgForwardsToComponentReload(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
+	model.initializationModel.SetConfigError()
 
 	sentinelCanceled := false
-	model.cancelInitializationCount = func() { sentinelCanceled = true }
+	model.library.countingCancel = func() { sentinelCanceled = true }
 
 	_, command := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	require.NotNil(t, command, "returned cmd = nil, want non-nil for reload action")
+
 	assert.True(t, sentinelCanceled, "cancelInitializationCount was not called on reload")
 	assert.Equal(t, uiInitializing, model.state)
 	assert.True(t, initLogContains(model, "reloading config..."))
@@ -454,11 +491,12 @@ func TestHandleKeyPressMsgForwardsToComponentProceed(t *testing.T) {
 	model.Update(tea.KeyPressMsg{Code: 'l', Text: "l"})
 
 	sentinelCanceled := false
-	model.cancelInitializationCount = func() { sentinelCanceled = true }
+	model.library.countingCancel = func() { sentinelCanceled = true }
 
 	_, command := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	assert.Nil(t, command, "returned cmd should be nil for proceed action")
+
 	assert.True(t, sentinelCanceled, "cancelInitializationCount was not called on proceed")
 	assert.Equal(t, uiIdle, model.state)
 	assert.True(t, initLogContains(model, "proceeding without libraries"))
@@ -518,6 +556,16 @@ func TestHandleComponentAction(t *testing.T) {
 			wantCleared:   true,
 		},
 		{
+			name:          "ScanLibraryFullAction returns count start cmd and stays initializing",
+			action:        action.ScanLibraryFullAction{},
+			wantCmdNonNil: true,
+			wantState:     uiInitializing,
+			wantStateSet:  true,
+			wantLogSubstr: "scanning library...",
+			wantCanceled:  true,
+			wantCleared:   true,
+		},
+		{
 			name:          "ProceedFromInitAction returns nil and goes idle",
 			action:        action.ProceedFromInitAction{},
 			wantState:     uiIdle,
@@ -546,7 +594,7 @@ func TestHandleComponentAction(t *testing.T) {
 			model := newTestUI(t)
 
 			sentinelCanceled := false
-			model.cancelInitializationCount = func() { sentinelCanceled = true }
+			model.library.countingCancel = func() { sentinelCanceled = true }
 
 			command := model.handleComponentAction(test.action)
 
@@ -565,7 +613,7 @@ func TestHandleComponentAction(t *testing.T) {
 			if test.wantCleared {
 				assert.Nil(
 					t,
-					model.cancelInitializationCount,
+					model.library.countingCancel,
 					"cancelInitializationCount = non-nil, want nil after action",
 				)
 			}
@@ -612,5 +660,5 @@ func TestInitializationCountFilesStartCommandAsync(t *testing.T) {
 	_, _ = model.Update(result)
 
 	assert.Equal(t, -1, initProgress(model), "countFilesProgress = %d, want -1 after result")
-	assert.True(t, initLogContains(model, "counted a total of 5 audio files successfully"))
+	assert.True(t, initLogContains(model, "a total of 5 audio files have been found~"))
 }

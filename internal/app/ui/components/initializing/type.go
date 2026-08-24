@@ -8,7 +8,8 @@ import (
 type buttonAction int
 
 const (
-	actionReload buttonAction = iota
+	actionScan buttonAction = iota
+	actionReload
 	actionProceed
 )
 
@@ -18,11 +19,26 @@ type button struct {
 	action buttonAction
 }
 
+// initMode represents the state of the initialization screen, which decides which buttons are shown to the user.
+type initMode uint8
+
+const (
+	// modeLoading is the default state while config and cache are still being checked.
+	modeLoading initMode = iota
+
+	// modeConfigError means the config failed to load or has an unparseable keymap.
+	modeConfigError
+
+	// modeEmptyLibrary means the library cache is empty but library paths exist, so the user can trigger a full scan.
+	modeEmptyLibrary
+)
+
 // LogType marks a log line as normal or an error so it can be colored differently in the log area.
 type LogType int
 
 const (
 	LogNormal LogType = iota
+	LogWarning
 	LogError
 )
 
@@ -41,17 +57,19 @@ type Model struct {
 	logCount int
 
 	// countFilesProgress is the live counter shown between the log area and the hint while the files are being counted.
-	// A negative value means no count is in progress and the line is hidden.
+	// a negative value means no count is in progress and the line is hidden.
 	countFilesProgress int
 
-	// There are two types of actions in the initializitation screen, depending on the config/libraries state. Either the
-	// user reloads the config while trying to fix a problem, or chooses to proceed which in this case will use the defaults.
+	// mode decides which buttons are shown to the user depending on the config and cache state.
+	mode initMode
+
+	// buttons is the full set of selectable button actions, and which ones are visible is derived directly from mode.
 	buttons        []button
 	cursorPosition int
 
-	// We use this keymap to properly map actions, and render the hint of the supported actions.
+	// keymap is used to properly map actions, and render the hint of the supported init actions.
 	keyMap keymap.KeyMap
 
-	// This is the styles (such as lipgloss colors) used in the view rendering.
+	// style is the styles (such as lipgloss colors) used in the view rendering.
 	style Style
 }

@@ -13,6 +13,7 @@ func TestRenderDefaultModel(t *testing.T) {
 	t.Parallel()
 
 	model := New(testutil.DefaultKeyMap(t))
+	model.SetConfigError()
 
 	assertSnapshot(t, "render_default", model.Render(80, 24))
 }
@@ -24,6 +25,7 @@ func TestRenderWithNormalAndErrorLogs(t *testing.T) {
 	model.AppendLog("config loaded successfully", LogNormal)
 	model.AppendLog("theme.surface must be a hex color", LogError)
 	model.AppendLog("library scan starting", LogNormal)
+	model.SetConfigError()
 
 	assertSnapshot(t, "render_logs_normal_and_error", model.Render(80, 24))
 }
@@ -34,6 +36,7 @@ func TestRenderCountInProgress(t *testing.T) {
 	model := New(testutil.DefaultKeyMap(t))
 	model.AppendLog("counting total library files", LogNormal)
 	model.SetCountFilesProgress(42)
+	model.SetConfigError()
 
 	assertSnapshot(t, "render_count_in_progress", model.Render(80, 24))
 }
@@ -45,6 +48,7 @@ func TestRenderCountDone(t *testing.T) {
 	model.AppendLog("counting total library files", LogNormal)
 	model.AppendLog("counted a total of 137 audio files successfully", LogNormal)
 	model.SetCountFilesProgress(-1)
+	model.SetConfigError()
 
 	assertSnapshot(t, "render_count_done", model.Render(80, 24))
 }
@@ -56,26 +60,22 @@ func TestRenderAllErrorLogs(t *testing.T) {
 	model.AppendLog("config parse failed", LogError)
 	model.AppendLog("keybinds.select must have at least one binding", LogError)
 	model.AppendLog("theme.track must be a #RRGGBB hex color", LogError)
+	model.SetConfigError()
 
 	assertSnapshot(t, "render_all_errors", model.Render(80, 24))
 }
 
-func TestRenderCursorOnFirstButton(t *testing.T) {
+func TestRenderEmptyLibrary(t *testing.T) {
 	t.Parallel()
 
 	model := New(testutil.DefaultKeyMap(t))
-	model.cursorPosition = 0
+	model.AppendLog("config loaded successfully~", LogNormal)
+	model.AppendLog("theme loaded successfully~", LogNormal)
+	model.AppendLog("keybindings loaded successfully~", LogNormal)
+	model.AppendLog("no library found, do you want to scan now?", LogWarning)
+	model.SetEmptyLibrary()
 
-	assertSnapshot(t, "render_cursor_first", model.Render(80, 24))
-}
-
-func TestRenderCursorOnSecondButton(t *testing.T) {
-	t.Parallel()
-
-	model := New(testutil.DefaultKeyMap(t))
-	model.cursorPosition = 1
-
-	assertSnapshot(t, "render_cursor_second", model.Render(80, 24))
+	assertSnapshot(t, "render_empty_library", model.Render(80, 24))
 }
 
 func TestRenderContainsPanelHeader(t *testing.T) {

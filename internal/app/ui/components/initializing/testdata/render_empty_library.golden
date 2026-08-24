@@ -3,19 +3,19 @@
                                                                                 
                                                                                 
                                                                                 
+                                                                                
             wire(d) is starting...                                              
                                                                                 
+             [1] config loaded successfully~                                    
+             [2] theme loaded successfully~                                     
+             [3] keybindings loaded successfully~                               
+             [4] no library found, do you want to scan now?                     
                                                                                 
                                                                                 
-                                                                                
-                                                                                
-                                                                                
-                                                                                
-            counting 0 audio files...                                           
-                                                                                
-              reload config     proceed anyway                                  
+              scan files     proceed anyway                                     
                                                                                 
             h/l to move · enter to select · ctrl+d to quit                      
+                                                                                
                                                                                 
                                                                                 
                                                                                 

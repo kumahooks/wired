@@ -27,10 +27,12 @@ func TestNewSeedsButtonsAndDefaults(t *testing.T) {
 	keyMap := defaultKeyMap(t)
 	model := New(keyMap)
 
-	require.Len(t, model.buttons, 2)
-	assert.Equal(t, actionReload, model.buttons[0].action)
-	assert.Equal(t, actionProceed, model.buttons[1].action)
-	assert.Zero(t, model.cursorPosition)
+	require.Len(t, model.buttons, 3)
+	assert.Equal(t, actionScan, model.buttons[0].action)
+	assert.Equal(t, actionReload, model.buttons[1].action)
+	assert.Equal(t, actionProceed, model.buttons[2].action)
+	assert.Equal(t, modeLoading, model.mode)
+	assert.Equal(t, 2, model.cursorPosition)
 	assert.Equal(t, keyMap, model.keyMap)
 
 	wantStyle := newStyle(testutil.DefaultTheme())
@@ -86,7 +88,6 @@ func TestAppendLog(t *testing.T) {
 			t.Parallel()
 
 			model := New(defaultKeyMap(t))
-
 			model.AppendLog(test.line, test.logType)
 
 			assert.Equal(t, 1, model.logCount)
@@ -144,12 +145,62 @@ func TestSetCountFilesProgress(t *testing.T) {
 			t.Parallel()
 
 			model := New(defaultKeyMap(t))
-
 			model.SetCountFilesProgress(test.value)
 
 			assert.Equal(t, test.value, model.countFilesProgress)
 		})
 	}
+}
+
+func TestButtonsForMode(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		mode      initMode
+		wantOrder []buttonAction
+	}{
+		{name: "loading shows only proceed", mode: modeLoading, wantOrder: []buttonAction{actionProceed}},
+		{
+			name:      "config error shows reload and proceed",
+			mode:      modeConfigError,
+			wantOrder: []buttonAction{actionReload, actionProceed},
+		},
+		{
+			name:      "empty library shows scan and proceed",
+			mode:      modeEmptyLibrary,
+			wantOrder: []buttonAction{actionScan, actionProceed},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, test.wantOrder, buttonsForMode(test.mode))
+		})
+	}
+}
+
+func TestSetConfigError(t *testing.T) {
+	t.Parallel()
+
+	model := New(defaultKeyMap(t))
+	model.SetConfigError()
+
+	assert.Equal(t, modeConfigError, model.Mode())
+	assert.Equal(t, 1, model.cursorPosition, "cursor should land on the first visible button (reload)")
+}
+
+func TestSetEmptyLibrary(t *testing.T) {
+	t.Parallel()
+
+	model := New(defaultKeyMap(t))
+
+	model.SetEmptyLibrary()
+
+	assert.Equal(t, modeEmptyLibrary, model.Mode())
+	assert.Equal(t, 0, model.cursorPosition, "cursor should land on the first visible button (scan)")
 }
 
 func TestHandleMessage(t *testing.T) {
@@ -158,56 +209,83 @@ func TestHandleMessage(t *testing.T) {
 	tests := []struct {
 		name          string
 		message       tea.Msg
-		setupButtons  func() []button
+		setupMode     initMode
 		setupCursor   int
+		clearButtons  bool
 		wantAction    action.Action
 		wantCursor    int
 		wantCursorSet bool
 	}{
 		{
-			name:         "non-keypress returns NoAction",
-			message:      tea.WindowSizeMsg{},
-			setupButtons: func() []button { return New(defaultKeyMap(t)).buttons },
-			wantAction:   action.NoAction{},
+			name:        "non-keypress returns NoAction",
+			message:     tea.WindowSizeMsg{},
+			setupMode:   modeConfigError,
+			setupCursor: 1,
+			wantAction:  action.NoAction{},
 		},
 		{
-			name:          "MoveLeft wraps from zero to last",
+			name:          "MoveLeft wraps from reload to proceed in config error",
 			message:       tea.KeyPressMsg{Code: 'h', Text: "h"},
-			setupButtons:  func() []button { return New(defaultKeyMap(t)).buttons },
-			setupCursor:   0,
-			wantAction:    action.NoAction{},
-			wantCursor:    1,
-			wantCursorSet: true,
-		},
-		{
-			name:          "MoveRight advances from zero to one",
-			message:       tea.KeyPressMsg{Code: 'l', Text: "l"},
-			setupButtons:  func() []button { return New(defaultKeyMap(t)).buttons },
-			setupCursor:   0,
-			wantAction:    action.NoAction{},
-			wantCursor:    1,
-			wantCursorSet: true,
-		},
-		{
-			name:          "Select on reload returns ReloadConfigAction",
-			message:       tea.KeyPressMsg{Code: tea.KeyEnter},
-			setupButtons:  func() []button { return New(defaultKeyMap(t)).buttons },
-			setupCursor:   0,
-			wantAction:    action.ReloadConfigAction{},
-			wantCursorSet: false,
-		},
-		{
-			name:          "Select on proceed returns ProceedFromInitAction",
-			message:       tea.KeyPressMsg{Code: tea.KeyEnter},
-			setupButtons:  func() []button { return New(defaultKeyMap(t)).buttons },
+			setupMode:     modeConfigError,
 			setupCursor:   1,
-			wantAction:    action.ProceedFromInitAction{},
-			wantCursorSet: false,
+			wantAction:    action.NoAction{},
+			wantCursor:    2,
+			wantCursorSet: true,
+		},
+		{
+			name:          "MoveRight advances from reload to proceed in config error",
+			message:       tea.KeyPressMsg{Code: 'l', Text: "l"},
+			setupMode:     modeConfigError,
+			setupCursor:   1,
+			wantAction:    action.NoAction{},
+			wantCursor:    2,
+			wantCursorSet: true,
+		},
+		{
+			name:          "MoveRight wraps from proceed to reload in config error",
+			message:       tea.KeyPressMsg{Code: 'l', Text: "l"},
+			setupMode:     modeConfigError,
+			setupCursor:   2,
+			wantAction:    action.NoAction{},
+			wantCursor:    1,
+			wantCursorSet: true,
+		},
+		{
+			name:          "MoveRight in loading is a no-op with a single visible button",
+			message:       tea.KeyPressMsg{Code: 'l', Text: "l"},
+			setupMode:     modeLoading,
+			setupCursor:   2,
+			wantAction:    action.NoAction{},
+			wantCursor:    2,
+			wantCursorSet: true,
+		},
+		{
+			name:        "Select on reload returns ReloadConfigAction",
+			message:     tea.KeyPressMsg{Code: tea.KeyEnter},
+			setupMode:   modeConfigError,
+			setupCursor: 1,
+			wantAction:  action.ReloadConfigAction{},
+		},
+		{
+			name:        "Select on proceed returns ProceedFromInitAction",
+			message:     tea.KeyPressMsg{Code: tea.KeyEnter},
+			setupMode:   modeConfigError,
+			setupCursor: 2,
+			wantAction:  action.ProceedFromInitAction{},
+		},
+		{
+			name:        "Select on scan returns ScanLibraryFullAction",
+			message:     tea.KeyPressMsg{Code: tea.KeyEnter},
+			setupMode:   modeEmptyLibrary,
+			setupCursor: 0,
+			wantAction:  action.ScanLibraryFullAction{},
 		},
 		{
 			name:         "Select with empty buttons returns NoAction",
 			message:      tea.KeyPressMsg{Code: tea.KeyEnter},
-			setupButtons: func() []button { return nil },
+			setupMode:    modeLoading,
+			setupCursor:  0,
+			clearButtons: true,
 			wantAction:   action.NoAction{},
 		},
 	}
@@ -217,7 +295,11 @@ func TestHandleMessage(t *testing.T) {
 			t.Parallel()
 
 			model := New(defaultKeyMap(t))
-			model.buttons = test.setupButtons()
+			if test.clearButtons {
+				model.buttons = nil
+			}
+
+			model.mode = test.setupMode
 			model.cursorPosition = test.setupCursor
 
 			gotAction := model.HandleMessage(test.message)

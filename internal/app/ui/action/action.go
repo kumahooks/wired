@@ -23,6 +23,9 @@ type QuitAction struct{}
 // ReloadConfigAction requests a config reload.
 type ReloadConfigAction struct{}
 
+// ScanLibraryFullAction requests a full re-scan of the known library paths.
+type ScanLibraryFullAction struct{}
+
 // ProceedFromInitAction requests to proceed to the next state, from init state.
 type ProceedFromInitAction struct{}
 

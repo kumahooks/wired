@@ -15,14 +15,21 @@ import (
 
 // New returns a Model seeded with the buttons actions, the default keymap, and the default theme.
 func New(defaultKeyMap keymap.KeyMap) *Model {
-	return &Model{
+	model := &Model{
+		mode: modeLoading,
 		buttons: []button{
+			{label: "scan files", action: actionScan},
 			{label: "reload config", action: actionReload},
 			{label: "proceed anyway", action: actionProceed},
 		},
-		keyMap: defaultKeyMap,
-		style:  newStyle(theme.Default()),
+		keyMap:             defaultKeyMap,
+		style:              newStyle(theme.Default()),
+		countFilesProgress: -1,
 	}
+
+	model.cursorPosition = model.canonicalIndexForVisible(model.firstVisibleAction())
+
+	return model
 }
 
 // ApplyTheme rebuilds the component style from a resolved `theme.Theme`.
@@ -64,6 +71,8 @@ func (model *Model) HandleMessage(message tea.Msg) action.Action {
 		switch model.buttons[model.cursorPosition].action {
 		case actionReload:
 			return action.ReloadConfigAction{}
+		case actionScan:
+			return action.ScanLibraryFullAction{}
 		case actionProceed:
 			return action.ProceedFromInitAction{}
 		}
@@ -75,6 +84,76 @@ func (model *Model) HandleMessage(message tea.Msg) action.Action {
 // SetCountFilesProgress stores the latest counted-files total for rendering.
 func (model *Model) SetCountFilesProgress(count int) {
 	model.countFilesProgress = count
+}
+
+// SetConfigError transitions the screen to modeConfigError. The user can either reload the config, or just proceed.
+func (model *Model) SetConfigError() {
+	model.setMode(modeConfigError)
+}
+
+// SetEmptyLibrary transitions the screen to modeEmptyLibrary. The user can either trigger a scan, or just proceed.
+func (model *Model) SetEmptyLibrary() {
+	model.setMode(modeEmptyLibrary)
+}
+
+// setMode stores the given mode and moves the cursor onto the first visible button.
+func (model *Model) setMode(mode initMode) {
+	model.mode = mode
+	model.cursorPosition = model.canonicalIndexForVisible(model.firstVisibleAction())
+}
+
+// buttonsForMode returns the subset of buttonActions visible in the given mode.
+func buttonsForMode(mode initMode) []buttonAction {
+	switch mode {
+	case modeConfigError:
+		return []buttonAction{actionReload, actionProceed}
+	case modeEmptyLibrary:
+		return []buttonAction{actionScan, actionProceed}
+	default:
+		return []buttonAction{actionProceed}
+	}
+}
+
+// firstVisibleAction returns the first visible buttonAction in the current mode.
+func (model *Model) firstVisibleAction() buttonAction {
+	return buttonsForMode(model.mode)[0]
+}
+
+// visibleActions returns the list of buttonActions visible in the current mode.
+func (model *Model) visibleActions() []buttonAction {
+	return buttonsForMode(model.mode)
+}
+
+// canonicalIndexForVisible maps a buttonAction to its index within the model's buttons slice.
+func (model *Model) canonicalIndexForVisible(action buttonAction) int {
+	for index, candidate := range model.buttons {
+		if candidate.action == action {
+			return index
+		}
+	}
+
+	return 0
+}
+
+// positionOfVisible returns the position of the given action within the current mode's visible actions.
+func (model *Model) positionOfVisible(action buttonAction) int {
+	for index, visible := range model.visibleActions() {
+		if visible == action {
+			return index
+		}
+	}
+
+	return 0
+}
+
+// Mode returns the current initialization mode.
+func (model *Model) Mode() initMode {
+	return model.mode
+}
+
+// IsConfigError reports whether the screen is in modeConfigError.
+func (model *Model) IsConfigError() bool {
+	return model.mode == modeConfigError
 }
 
 // LogLines returns the texts of all log lines currently stored in the model.
