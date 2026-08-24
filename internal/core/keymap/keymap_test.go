@@ -1,9 +1,11 @@
 package keymap
 
 import (
-	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"wired/internal/core/config"
 )
@@ -13,9 +15,7 @@ func TestNewHappyPath(t *testing.T) {
 
 	bindings := config.Defaults().Keybinds
 	keyMap, err := New(bindings)
-	if err != nil {
-		t.Fatalf("New(defaults) error: %v", err)
-	}
+	require.NoError(t, err)
 
 	tests := []struct {
 		name     string
@@ -58,12 +58,8 @@ func TestNewHappyPath(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := test.binding(); got != test.wantKey {
-				t.Errorf("Help().Key = %q, want %q", got, test.wantKey)
-			}
-			if got := test.keys(); !reflect.DeepEqual(got, test.wantKeys) {
-				t.Errorf("Keys() = %v, want %v", got, test.wantKeys)
-			}
+			assert.Equal(t, test.wantKey, test.binding())
+			assert.Equal(t, test.wantKeys, test.keys())
 		})
 	}
 }
@@ -73,27 +69,39 @@ func TestNewEmptyBindingErrors(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		fieldName string
+		emptyFunc func(config.KeybindMapping) config.KeybindMapping
 		wantError string
 	}{
 		{
-			name:      "empty move_left fails",
-			fieldName: "MoveLeft",
+			name: "empty move_left fails",
+			emptyFunc: func(bindings config.KeybindMapping) config.KeybindMapping {
+				bindings.MoveLeft = []string{}
+				return bindings
+			},
 			wantError: "[keymap:New] move_left must have at least one binding",
 		},
 		{
-			name:      "empty move_right fails",
-			fieldName: "MoveRight",
+			name: "empty move_right fails",
+			emptyFunc: func(bindings config.KeybindMapping) config.KeybindMapping {
+				bindings.MoveRight = []string{}
+				return bindings
+			},
 			wantError: "[keymap:New] move_right must have at least one binding",
 		},
 		{
-			name:      "empty select fails",
-			fieldName: "Select",
+			name: "empty select fails",
+			emptyFunc: func(bindings config.KeybindMapping) config.KeybindMapping {
+				bindings.Select = []string{}
+				return bindings
+			},
 			wantError: "[keymap:New] select must have at least one binding",
 		},
 		{
-			name:      "empty quit fails",
-			fieldName: "Quit",
+			name: "empty quit fails",
+			emptyFunc: func(bindings config.KeybindMapping) config.KeybindMapping {
+				bindings.Quit = []string{}
+				return bindings
+			},
 			wantError: "[keymap:New] quit must have at least one binding",
 		},
 	}
@@ -102,18 +110,11 @@ func TestNewEmptyBindingErrors(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			bindings := config.Defaults().Keybinds
-
-			keybindsValue := reflect.ValueOf(&bindings).Elem()
-			keybindsValue.FieldByName(test.fieldName).Set(reflect.ValueOf([]string{}))
+			bindings := test.emptyFunc(config.Defaults().Keybinds)
 
 			_, err := New(bindings)
-			switch {
-			case err == nil:
-				t.Fatalf("New() want error containing %q, got nil", test.wantError)
-			case !strings.Contains(err.Error(), test.wantError):
-				t.Fatalf("New() error = %q, want substring %q", err.Error(), test.wantError)
-			}
+			require.Error(t, err)
+			assert.True(t, strings.Contains(err.Error(), test.wantError))
 		})
 	}
 }

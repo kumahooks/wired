@@ -7,21 +7,23 @@ import (
 	"testing"
 
 	"github.com/pelletier/go-toml/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var hexColorPattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
 // configsEqual compares two Configs treating nil and empty []string slices as equal.
 func configsEqual(want Config, got Config) bool {
-	cloneConfig := func(c Config) Config {
-		output := c
+	cloneConfig := func(config Config) Config {
+		output := config
 
-		normalizeEmptyToNil := func(s []string) []string {
-			if len(s) == 0 {
+		normalizeEmptyToNil := func(values []string) []string {
+			if len(values) == 0 {
 				return nil
 			}
 
-			return s
+			return values
 		}
 
 		output.LibrariesPaths = normalizeEmptyToNil(output.LibrariesPaths)
@@ -41,12 +43,8 @@ func TestDefaults(t *testing.T) {
 
 	defaults := Defaults()
 
-	if defaults.Title != "wire_d" {
-		t.Errorf("Title = %q, want %q", defaults.Title, "wire_d")
-	}
-	if len(defaults.LibrariesPaths) != 0 {
-		t.Errorf("LibrariesPaths = %v, want empty", defaults.LibrariesPaths)
-	}
+	assert.Equal(t, "wire_d", defaults.Title)
+	assert.Empty(t, defaults.LibrariesPaths)
 
 	themeValue := reflect.ValueOf(defaults.Theme)
 	themeType := themeValue.Type()
@@ -54,14 +52,14 @@ func TestDefaults(t *testing.T) {
 		field := themeType.Field(index)
 		value := themeValue.Field(index).String()
 
-		if value == "" {
-			t.Errorf("Theme.%s = empty, want a color", field.Name)
-			continue
-		}
-
-		if !hexColorPattern.MatchString(value) {
-			t.Errorf("Theme.%s = %q, want a #RRGGBB hex color", field.Name, value)
-		}
+		require.NotEmpty(t, value, "Theme.%s = empty, want a color", field.Name)
+		assert.True(
+			t,
+			hexColorPattern.MatchString(value),
+			"Theme.%s = %q, want a #RRGGBB hex color",
+			field.Name,
+			value,
+		)
 	}
 
 	keybindsValue := reflect.ValueOf(defaults.Keybinds)
@@ -70,15 +68,10 @@ func TestDefaults(t *testing.T) {
 		field := keybindsType.Field(index)
 		bindings := keybindsValue.Field(index).Interface().([]string)
 
-		if len(bindings) == 0 {
-			t.Errorf("Keybinds.%s = empty, want at least one binding", field.Name)
-			continue
-		}
+		require.NotEmpty(t, bindings, "Keybinds.%s = empty, want at least one binding", field.Name)
 
 		for _, binding := range bindings {
-			if strings.TrimSpace(binding) == "" {
-				t.Errorf("Keybinds.%s contains empty binding", field.Name)
-			}
+			assert.NotEmpty(t, strings.TrimSpace(binding), "Keybinds.%s contains empty binding", field.Name)
 		}
 	}
 }
@@ -87,16 +80,10 @@ func TestDefaultsTOMLRoundTrip(t *testing.T) {
 	t.Parallel()
 
 	data, err := DefaultsTOML()
-	if err != nil {
-		t.Fatalf("DefaultsTOML() error: %v", err)
-	}
+	require.NoError(t, err)
 
 	var got Config
-	if err := toml.Unmarshal(data, &got); err != nil {
-		t.Fatalf("toml.Unmarshal(defaults) error: %v", err)
-	}
+	require.NoError(t, toml.Unmarshal(data, &got))
 
-	if !configsEqual(Defaults(), got) {
-		t.Errorf("round-trip mismatch:\nwant: %#v\ngot:  %#v", Defaults(), got)
-	}
+	assert.True(t, configsEqual(Defaults(), got))
 }

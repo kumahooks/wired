@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/stretchr/testify/assert"
 )
 
 // Compile-time assertions that every exported action satisfies the Action contract.
@@ -34,9 +35,7 @@ func TestClosureComponentReturnsSeededAction(t *testing.T) {
 	component := closureComponent{handle: func(_ tea.Msg) Action { return want }}
 
 	got := component.HandleMessage(nil)
-	if _, ok := got.(ProceedFromInitAction); !ok {
-		t.Fatalf("HandleMessage(nil) = %T, want ProceedFromInitAction", got)
-	}
+	assert.IsType(t, want, got)
 }
 
 func TestClosureComponentSatisfiesInterface(t *testing.T) {
@@ -45,7 +44,5 @@ func TestClosureComponentSatisfiesInterface(t *testing.T) {
 	var component Component = closureComponent{handle: func(_ tea.Msg) Action { return NoAction{} }}
 
 	got := component.HandleMessage(nil)
-	if _, ok := got.(NoAction); !ok {
-		t.Fatalf("HandleMessage(nil) = %T, want NoAction", got)
-	}
+	assert.IsType(t, NoAction{}, got)
 }

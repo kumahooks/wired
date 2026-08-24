@@ -76,3 +76,27 @@ func (model *Model) HandleMessage(message tea.Msg) action.Action {
 func (model *Model) SetCountFilesProgress(count int) {
 	model.countFilesProgress = count
 }
+
+// LogLines returns the texts of all log lines currently stored in the model.
+func (model *Model) LogLines() []string {
+	texts := make([]string, len(model.logLines))
+	for index, entry := range model.logLines {
+		texts[index] = entry.text
+	}
+
+	return texts
+}
+
+// LastLogType returns the LogType of the most recently appended log line.
+func (model *Model) LastLogType() LogType {
+	if len(model.logLines) == 0 {
+		return LogNormal
+	}
+
+	return model.logLines[len(model.logLines)-1].logType
+}
+
+// CountFilesProgress returns the current live counter value. A negative value means no count is in progress.
+func (model *Model) CountFilesProgress() int {
+	return model.countFilesProgress
+}

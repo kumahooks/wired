@@ -2,11 +2,14 @@ package audio
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // buildAudioTree plants a deterministic directory tree under root and returns the expected audio file count.
@@ -41,18 +44,12 @@ func buildAudioTree(t *testing.T, root string) int {
 		fullPath := filepath.Join(root, entry.path)
 
 		if entry.isDir {
-			if err := os.MkdirAll(fullPath, 0o755); err != nil {
-				t.Fatalf("mkdir %q: %v", fullPath, err)
-			}
+			require.NoError(t, os.MkdirAll(fullPath, 0o755))
 			continue
 		}
 
-		if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
-			t.Fatalf("mkdir parent for %q: %v", fullPath, err)
-		}
-		if err := os.WriteFile(fullPath, []byte("x"), 0o644); err != nil {
-			t.Fatalf("write %q: %v", fullPath, err)
-		}
+		require.NoError(t, os.MkdirAll(filepath.Dir(fullPath), 0o755))
+		require.NoError(t, os.WriteFile(fullPath, []byte("x"), 0o644))
 
 		if isAudio(entry.path) {
 			audioCount++
@@ -70,41 +67,12 @@ func plantManyAudioFiles(t *testing.T, root string, count int) {
 	t.Helper()
 
 	subDir := filepath.Join(root, "sub")
-	if err := os.MkdirAll(subDir, 0o755); err != nil {
-		t.Fatalf("mkdir %q: %v", subDir, err)
-	}
+	require.NoError(t, os.MkdirAll(subDir, 0o755))
 
 	for index := range count {
-		path := filepath.Join(subDir, "track"+pad(index)+".mp3")
-		if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
-			t.Fatalf("write %q: %v", path, err)
-		}
+		path := filepath.Join(subDir, "track"+strconv.Itoa(index)+".mp3")
+		require.NoError(t, os.WriteFile(path, []byte("x"), 0o644))
 	}
-}
-
-func pad(index int) string {
-	if index < 10 {
-		return "0" + itoa(index)
-	}
-
-	return itoa(index)
-}
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-
-	var buf [20]byte
-
-	pos := len(buf)
-	for n > 0 {
-		pos--
-		buf[pos] = byte('0' + n%10)
-		n /= 10
-	}
-
-	return string(buf[pos:])
 }
 
 func TestCountFilesTotal(t *testing.T) {
@@ -117,13 +85,8 @@ func TestCountFilesTotal(t *testing.T) {
 	wantTwo := buildAudioTree(t, rootTwo)
 
 	got, err := CountFiles(context.Background(), []string{rootOne, rootTwo}, nil, nil)
-	if err != nil {
-		t.Fatalf("CountFiles error: %v", err)
-	}
-
-	if want := wantOne + wantTwo; got != want {
-		t.Errorf("CountFiles total = %d, want %d", got, want)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, wantOne+wantTwo, got)
 }
 
 func TestCountFilesPopulatesAudioFiles(t *testing.T) {
@@ -134,22 +97,14 @@ func TestCountFilesPopulatesAudioFiles(t *testing.T) {
 
 	var files []File
 	got, err := CountFiles(context.Background(), []string{root}, &files, nil)
-	if err != nil {
-		t.Fatalf("CountFiles error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if got != want {
-		t.Errorf("CountFiles count = %d, want %d", got, want)
-	}
-	if len(files) != want {
-		t.Fatalf("len(files) = %d, want %d", len(files), want)
-	}
+	assert.Equal(t, want, got)
+	require.Len(t, files, want)
 
 	// Every populated file name should be an audio file by base name.
 	for _, file := range files {
-		if !isAudio(file.FileName) {
-			t.Errorf("non-audio file in slice: %q", file.FileName)
-		}
+		assert.True(t, isAudio(file.FileName), "non-audio file in slice: %q", file.FileName)
 	}
 }
 
@@ -165,9 +120,7 @@ func TestCountChannelEmissions(t *testing.T) {
 	countChannel := make(chan int, testCountChannelBuffer)
 
 	_, err := CountFiles(context.Background(), []string{rootOne, rootTwo}, nil, countChannel)
-	if err != nil {
-		t.Fatalf("CountFiles error: %v", err)
-	}
+	require.NoError(t, err)
 
 	// CountFiles does not close the channel.
 	close(countChannel)
@@ -188,29 +141,24 @@ func TestCountChannelEmissions(t *testing.T) {
 	}
 
 done:
-	if len(values) < 3 {
-		t.Errorf("expected at least 3 emissions, got %d: %v", len(values), values)
-	}
+	require.GreaterOrEqual(t, len(values), 3, "expected at least 3 emissions, got %d: %v", len(values), values)
 
 	// The last value should be the grand total.
-	if got := values[len(values)-1]; got != 50 {
-		t.Errorf("last emission = %d, want 50", got)
-	}
+	assert.Equal(t, 50, values[len(values)-1])
 }
 
 func TestCountFilesCancelMidWalk(t *testing.T) {
 	root := t.TempDir()
 	plantManyAudioFiles(t, root, 40)
 
-	context, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
 	countChannel := make(chan int, testCountChannelBuffer)
 
-	_, err := CountFiles(context, []string{root}, nil, countChannel)
-	if !errors.Is(err, context.Err()) {
-		t.Errorf("CountFiles with canceled context err = %v, want %v", err, context.Err())
-	}
+	_, err := CountFiles(ctx, []string{root}, nil, countChannel)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ctx.Err())
 
 	// Drain any stray progress values so the sender is not blocked.
 	for {
@@ -231,19 +179,13 @@ func TestScanFiles(t *testing.T) {
 	countChannel := make(chan int, 1)
 
 	files, err := ScanFiles(context.Background(), []string{root}, countChannel)
-	if err != nil {
-		t.Fatalf("ScanFiles error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if got := len(files); got != want {
-		t.Errorf("ScanFiles len = %d, want %d", got, want)
-	}
+	assert.Len(t, files, want)
 
 	select {
 	case value := <-countChannel:
-		if value != want {
-			t.Errorf("countChannel value = %d, want %d", value, want)
-		}
+		assert.Equal(t, want, value)
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for countChannel")
 	}
@@ -282,9 +224,7 @@ func TestIsAudio(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := isAudio(test.path); got != test.want {
-				t.Errorf("isAudio(%q) = %v, want %v", test.path, got, test.want)
-			}
+			assert.Equal(t, test.want, isAudio(test.path))
 		})
 	}
 }
@@ -293,19 +233,13 @@ func TestCountFilesNonExistentRoot(t *testing.T) {
 	t.Parallel()
 
 	_, err := CountFiles(context.Background(), []string{"/this/path/does/not/exist"}, nil, nil)
-	if err == nil {
-		t.Fatal("CountFiles with non-existent root want error, got nil")
-	}
+	require.Error(t, err)
 }
 
 func TestCountFilesEmptyRoots(t *testing.T) {
 	t.Parallel()
 
 	got, err := CountFiles(context.Background(), []string{}, nil, nil)
-	if err != nil {
-		t.Fatalf("CountFiles error: %v", err)
-	}
-	if got != 0 {
-		t.Errorf("CountFiles empty roots = %d, want 0", got)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, 0, got)
 }

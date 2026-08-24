@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"wired/internal/core/config"
 )
@@ -22,10 +24,8 @@ func TestNew(t *testing.T) {
 	for index := 0; index < themeValue.NumField(); index++ {
 		field := themeType.Field(index)
 		fieldColor, ok := themeValue.Field(index).Interface().(color.Color)
-		if !ok || fieldColor == nil {
-			t.Errorf("Theme.%s = nil, want a non-nil color.Color", field.Name)
-			continue
-		}
+		require.True(t, ok, "Theme.%s is not a color.Color", field.Name)
+		require.NotNil(t, fieldColor, "Theme.%s = nil, want a non-nil color.Color", field.Name)
 
 		configValue := reflect.ValueOf(configTheme).FieldByName(field.Name).String()
 		wantColor := lipgloss.Color(configValue)
@@ -33,12 +33,10 @@ func TestNew(t *testing.T) {
 		gotR, gotG, gotB, gotA := fieldColor.RGBA()
 		wantR, wantG, wantB, wantA := wantColor.RGBA()
 
-		if gotR != wantR || gotG != wantG || gotB != wantB || gotA != wantA {
-			t.Errorf(
-				"Theme.%s RGBA = (%d, %d, %d, %d), want (%d, %d, %d, %d) from %q",
-				field.Name, gotR, gotG, gotB, gotA, wantR, wantG, wantB, wantA, configValue,
-			)
-		}
+		assert.Equal(t, wantR, gotR, "Theme.%s red mismatch", field.Name)
+		assert.Equal(t, wantG, gotG, "Theme.%s green mismatch", field.Name)
+		assert.Equal(t, wantB, gotB, "Theme.%s blue mismatch", field.Name)
+		assert.Equal(t, wantA, gotA, "Theme.%s alpha mismatch", field.Name)
 	}
 }
 
@@ -59,14 +57,13 @@ func TestNewAllBlack(t *testing.T) {
 	themeValue := reflect.ValueOf(resolved)
 	for index := 0; index < themeValue.NumField(); index++ {
 		fieldColor, ok := themeValue.Field(index).Interface().(color.Color)
-		if !ok || fieldColor == nil {
-			t.Fatalf("nil color at field %d", index)
-		}
+		require.True(t, ok, "field %d is not a color.Color", index)
+		require.NotNil(t, fieldColor, "nil color at field %d", index)
 
 		red, green, blue, _ := fieldColor.RGBA()
-		if red != 0 || green != 0 || blue != 0 {
-			t.Errorf("field %d RGBA = (%d, %d, %d), want all zero", index, red, green, blue)
-		}
+		assert.Zero(t, red, "field %d red = %d, want 0", index, red)
+		assert.Zero(t, green, "field %d green = %d, want 0", index, green)
+		assert.Zero(t, blue, "field %d blue = %d, want 0", index, blue)
 	}
 }
 
@@ -76,7 +73,5 @@ func TestDefault(t *testing.T) {
 	defaultTheme := Default()
 	fromDefaults := New(config.Defaults().Theme)
 
-	if !reflect.DeepEqual(defaultTheme, fromDefaults) {
-		t.Errorf("Default() != New(config.Defaults().Theme)")
-	}
+	assert.Equal(t, fromDefaults, defaultTheme)
 }

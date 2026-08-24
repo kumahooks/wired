@@ -4,25 +4,15 @@ import (
 	"strings"
 	"testing"
 
-	"wired/internal/core/config"
-	"wired/internal/core/keymap"
+	"github.com/stretchr/testify/assert"
+
+	"wired/internal/core/testutil"
 )
-
-func defaultKeyMapForRender(t *testing.T) keymap.KeyMap {
-	t.Helper()
-
-	keyMap, err := keymap.New(config.Defaults().Keybinds)
-	if err != nil {
-		t.Fatalf("keymap.New(defaults) error: %v", err)
-	}
-
-	return keyMap
-}
 
 func TestRenderDefaultModel(t *testing.T) {
 	t.Parallel()
 
-	model := New(defaultKeyMapForRender(t))
+	model := New(testutil.DefaultKeyMap(t))
 
 	assertSnapshot(t, "render_default", model.Render(80, 24))
 }
@@ -30,7 +20,7 @@ func TestRenderDefaultModel(t *testing.T) {
 func TestRenderWithNormalAndErrorLogs(t *testing.T) {
 	t.Parallel()
 
-	model := New(defaultKeyMapForRender(t))
+	model := New(testutil.DefaultKeyMap(t))
 	model.AppendLog("config loaded successfully", LogNormal)
 	model.AppendLog("theme.surface must be a hex color", LogError)
 	model.AppendLog("library scan starting", LogNormal)
@@ -41,7 +31,7 @@ func TestRenderWithNormalAndErrorLogs(t *testing.T) {
 func TestRenderCountInProgress(t *testing.T) {
 	t.Parallel()
 
-	model := New(defaultKeyMapForRender(t))
+	model := New(testutil.DefaultKeyMap(t))
 	model.AppendLog("counting total library files", LogNormal)
 	model.SetCountFilesProgress(42)
 
@@ -51,7 +41,7 @@ func TestRenderCountInProgress(t *testing.T) {
 func TestRenderCountDone(t *testing.T) {
 	t.Parallel()
 
-	model := New(defaultKeyMapForRender(t))
+	model := New(testutil.DefaultKeyMap(t))
 	model.AppendLog("counting total library files", LogNormal)
 	model.AppendLog("counted a total of 137 audio files successfully", LogNormal)
 	model.SetCountFilesProgress(-1)
@@ -62,7 +52,7 @@ func TestRenderCountDone(t *testing.T) {
 func TestRenderAllErrorLogs(t *testing.T) {
 	t.Parallel()
 
-	model := New(defaultKeyMapForRender(t))
+	model := New(testutil.DefaultKeyMap(t))
 	model.AppendLog("config parse failed", LogError)
 	model.AppendLog("keybinds.select must have at least one binding", LogError)
 	model.AppendLog("theme.track must be a #RRGGBB hex color", LogError)
@@ -73,7 +63,7 @@ func TestRenderAllErrorLogs(t *testing.T) {
 func TestRenderCursorOnFirstButton(t *testing.T) {
 	t.Parallel()
 
-	model := New(defaultKeyMapForRender(t))
+	model := New(testutil.DefaultKeyMap(t))
 	model.cursorPosition = 0
 
 	assertSnapshot(t, "render_cursor_first", model.Render(80, 24))
@@ -82,7 +72,7 @@ func TestRenderCursorOnFirstButton(t *testing.T) {
 func TestRenderCursorOnSecondButton(t *testing.T) {
 	t.Parallel()
 
-	model := New(defaultKeyMapForRender(t))
+	model := New(testutil.DefaultKeyMap(t))
 	model.cursorPosition = 1
 
 	assertSnapshot(t, "render_cursor_second", model.Render(80, 24))
@@ -91,10 +81,13 @@ func TestRenderCursorOnSecondButton(t *testing.T) {
 func TestRenderContainsPanelHeader(t *testing.T) {
 	t.Parallel()
 
-	model := New(defaultKeyMapForRender(t))
+	model := New(testutil.DefaultKeyMap(t))
 
-	rendered := stripANSI(model.Render(80, 24))
-	if !strings.Contains(rendered, "wire(d) is starting...") {
-		t.Errorf("render output missing panel header substring:\n%s", rendered)
-	}
+	rendered := testutil.StripANSI(model.Render(80, 24))
+	assert.True(
+		t,
+		strings.Contains(rendered, "wire(d) is starting..."),
+		"render output missing panel header substring:\n%s",
+		rendered,
+	)
 }

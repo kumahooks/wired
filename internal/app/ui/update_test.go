@@ -5,13 +5,14 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"wired/internal/app/ui/action"
 	"wired/internal/app/ui/components/initializing"
@@ -84,27 +85,13 @@ func plantAudioFiles(t *testing.T, dir string, count int) {
 
 	for index := range count {
 		path := filepath.Join(dir, "track"+strconv.Itoa(index)+".mp3")
-		if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
-			t.Fatalf("write %q: %v", path, err)
-		}
+		require.NoError(t, os.WriteFile(path, []byte("x"), 0o644))
 	}
 }
 
-// initLogTexts reads the unexported logLines slice of initializationModel via reflect.
-func initLogTexts(model *UIModel) []string {
-	modelValue := reflect.ValueOf(model.initializationModel).Elem()
-	logLinesField := modelValue.FieldByName("logLines")
-
-	texts := make([]string, logLinesField.Len())
-	for index := range texts {
-		texts[index] = logLinesField.Index(index).FieldByName("text").String()
-	}
-
-	return texts
-}
-
+// initLogContains reports whether any log line in the initialization model contains substring.
 func initLogContains(model *UIModel, substring string) bool {
-	for _, text := range initLogTexts(model) {
+	for _, text := range model.initializationModel.LogLines() {
 		if strings.Contains(text, substring) {
 			return true
 		}
@@ -114,15 +101,16 @@ func initLogContains(model *UIModel, substring string) bool {
 }
 
 func initLastLog(model *UIModel) (string, initializing.LogType) {
-	modelValue := reflect.ValueOf(model.initializationModel).Elem()
-	logLinesField := modelValue.FieldByName("logLines")
-	last := logLinesField.Index(logLinesField.Len() - 1)
+	texts := model.initializationModel.LogLines()
+	if len(texts) == 0 {
+		return "", initializing.LogNormal
+	}
 
-	return last.FieldByName("text").String(), initializing.LogType(last.FieldByName("logType").Int())
+	return texts[len(texts)-1], model.initializationModel.LastLogType()
 }
 
 func initProgress(model *UIModel) int {
-	return int(reflect.ValueOf(model.initializationModel).Elem().FieldByName("countFilesProgress").Int())
+	return model.initializationModel.CountFilesProgress()
 }
 
 func TestHandleInitializationLoadConfigResultError(t *testing.T) {
@@ -137,18 +125,11 @@ func TestHandleInitializationLoadConfigResultError(t *testing.T) {
 		err:              loadError,
 	})
 
-	if command != nil {
-		t.Errorf("returned cmd = non-nil, want nil on error")
-	}
-
-	if !initLogContains(model, loadError.Error()) {
-		t.Errorf("log missing error %q", loadError.Error())
-	}
+	assert.Nil(t, command, "returned cmd should be nil on error")
+	assert.True(t, initLogContains(model, loadError.Error()), "log missing error %q", loadError.Error())
 
 	text, logType := initLastLog(model)
-	if logType != initializing.LogError {
-		t.Errorf("last log type = %v, want LogError (text: %q)", logType, text)
-	}
+	assert.Equal(t, initializing.LogError, logType, "last log type = %v, want LogError (text: %q)", logType, text)
 }
 
 func TestHandleInitializationLoadConfigResultDefaults(t *testing.T) {
@@ -165,19 +146,15 @@ func TestHandleInitializationLoadConfigResultDefaults(t *testing.T) {
 		err:              nil,
 	})
 
-	if !initLogContains(model, "no config file found, loading one using defaults") {
-		t.Error("missing 'no config file found' log line")
-	}
+	assert.True(t, initLogContains(model, "no config file found, loading one using defaults"))
 
-	for _, text := range initLogTexts(model) {
+	for _, text := range model.initializationModel.LogLines() {
 		if strings.Contains(text, "[keymap:New]") || strings.Contains(text, "falling back") {
 			t.Errorf("unexpected keymap error log on defaults: %q", text)
 		}
 	}
 
-	if command == nil {
-		t.Error("returned cmd = nil, want non-nil (libraries present)")
-	}
+	assert.NotNil(t, command, "returned cmd = nil, want non-nil (libraries present)")
 }
 
 func TestHandleInitializationLoadConfigResultHappyPath(t *testing.T) {
@@ -200,43 +177,22 @@ func TestHandleInitializationLoadConfigResultHappyPath(t *testing.T) {
 		err:              nil,
 	})
 
-	if !reflect.DeepEqual(*model.config, customConfig) {
-		t.Errorf("model.config = %#v, want %#v", *model.config, customConfig)
-	}
+	assert.Equal(t, customConfig, *model.config)
 
 	wantTheme := theme.New(customConfig.Theme)
-	if !reflect.DeepEqual(model.theme, wantTheme) {
-		t.Errorf("model.theme = %#v, want %#v", model.theme, wantTheme)
-	}
+	assert.Equal(t, wantTheme, model.theme)
 
 	wantKeyMap, err := keymap.New(customConfig.Keybinds)
-	if err != nil {
-		t.Fatalf("keymap.New(custom) error: %v", err)
-	}
-	if !reflect.DeepEqual(model.keyMap, wantKeyMap) {
-		t.Errorf("model.keyMap = %#v, want %#v", model.keyMap, wantKeyMap)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, wantKeyMap, model.keyMap)
+	assert.NotEqual(t, initialKeyMap, model.keyMap, "model.keyMap unchanged after loading custom keybinds")
 
-	if reflect.DeepEqual(model.keyMap, initialKeyMap) {
-		t.Error("model.keyMap unchanged after loading custom keybinds")
-	}
+	assert.True(t, initLogContains(model, "config loaded successfully"))
+	assert.True(t, initLogContains(model, "theme loaded successfully"))
+	assert.True(t, initLogContains(model, "keybindings loaded successfully"))
+	assert.False(t, initLogContains(model, "no config file found"))
 
-	if !initLogContains(model, "config loaded successfully") {
-		t.Error("missing 'config loaded successfully' log")
-	}
-	if !initLogContains(model, "theme loaded successfully") {
-		t.Error("missing 'theme loaded successfully' log")
-	}
-	if !initLogContains(model, "keybindings loaded successfully") {
-		t.Error("missing 'keybindings loaded successfully' log")
-	}
-	if initLogContains(model, "no config file found") {
-		t.Error("'no config file found' should not appear on isConfigDefaults=false")
-	}
-
-	if command == nil {
-		t.Error("returned cmd = nil, want non-nil (libraries present)")
-	}
+	assert.NotNil(t, command, "returned cmd = nil, want non-nil (libraries present)")
 }
 
 func TestHandleInitializationLoadConfigResultKeymapParseFailure(t *testing.T) {
@@ -255,24 +211,10 @@ func TestHandleInitializationLoadConfigResultKeymapParseFailure(t *testing.T) {
 		err:              nil,
 	})
 
-	if !initLogContains(model, "[keymap:New]") {
-		t.Error("missing [keymap:New] error log")
-	}
-	if !initLogContains(model, "falling back to default keybindings") {
-		t.Error("missing 'falling back to default keybindings' log")
-	}
-
-	if !reflect.DeepEqual(model.keyMap, initialKeyMap) {
-		t.Errorf("model.keyMap changed on parse failure = %#v, want %#v", model.keyMap, initialKeyMap)
-	}
-
-	if !initLogContains(model, "falling back to default keybindings") {
-		t.Error("ApplyKeyMap(default) should have produced the fallback log")
-	}
-
-	if command == nil {
-		t.Error("returned cmd = nil, want non-nil (libraries present, count still starts)")
-	}
+	assert.True(t, initLogContains(model, "[keymap:New]"))
+	assert.True(t, initLogContains(model, "falling back to default keybindings"))
+	assert.Equal(t, initialKeyMap, model.keyMap, "model.keyMap changed on parse failure")
+	assert.NotNil(t, command, "returned cmd = nil, want non-nil (libraries present, count still starts)")
 }
 
 func TestHandleInitializationLoadConfigResultNoLibrariesNoCountCmd(t *testing.T) {
@@ -289,18 +231,11 @@ func TestHandleInitializationLoadConfigResultNoLibrariesNoCountCmd(t *testing.T)
 		err:              nil,
 	})
 
-	if command != nil {
-		t.Errorf("returned cmd = non-nil, want nil when no library paths")
-	}
-
-	if !initLogContains(model, "no library paths found") {
-		t.Error("missing 'no library paths found' log line")
-	}
+	assert.Nil(t, command, "returned cmd should be nil when no library paths")
+	assert.True(t, initLogContains(model, "no library paths found"))
 
 	text, logType := initLastLog(model)
-	if logType != initializing.LogError {
-		t.Errorf("last log type = %v, want LogError (text: %q)", logType, text)
-	}
+	assert.Equal(t, initializing.LogError, logType, "last log type = %v, want LogError (text: %q)", logType, text)
 }
 
 func TestHandleInitializationLoadConfigResultLibrariesEmitsCountStart(t *testing.T) {
@@ -317,23 +252,14 @@ func TestHandleInitializationLoadConfigResultLibrariesEmitsCountStart(t *testing
 		err:              nil,
 	})
 
-	if command == nil {
-		t.Fatal("returned cmd = nil, want a count start command")
-	}
-
-	if model.countGeneration != 1 {
-		t.Errorf("countGeneration = %d, want 1", model.countGeneration)
-	}
+	require.NotNil(t, command, "returned cmd = nil, want a count start command")
+	assert.Equal(t, uint64(1), model.countGeneration)
 
 	message := executeCmd(t, command)
 	startMessage, ok := message.(initializationCountFilesStartMessage)
-	if !ok {
-		t.Fatalf("cmd produced %T, want initializationCountFilesStartMessage", message)
-	}
+	require.True(t, ok, "cmd produced %T, want initializationCountFilesStartMessage", message)
 
-	if startMessage.generation != model.countGeneration {
-		t.Errorf("startMessage.generation = %d, want %d", startMessage.generation, model.countGeneration)
-	}
+	assert.Equal(t, model.countGeneration, startMessage.generation)
 
 	if startMessage.countCancel != nil {
 		startMessage.countCancel()
@@ -361,21 +287,11 @@ func TestHandleInitializationCountFilesStartMessage(t *testing.T) {
 
 	_, command := model.Update(message)
 
-	if model.cancelInitializationCount == nil {
-		t.Fatal("cancelInitializationCount = nil, want the cancel func")
-	}
-	if model.countGeneration != 7 {
-		t.Errorf("countGeneration = %d, want 7", model.countGeneration)
-	}
-	if initProgress(model) != 0 {
-		t.Errorf("countFilesProgress = %d, want 0", initProgress(model))
-	}
-	if !initLogContains(model, "counting total library files") {
-		t.Error("missing 'counting total library files' log")
-	}
-	if command == nil {
-		t.Fatal("returned cmd = nil, want the drainer cmd")
-	}
+	require.NotNil(t, model.cancelInitializationCount, "cancelInitializationCount = nil, want the cancel func")
+	assert.Equal(t, uint64(7), model.countGeneration)
+	assert.Equal(t, 0, initProgress(model))
+	assert.True(t, initLogContains(model, "counting total library files"))
+	require.NotNil(t, command, "returned cmd = nil, want the drainer cmd")
 }
 
 func TestHandleInitializationCountFilesWaitProgressMessage(t *testing.T) {
@@ -393,12 +309,8 @@ func TestHandleInitializationCountFilesWaitProgressMessage(t *testing.T) {
 		generation:      3,
 	})
 
-	if initProgress(model) != 42 {
-		t.Errorf("countFilesProgress = %d, want 42", initProgress(model))
-	}
-	if command == nil {
-		t.Error("returned cmd = nil, want the next drainer cmd")
-	}
+	assert.Equal(t, 42, initProgress(model))
+	assert.NotNil(t, command, "returned cmd = nil, want the next drainer cmd")
 }
 
 func TestHandleInitializationCountFilesResultMessageStaleGeneration(t *testing.T) {
@@ -411,7 +323,7 @@ func TestHandleInitializationCountFilesResultMessageStaleGeneration(t *testing.T
 	sentinelCanceled := false
 	model.cancelInitializationCount = func() { sentinelCanceled = true }
 
-	initialLogCount := len(initLogTexts(model))
+	initialLogCount := len(model.initializationModel.LogLines())
 
 	_, command := model.Update(initializationCountFilesResultMessage{
 		filesCount: 100,
@@ -419,21 +331,15 @@ func TestHandleInitializationCountFilesResultMessageStaleGeneration(t *testing.T
 		generation: 5,
 	})
 
-	if command != nil {
-		t.Error("returned cmd = non-nil, want nil on stale generation")
-	}
-	if sentinelCanceled {
-		t.Error("stale result cleared cancelInitializationCount")
-	}
-	if model.cancelInitializationCount == nil {
-		t.Error("cancelInitializationCount = nil, want unchanged sentinel on stale generation")
-	}
-	if initProgress(model) != 50 {
-		t.Errorf("countFilesProgress = %d, want 50 (unchanged on stale)", initProgress(model))
-	}
-	if len(initLogTexts(model)) != initialLogCount {
-		t.Errorf("logCount = %d, want %d (unchanged on stale)", len(initLogTexts(model)), initialLogCount)
-	}
+	assert.Nil(t, command, "returned cmd should be nil on stale generation")
+	assert.False(t, sentinelCanceled, "stale result cleared cancelInitializationCount")
+	assert.NotNil(
+		t,
+		model.cancelInitializationCount,
+		"cancelInitializationCount = nil, want unchanged sentinel on stale generation",
+	)
+	assert.Equal(t, 50, initProgress(model), "countFilesProgress changed on stale")
+	assert.Len(t, model.initializationModel.LogLines(), initialLogCount, "logCount changed on stale")
 }
 
 func TestHandleInitializationCountFilesResultMessageCurrentGeneration(t *testing.T) {
@@ -451,26 +357,18 @@ func TestHandleInitializationCountFilesResultMessageCurrentGeneration(t *testing
 		generation: 10,
 	})
 
-	if command != nil {
-		t.Error("returned cmd = non-nil, want nil on current generation result")
-	}
-	if sentinelCanceled {
-		t.Error("current result should set cancelInitializationCount to nil, not call it")
-	}
-	if model.cancelInitializationCount != nil {
-		t.Error("cancelInitializationCount = non-nil, want nil after current generation result")
-	}
-	if initProgress(model) != -1 {
-		t.Errorf("countFilesProgress = %d, want -1", initProgress(model))
-	}
+	assert.Nil(t, command, "returned cmd should be nil on current generation result")
+	assert.False(t, sentinelCanceled, "current result should set cancelInitializationCount to nil, not call it")
+	assert.Nil(
+		t,
+		model.cancelInitializationCount,
+		"cancelInitializationCount = non-nil, want nil after current generation result",
+	)
+	assert.Equal(t, -1, initProgress(model))
 
 	text, logType := initLastLog(model)
-	if logType != initializing.LogNormal {
-		t.Errorf("last log type = %v, want LogNormal (text: %q)", logType, text)
-	}
-	if !strings.Contains(text, "counted a total of 137 audio files successfully") {
-		t.Errorf("last log text = %q, want it to contain the count", text)
-	}
+	assert.Equal(t, initializing.LogNormal, logType, "last log type = %v, want LogNormal (text: %q)", logType, text)
+	assert.True(t, strings.Contains(text, "counted a total of 137 audio files successfully"))
 }
 
 func TestHandleInitializationCountFilesResultMessageError(t *testing.T) {
@@ -487,20 +385,12 @@ func TestHandleInitializationCountFilesResultMessageError(t *testing.T) {
 		generation: 10,
 	})
 
-	if command != nil {
-		t.Error("returned cmd = non-nil, want nil on error result")
-	}
-	if initProgress(model) != 50 {
-		t.Errorf("countFilesProgress = %d, want 50 (unchanged on error)", initProgress(model))
-	}
+	assert.Nil(t, command, "returned cmd should be nil on error result")
+	assert.Equal(t, 50, initProgress(model), "countFilesProgress changed on error")
 
 	text, logType := initLastLog(model)
-	if logType != initializing.LogError {
-		t.Errorf("last log type = %v, want LogError (text: %q)", logType, text)
-	}
-	if !strings.Contains(text, countError.Error()) {
-		t.Errorf("last log text = %q, want it to contain %q", text, countError.Error())
-	}
+	assert.Equal(t, initializing.LogError, logType, "last log type = %v, want LogError (text: %q)", logType, text)
+	assert.True(t, strings.Contains(text, countError.Error()))
 }
 
 func TestHandleWindowResize(t *testing.T) {
@@ -510,15 +400,9 @@ func TestHandleWindowResize(t *testing.T) {
 
 	_, command := model.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
 
-	if model.windowWidth != 100 {
-		t.Errorf("windowWidth = %d, want 100", model.windowWidth)
-	}
-	if model.windowHeight != 40 {
-		t.Errorf("windowHeight = %d, want 40", model.windowHeight)
-	}
-	if command != nil {
-		t.Error("returned cmd = non-nil, want nil for window resize")
-	}
+	assert.Equal(t, 100, model.windowWidth)
+	assert.Equal(t, 40, model.windowHeight)
+	assert.Nil(t, command, "returned cmd should be nil for window resize")
 }
 
 func TestHandleKeyPressMsgQuit(t *testing.T) {
@@ -531,15 +415,9 @@ func TestHandleKeyPressMsgQuit(t *testing.T) {
 
 	_, command := model.Update(tea.KeyPressMsg{Mod: tea.ModCtrl, Code: 'd'})
 
-	if !isTeaQuit(command) {
-		t.Fatal("returned cmd is not tea.Quit")
-	}
-	if !sentinelCanceled {
-		t.Error("cancelInitializationCount was not called on quit")
-	}
-	if model.cancelInitializationCount != nil {
-		t.Error("cancelInitializationCount = non-nil, want nil after quit")
-	}
+	require.True(t, isTeaQuit(command), "returned cmd is not tea.Quit")
+	assert.True(t, sentinelCanceled, "cancelInitializationCount was not called on quit")
+	assert.Nil(t, model.cancelInitializationCount, "cancelInitializationCount = non-nil, want nil after quit")
 }
 
 func TestHandleKeyPressMsgQuitDoesNotMatchNonQuitKey(t *testing.T) {
@@ -549,9 +427,7 @@ func TestHandleKeyPressMsgQuitDoesNotMatchNonQuitKey(t *testing.T) {
 
 	_, command := model.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
 
-	if command != nil {
-		t.Errorf("returned cmd = non-nil, want nil for unmatched key")
-	}
+	assert.Nil(t, command, "returned cmd should be nil for unmatched key")
 }
 
 func TestHandleKeyPressMsgForwardsToComponentReload(t *testing.T) {
@@ -564,18 +440,10 @@ func TestHandleKeyPressMsgForwardsToComponentReload(t *testing.T) {
 
 	_, command := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
-	if command == nil {
-		t.Fatal("returned cmd = nil, want non-nil for reload action")
-	}
-	if !sentinelCanceled {
-		t.Error("cancelInitializationCount was not called on reload")
-	}
-	if model.state != uiInitializing {
-		t.Errorf("state = %v, want uiInitializing", model.state)
-	}
-	if !initLogContains(model, "reloading config...") {
-		t.Error("missing 'reloading config...' log line")
-	}
+	require.NotNil(t, command, "returned cmd = nil, want non-nil for reload action")
+	assert.True(t, sentinelCanceled, "cancelInitializationCount was not called on reload")
+	assert.Equal(t, uiInitializing, model.state)
+	assert.True(t, initLogContains(model, "reloading config..."))
 }
 
 func TestHandleKeyPressMsgForwardsToComponentProceed(t *testing.T) {
@@ -590,18 +458,10 @@ func TestHandleKeyPressMsgForwardsToComponentProceed(t *testing.T) {
 
 	_, command := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
-	if command != nil {
-		t.Errorf("returned cmd = non-nil, want nil for proceed action")
-	}
-	if !sentinelCanceled {
-		t.Error("cancelInitializationCount was not called on proceed")
-	}
-	if model.state != uiIdle {
-		t.Errorf("state = %v, want uiIdle", model.state)
-	}
-	if !initLogContains(model, "proceeding without libraries") {
-		t.Error("missing 'proceeding without libraries' log line")
-	}
+	assert.Nil(t, command, "returned cmd should be nil for proceed action")
+	assert.True(t, sentinelCanceled, "cancelInitializationCount was not called on proceed")
+	assert.Equal(t, uiIdle, model.state)
+	assert.True(t, initLogContains(model, "proceeding without libraries"))
 }
 
 func TestHandleKeyPressMsgMoveLeftIsNoOp(t *testing.T) {
@@ -611,9 +471,7 @@ func TestHandleKeyPressMsgMoveLeftIsNoOp(t *testing.T) {
 
 	_, command := model.Update(tea.KeyPressMsg{Code: 'h', Text: "h"})
 
-	if command != nil {
-		t.Errorf("returned cmd = non-nil, want nil for move left (NoAction)")
-	}
+	assert.Nil(t, command, "returned cmd should be nil for move left (NoAction)")
 }
 
 func TestHandleComponentAction(t *testing.T) {
@@ -693,35 +551,36 @@ func TestHandleComponentAction(t *testing.T) {
 			command := model.handleComponentAction(test.action)
 
 			if test.wantQuit {
-				if !isTeaQuit(command) {
-					t.Fatalf("returned cmd is not tea.Quit")
-				}
+				require.True(t, isTeaQuit(command), "returned cmd is not tea.Quit")
 			} else if test.wantCmdNonNil {
-				if command == nil {
-					t.Fatal("returned cmd = nil, want non-nil")
-				}
+				require.NotNil(t, command, "returned cmd = nil, want non-nil")
 			} else {
-				if command != nil {
-					t.Errorf("returned cmd = non-nil, want nil")
-				}
+				assert.Nil(t, command, "returned cmd = non-nil, want nil")
 			}
 
-			if test.wantCanceled && !sentinelCanceled {
-				t.Error("cancelInitializationCount was not called")
+			if test.wantCanceled {
+				assert.True(t, sentinelCanceled, "cancelInitializationCount was not called")
 			}
 
-			if test.wantCleared && model.cancelInitializationCount != nil {
-				t.Error("cancelInitializationCount = non-nil, want nil after action")
+			if test.wantCleared {
+				assert.Nil(
+					t,
+					model.cancelInitializationCount,
+					"cancelInitializationCount = non-nil, want nil after action",
+				)
 			}
 
-			if test.wantStateSet && model.state != test.wantState {
-				t.Errorf("state = %v, want %v", model.state, test.wantState)
+			if test.wantStateSet {
+				assert.Equal(t, test.wantState, model.state)
 			}
 
 			if !test.skipLogCheck {
-				if !initLogContains(model, test.wantLogSubstr) {
-					t.Errorf("missing log line containing %q", test.wantLogSubstr)
-				}
+				assert.True(
+					t,
+					initLogContains(model, test.wantLogSubstr),
+					"missing log line containing %q",
+					test.wantLogSubstr,
+				)
 			}
 		})
 	}
@@ -745,24 +604,13 @@ func TestInitializationCountFilesStartCommandAsync(t *testing.T) {
 
 	resultMessage := runCmds(t, model, drainerCommand)
 	result, ok := resultMessage.(initializationCountFilesResultMessage)
-	if !ok {
-		t.Fatalf("runCmds returned %T, want initializationCountFilesResultMessage", resultMessage)
-	}
+	require.True(t, ok, "runCmds returned %T, want initializationCountFilesResultMessage", resultMessage)
 
-	if result.err != nil {
-		t.Fatalf("count error: %v", result.err)
-	}
-	if result.filesCount != 5 {
-		t.Errorf("filesCount = %d, want 5", result.filesCount)
-	}
+	require.NoError(t, result.err)
+	assert.Equal(t, 5, result.filesCount)
 
 	_, _ = model.Update(result)
 
-	if initProgress(model) != -1 {
-		t.Errorf("countFilesProgress = %d, want -1 after result", initProgress(model))
-	}
-
-	if !initLogContains(model, "counted a total of 5 audio files successfully") {
-		t.Error("missing success log line")
-	}
+	assert.Equal(t, -1, initProgress(model), "countFilesProgress = %d, want -1 after result")
+	assert.True(t, initLogContains(model, "counted a total of 5 audio files successfully"))
 }

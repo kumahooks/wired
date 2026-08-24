@@ -6,22 +6,19 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"wired/internal/app/ui/action"
 	"wired/internal/core/config"
 	"wired/internal/core/keymap"
-	"wired/internal/core/theme"
+	"wired/internal/core/testutil"
 )
 
 func defaultKeyMap(t *testing.T) keymap.KeyMap {
 	t.Helper()
 
-	keyMap, err := keymap.New(config.Defaults().Keybinds)
-	if err != nil {
-		t.Fatalf("keymap.New(defaults) error: %v", err)
-	}
-
-	return keyMap
+	return testutil.DefaultKeyMap(t)
 }
 
 func TestNewSeedsButtonsAndDefaults(t *testing.T) {
@@ -30,28 +27,14 @@ func TestNewSeedsButtonsAndDefaults(t *testing.T) {
 	keyMap := defaultKeyMap(t)
 	model := New(keyMap)
 
-	if len(model.buttons) != 2 {
-		t.Fatalf("len(buttons) = %d, want 2", len(model.buttons))
-	}
-	if model.buttons[0].action != actionReload {
-		t.Errorf("buttons[0].action = %v, want actionReload", model.buttons[0].action)
-	}
-	if model.buttons[1].action != actionProceed {
-		t.Errorf("buttons[1].action = %v, want actionProceed", model.buttons[1].action)
-	}
+	require.Len(t, model.buttons, 2)
+	assert.Equal(t, actionReload, model.buttons[0].action)
+	assert.Equal(t, actionProceed, model.buttons[1].action)
+	assert.Zero(t, model.cursorPosition)
+	assert.Equal(t, keyMap, model.keyMap)
 
-	if model.cursorPosition != 0 {
-		t.Errorf("cursorPosition = %d, want 0", model.cursorPosition)
-	}
-
-	if !reflect.DeepEqual(model.keyMap, keyMap) {
-		t.Errorf("keyMap = %#v, want the passed keyMap", model.keyMap)
-	}
-
-	wantStyle := newStyle(theme.Default())
-	if !reflect.DeepEqual(model.style, wantStyle) {
-		t.Errorf("style = %#v, want newStyle(theme.Default())", model.style)
-	}
+	wantStyle := newStyle(testutil.DefaultTheme())
+	assert.Equal(t, wantStyle, model.style)
 }
 
 func TestApplyThemeRebuildsStyle(t *testing.T) {
@@ -59,34 +42,12 @@ func TestApplyThemeRebuildsStyle(t *testing.T) {
 
 	model := New(defaultKeyMap(t))
 
-	customTheme := theme.New(config.ThemeConfig{
-		Surface:           "#0a0a0a",
-		SurfaceAlt:        "#0b0b0b",
-		BorderPanel:       "#1a1a1a",
-		BorderHairline:    "#0c0c0c",
-		TextPrimary:       "#aaaaaa",
-		TextStrong:        "#ffffff",
-		TextMuted:         "#888888",
-		TextDim:           "#999999",
-		TextFaint:         "#777777",
-		TextPlaceholder:   "#666666",
-		AccentInteractive: "#b8748a",
-		AccentDeep:        "#ad7084",
-		AccentBright:      "#d94ea0",
-		AccentConfirm:     "#b25c83",
-		AccentLink:        "#a65e6e",
-		AccentPrompt:      "#b90074",
-		AccentDanger:      "#ff6b6b",
-		AccentError:       "#112233",
-		Track:             "#4a4a4a",
-	})
+	customTheme := testutil.CustomTheme()
 
 	model.ApplyTheme(customTheme)
 
 	wantStyle := newStyle(customTheme)
-	if !reflect.DeepEqual(model.style, wantStyle) {
-		t.Errorf("style after ApplyTheme = %#v, want newStyle(customTheme)", model.style)
-	}
+	assert.Equal(t, wantStyle, model.style)
 }
 
 func TestApplyKeyMapStoresKeyMap(t *testing.T) {
@@ -101,15 +62,11 @@ func TestApplyKeyMapStoresKeyMap(t *testing.T) {
 		Quit:      []string{"q"},
 	}
 	alternateKeyMap, err := keymap.New(alternateBindings)
-	if err != nil {
-		t.Fatalf("keymap.New(alternate) error: %v", err)
-	}
+	require.NoError(t, err)
 
 	model.ApplyKeyMap(alternateKeyMap)
 
-	if !reflect.DeepEqual(model.keyMap, alternateKeyMap) {
-		t.Errorf("keyMap after ApplyKeyMap = %#v, want alternateKeyMap", model.keyMap)
-	}
+	assert.Equal(t, alternateKeyMap, model.keyMap)
 }
 
 func TestAppendLog(t *testing.T) {
@@ -132,22 +89,12 @@ func TestAppendLog(t *testing.T) {
 
 			model.AppendLog(test.line, test.logType)
 
-			if model.logCount != 1 {
-				t.Fatalf("logCount = %d, want 1", model.logCount)
-			}
-
-			if len(model.logLines) != 1 {
-				t.Fatalf("len(logLines) = %d, want 1", len(model.logLines))
-			}
+			assert.Equal(t, 1, model.logCount)
+			require.Len(t, model.logLines, 1)
 
 			wantText := "[1] " + test.line
-			if got := model.logLines[0].text; got != wantText {
-				t.Errorf("logLines[0].text = %q, want %q", got, wantText)
-			}
-
-			if model.logLines[0].logType != test.logType {
-				t.Errorf("logLines[0].logType = %v, want %v", model.logLines[0].logType, test.logType)
-			}
+			assert.Equal(t, wantText, model.logLines[0].text)
+			assert.Equal(t, test.logType, model.logLines[0].logType)
 		})
 	}
 }
@@ -170,23 +117,13 @@ func TestAppendLogAccumulatesInOrder(t *testing.T) {
 		model.AppendLog(line.text, line.logType)
 	}
 
-	if model.logCount != len(lines) {
-		t.Fatalf("logCount = %d, want %d", model.logCount, len(lines))
-	}
-
-	if len(model.logLines) != len(lines) {
-		t.Fatalf("len(logLines) = %d, want %d", len(model.logLines), len(lines))
-	}
+	assert.Equal(t, len(lines), model.logCount)
+	require.Len(t, model.logLines, len(lines))
 
 	for index, line := range lines {
 		wantText := "[" + strconv.Itoa(index+1) + "] " + line.text
-		if got := model.logLines[index].text; got != wantText {
-			t.Errorf("logLines[%d].text = %q, want %q", index, got, wantText)
-		}
-
-		if model.logLines[index].logType != line.logType {
-			t.Errorf("logLines[%d].logType = %v, want %v", index, model.logLines[index].logType, line.logType)
-		}
+		assert.Equal(t, wantText, model.logLines[index].text)
+		assert.Equal(t, line.logType, model.logLines[index].logType)
 	}
 }
 
@@ -210,9 +147,7 @@ func TestSetCountFilesProgress(t *testing.T) {
 
 			model.SetCountFilesProgress(test.value)
 
-			if model.countFilesProgress != test.value {
-				t.Errorf("countFilesProgress = %d, want %d", model.countFilesProgress, test.value)
-			}
+			assert.Equal(t, test.value, model.countFilesProgress)
 		})
 	}
 }
@@ -287,12 +222,10 @@ func TestHandleMessage(t *testing.T) {
 
 			gotAction := model.HandleMessage(test.message)
 
-			if reflect.TypeOf(gotAction) != reflect.TypeOf(test.wantAction) {
-				t.Fatalf("HandleMessage action = %T, want %T", gotAction, test.wantAction)
-			}
+			assert.Equal(t, reflect.TypeOf(test.wantAction), reflect.TypeOf(gotAction))
 
-			if test.wantCursorSet && model.cursorPosition != test.wantCursor {
-				t.Errorf("cursorPosition = %d, want %d", model.cursorPosition, test.wantCursor)
+			if test.wantCursorSet {
+				assert.Equal(t, test.wantCursor, model.cursorPosition)
 			}
 		})
 	}

@@ -1,10 +1,14 @@
 package initializing
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 // makeNButtons returns a button row of length n, with placeholder labels and actions.
-func makeNButtons(n int) []button {
-	buttons := make([]button, n)
+func makeNButtons(buttonCount int) []button {
+	buttons := make([]button, buttonCount)
 	for index := range buttons {
 		buttons[index] = button{label: "btn", action: actionReload}
 	}
@@ -77,12 +81,7 @@ func TestMoveCursor(t *testing.T) {
 
 			model.moveCursor(test.delta)
 
-			if model.cursorPosition != test.wantCursor {
-				t.Fatalf(
-					"cursorPosition = %d, want %d (start %d, delta %d, buttons %d)",
-					model.cursorPosition, test.wantCursor, test.start, test.delta, test.buttons,
-				)
-			}
+			assert.Equal(t, test.wantCursor, model.cursorPosition)
 		})
 	}
 }
@@ -97,8 +96,5 @@ func TestMoveCursorEmptyButtonsIsNoOp(t *testing.T) {
 
 	model.moveCursor(1)
 
-	if model.cursorPosition != 0 {
-		t.Fatalf("cursorPosition = %d, want 0 on empty buttons", model.cursorPosition)
-	}
+	assert.Zero(t, model.cursorPosition)
 }
-

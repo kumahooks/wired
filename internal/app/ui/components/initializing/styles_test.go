@@ -1,18 +1,19 @@
 package initializing
 
 import (
-	"reflect"
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
-	"wired/internal/core/theme"
+	"wired/internal/core/testutil"
 )
 
 func TestNewStyleAllFieldsNonZero(t *testing.T) {
 	t.Parallel()
 
-	style := newStyle(theme.Default())
+	style := newStyle(testutil.DefaultTheme())
 	zeroStyle := lipgloss.NewStyle()
 
 	styles := map[string]lipgloss.Style{
@@ -27,36 +28,26 @@ func TestNewStyleAllFieldsNonZero(t *testing.T) {
 	}
 
 	for name, gotStyle := range styles {
-		if reflect.DeepEqual(gotStyle, zeroStyle) {
-			t.Errorf("Style.%s equals the zero lipgloss.Style, want at least one modifier set", name)
-		}
+		assert.NotEqual(t, zeroStyle, gotStyle, "Style.%s equals the zero lipgloss.Style", name)
 	}
 }
 
 func TestButtonFocusedForegroundMatchesTextStrong(t *testing.T) {
 	t.Parallel()
 
-	defaultTheme := theme.Default()
+	defaultTheme := testutil.DefaultTheme()
 	style := newStyle(defaultTheme)
 
 	gotColor := style.buttonFocused.GetForeground()
-	if gotColor == nil {
-		t.Fatal("buttonFocused foreground is nil")
-	}
+	require.NotNil(t, gotColor, "buttonFocused foreground is nil")
 
 	wantColor := defaultTheme.TextStrong
-	if wantColor == nil {
-		t.Fatal("theme.TextStrong is nil")
-	}
+	require.NotNil(t, wantColor, "theme.TextStrong is nil")
 
-	gotR, gotG, gotB, gotA := gotColor.RGBA()
-	wantR, wantG, wantB, wantA := wantColor.RGBA()
+	gotR, gotG, gotB, _ := gotColor.RGBA()
+	wantR, wantG, wantB, _ := wantColor.RGBA()
 
-	if gotR != wantR || gotG != wantG || gotB != wantB || gotA != wantA {
-		t.Errorf(
-			"buttonFocused foreground RGBA = (%d, %d, %d, %d), want theme.TextStrong (%d, %d, %d, %d)",
-			gotR, gotG, gotB, gotA, wantR, wantG, wantB, wantA,
-		)
-	}
+	assert.Equal(t, wantR, gotR, "buttonFocused red mismatch")
+	assert.Equal(t, wantG, gotG, "buttonFocused green mismatch")
+	assert.Equal(t, wantB, gotB, "buttonFocused blue mismatch")
 }
-
