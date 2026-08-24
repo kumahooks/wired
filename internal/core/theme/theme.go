@@ -10,7 +10,6 @@ import (
 )
 
 type Theme struct {
-	Background        color.Color
 	Surface           color.Color
 	SurfaceAlt        color.Color
 	BorderPanel       color.Color
