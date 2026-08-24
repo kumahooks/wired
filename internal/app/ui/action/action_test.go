@@ -49,4 +49,3 @@ func TestClosureComponentSatisfiesInterface(t *testing.T) {
 		t.Fatalf("HandleMessage(nil) = %T, want NoAction", got)
 	}
 }
-
