@@ -1,17 +1,17 @@
 // Package action defines the action contract between UI components and the UIModel. A component returns an Action from
-// HandleMsg, while UIModel type-switches on it to decide state transitions and side effects.
+// HandleMessage, while UIModel type-switches on it to decide state transitions and side effects.
 package action
 
 import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// Action is any value a component returns from HandleMsg. UIModel type-switches on it.
+// Action is any value a component returns from HandleMessage. UIModel type-switches on it.
 type Action any
 
 // Component is a UI unit the UIModel forwards messages to and receives actions from.
 type Component interface {
-	HandleMsg(msg tea.Msg) Action
+	HandleMessage(msg tea.Msg) Action
 }
 
 // NoAction means the component consumed the message but requests nothing.
