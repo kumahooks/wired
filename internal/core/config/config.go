@@ -57,18 +57,18 @@ type Config struct {
 
 // Load reads the config file from disk, validates it, prunes invalid library paths, and persists the pruned form back.
 // The returned bool is true when no config file existed and one was just created from defaults.
-func Load() (*Config, bool, error) {
+func Load() (*Config, bool, []string, error) {
 	var isConfigDefaults bool = false
 
 	configFilePath, err := getConfigPath()
 	if err != nil {
-		return nil, isConfigDefaults, fmt.Errorf("[config:Load] resolve config path: %w", err)
+		return nil, isConfigDefaults, []string{}, fmt.Errorf("[config:Load] resolve config path: %w", err)
 	}
 
 	_, err = os.Stat(configFilePath)
 	if err != nil && os.IsNotExist(err) {
 		if err = ensureConfigExists(configFilePath); err != nil {
-			return nil, isConfigDefaults, fmt.Errorf("[config:Load] ensure config exists: %w", err)
+			return nil, isConfigDefaults, []string{}, fmt.Errorf("[config:Load] ensure config exists: %w", err)
 		}
 
 		isConfigDefaults = true
@@ -76,29 +76,25 @@ func Load() (*Config, bool, error) {
 
 	fileData, err := os.ReadFile(configFilePath)
 	if err != nil {
-		return nil, isConfigDefaults, fmt.Errorf("[config:Load] read config file: %w", err)
+		return nil, isConfigDefaults, []string{}, fmt.Errorf("[config:Load] read config file: %w", err)
 	}
 
 	configData := Defaults()
 	if err = toml.Unmarshal(fileData, &configData); err != nil {
-		return nil, isConfigDefaults, fmt.Errorf("[config:Load] parse config file: %w", err)
+		return nil, isConfigDefaults, []string{}, fmt.Errorf("[config:Load] parse config file: %w", err)
 	}
 
 	if err = configData.validateConfigValues(); err != nil {
-		return nil, isConfigDefaults, fmt.Errorf("[config:Load] validate config: %w", err)
-	}
-
-	if len(configData.LibrariesPaths) > 0 {
-		// TODO: in truth I do not like the idea of mutating the file here...
-		// I should think of a way to improve this once we introduce the initialization view...
-		configData.clearInvalidLibraryPaths()
+		return nil, isConfigDefaults, []string{}, fmt.Errorf("[config:Load] validate config: %w", err)
 	}
 
 	if err = configData.saveFile(); err != nil {
-		return nil, isConfigDefaults, fmt.Errorf("[config:Load] persist config: %w", err)
+		return nil, isConfigDefaults, []string{}, fmt.Errorf("[config:Load] persist config: %w", err)
 	}
 
-	return &configData, isConfigDefaults, nil
+	invalidLibraryPaths := configData.getAndClearInvalidLibraryPaths()
+
+	return &configData, isConfigDefaults, invalidLibraryPaths, nil
 }
 
 func (config *Config) validateConfigValues() error {
@@ -160,21 +156,25 @@ func (config *Config) validateConfigValues() error {
 	return errors.Join(errs...)
 }
 
-func (config *Config) clearInvalidLibraryPaths() {
+func (config *Config) getAndClearInvalidLibraryPaths() []string {
+	var invalidPaths []string = []string{}
 	var validPaths []string = []string{}
 
 	for _, path := range config.LibrariesPaths {
 		expandedPath := expandPath(path)
 
 		info, err := os.Stat(expandedPath)
-		if err != nil || !info.IsDir() {
+		if err == nil && info.IsDir() {
+			validPaths = append(validPaths, expandedPath)
 			continue
 		}
 
-		validPaths = append(validPaths, expandedPath)
+		invalidPaths = append(invalidPaths, expandedPath)
 	}
 
 	config.LibrariesPaths = validPaths
+
+	return invalidPaths
 }
 
 func (config *Config) saveFile() error {

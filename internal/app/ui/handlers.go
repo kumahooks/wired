@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -52,6 +53,22 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 	model.initializationModel.ApplyKeyMap(model.keyMap)
 	model.initializationModel.AppendLog("keybindings loaded successfully~", initializing.LogNormal)
 
+	if len(message.invalidLibraryPaths) > 0 {
+		var pluralSuffix string = ""
+		if len(message.invalidLibraryPaths) > 1 {
+			pluralSuffix = "s"
+		}
+
+		model.initializationModel.AppendLog(
+			fmt.Sprintf(
+				"invalid path%s found (╥﹏╥): %s",
+				pluralSuffix,
+				strings.Join(message.invalidLibraryPaths, ", "),
+			),
+			initializing.LogWarning,
+		)
+	}
+
 	return initializationLoadLibraryCacheCommand()
 }
 
@@ -68,7 +85,7 @@ func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 
 	if len(model.config.LibrariesPaths) > 0 {
 		model.initializationModel.AppendLog(
-			"no scanned library found, do you want to scan now?",
+			"no scanned songs found, do you want to scan now?",
 			initializing.LogWarning,
 		)
 

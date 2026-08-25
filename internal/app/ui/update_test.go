@@ -157,6 +157,26 @@ func TestHandleInitializationLoadConfigResultDefaults(t *testing.T) {
 	assert.NotNil(t, command, "returned cmd = nil, want non-nil (libraries present)")
 }
 
+func TestHandleInitializationLoadConfigResultInvalidLibraryPaths(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+
+	customConfig := config.Defaults()
+	customConfig.LibrariesPaths = []string{t.TempDir()}
+
+	_, command := model.Update(initializationLoadConfigResultMessage{
+		config:              &customConfig,
+		isConfigDefaults:    false,
+		invalidLibraryPaths: []string{"/this/path/does/not/exist"},
+		err:                 nil,
+	})
+
+	assert.True(t, initLogContains(model, "invalid path found (╥﹏╥): /this/path/does/not/exist"))
+
+	assert.NotNil(t, command, "returned cmd = nil, want non-nil (libraries present)")
+}
+
 func TestHandleInitializationLoadConfigResultHappyPath(t *testing.T) {
 	t.Parallel()
 
@@ -290,7 +310,7 @@ func TestHandleEmptyLibraryCacheOffersScan(t *testing.T) {
 	_, command = model.Update(message)
 
 	assert.Nil(t, command, "returned cmd should be nil on empty cache")
-	assert.True(t, initLogContains(model, "no scanned library found, do you want to scan now?"))
+	assert.True(t, initLogContains(model, "no scanned songs found, do you want to scan now?"))
 	assert.False(
 		t,
 		model.initializationModel.IsConfigError(),

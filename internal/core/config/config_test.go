@@ -196,11 +196,10 @@ func TestClearInvalidLibraryPaths(t *testing.T) {
 		},
 	}
 
-	config.clearInvalidLibraryPaths()
+	invalidPaths := config.getAndClearInvalidLibraryPaths()
 
-	if assert.Len(t, config.LibrariesPaths, 1) {
-		assert.Equal(t, realDir, config.LibrariesPaths[0])
-	}
+	assert.Equal(t, []string{"/this/path/does/not/exist", nestedFile}, invalidPaths)
+	assert.Equal(t, []string{realDir}, config.LibrariesPaths)
 }
 
 func TestEnsureConfigExists(t *testing.T) {

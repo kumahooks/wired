@@ -12,8 +12,13 @@ import (
 // initializationLoadConfigCommand returns a tea.Cmd that loads config from disk into a fresh *Config.
 func initializationLoadConfigCommand() tea.Cmd {
 	return func() tea.Msg {
-		loadedConfig, isConfigDefaults, err := config.Load()
-		return initializationLoadConfigResultMessage{config: loadedConfig, isConfigDefaults: isConfigDefaults, err: err}
+		loadedConfig, isConfigDefaults, invalidLibraryPaths, err := config.Load()
+		return initializationLoadConfigResultMessage{
+			config:              loadedConfig,
+			isConfigDefaults:    isConfigDefaults,
+			invalidLibraryPaths: invalidLibraryPaths,
+			err:                 err,
+		}
 	}
 }
 

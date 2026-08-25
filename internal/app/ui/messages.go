@@ -8,9 +8,10 @@ import (
 
 // initializationLoadConfigResultMessage is produced by initializationLoadConfigCommand when config.Load completes.
 type initializationLoadConfigResultMessage struct {
-	config           *config.Config
-	isConfigDefaults bool
-	err              error
+	config              *config.Config
+	isConfigDefaults    bool
+	invalidLibraryPaths []string
+	err                 error
 }
 
 // initializationLoadLibraryCacheResultMessage is produced by initializationLoadLibraryCacheCommand when the library
