@@ -24,7 +24,11 @@ type Style struct {
 func newStyle(resolvedTheme theme.Theme) Style {
 	return Style{
 		// Panel renders as a simple area with no background color and with vertical/horizontal paddings.
-		panel: lipgloss.NewStyle().Foreground(resolvedTheme.TextPrimary).Padding(1, 2),
+		panel: lipgloss.NewStyle().
+			Foreground(resolvedTheme.TextPrimary).
+			Width(logAreaWidth+4).
+			AlignHorizontal(lipgloss.Center).
+			Padding(1, 2),
 
 		// Log area renders the log lines within a small container with a background showing the whole area.
 		logArea: lipgloss.NewStyle().Background(resolvedTheme.SurfaceAlt).Padding(0, 1),
