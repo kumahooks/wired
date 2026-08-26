@@ -22,28 +22,27 @@ type initializationLoadLibraryCacheResultMessage struct {
 	err     error
 }
 
-// initializationFetchFilesStartMessage is produced by initializationFetchFilesStartCommand right after the config is
-// loaded and libraries exist. It carries the channels and cancel func that the drainer and the cancel path share.
-type initializationFetchFilesStartMessage struct {
+// fetchFilesStartMessage is produced on demand by the user. It carries the channels and cancel func that the drainer
+// and the cancel path share.
+type fetchFilesStartMessage struct {
 	progressChannel <-chan int
-	resultChannel   <-chan initializationFetchFilesResultMessage
+	resultChannel   <-chan fetchFilesResultMessage
 	scanCancel      context.CancelFunc
 	generation      uint64
 }
 
-// initializationFetchFilesResultMessage is produced when the fetch finishes, carrying the discovered files. The file
-// slice is owned by the model after the handler runs.
-type initializationFetchFilesResultMessage struct {
+// fetchFilesResultMessage is produced when the fetch finishes, carrying the discovered files.
+type fetchFilesResultMessage struct {
 	files      []audio.File
 	err        error
 	generation uint64
 }
 
-// initializationFetchFilesWaitProgressMessage is produced by initializationFetchFilesWaitProgressCommand for each
-// progress tick, carrying the running total and the channels to keep draining.
-type initializationFetchFilesWaitProgressMessage struct {
+// fetchFilesWaitProgressMessage is produced by fetchFilesWaitProgressCommand for each progress tick, carrying the running
+// total and the channels to keep draining.
+type fetchFilesWaitProgressMessage struct {
 	filesCount      int
 	progressChannel <-chan int
-	resultChannel   <-chan initializationFetchFilesResultMessage
+	resultChannel   <-chan fetchFilesResultMessage
 	generation      uint64
 }

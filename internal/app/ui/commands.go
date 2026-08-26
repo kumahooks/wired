@@ -13,6 +13,7 @@ import (
 func initializationLoadConfigCommand() tea.Cmd {
 	return func() tea.Msg {
 		loadedConfig, isConfigDefaults, invalidLibraryPaths, err := config.Load()
+
 		return initializationLoadConfigResultMessage{
 			config:              loadedConfig,
 			isConfigDefaults:    isConfigDefaults,
@@ -34,17 +35,17 @@ func initializationLoadLibraryCacheCommand() tea.Cmd {
 	}
 }
 
-// initializationFetchFilesStartCommand launches the fetch goroutine and returns a StartMessage with the channels. The
-// scan context is derived from the orchestrator context so an orchestrator shutdown cancels the scan. The channel is
-// buffered so the walk does not stall on the tea message round-trip.
-func initializationFetchFilesStartCommand(
+// fetchFilesStartCommand launches the fetch goroutine and returns a StartMessage with the channels. The scan context
+// is derived from the orchestrator context so an orchestrator shutdown cancels the scan. The channel is buffered so
+// the walk does not stall on the tea message round-trip.
+func fetchFilesStartCommand(
 	orchestratorContext context.Context,
 	generation uint64,
 	rootPaths []string,
 ) tea.Cmd {
 	return func() tea.Msg {
 		progressChannel := make(chan int, fetchFilesProgressChannelBuffer)
-		resultChannel := make(chan initializationFetchFilesResultMessage, 1)
+		resultChannel := make(chan fetchFilesResultMessage, 1)
 
 		scanContext, scanCancel := context.WithCancel(orchestratorContext)
 
@@ -54,14 +55,14 @@ func initializationFetchFilesStartCommand(
 			_, err := audio.FetchFiles(scanContext, rootPaths, &files, progressChannel)
 			close(progressChannel)
 
-			resultChannel <- initializationFetchFilesResultMessage{
+			resultChannel <- fetchFilesResultMessage{
 				files:      files,
 				err:        err,
 				generation: generation,
 			}
 		}()
 
-		return initializationFetchFilesStartMessage{
+		return fetchFilesStartMessage{
 			progressChannel: progressChannel,
 			resultChannel:   resultChannel,
 			scanCancel:      scanCancel,
@@ -70,11 +71,11 @@ func initializationFetchFilesStartCommand(
 	}
 }
 
-// initializationFetchFilesWaitProgressCommand drains the progress channel, returning a progress message per tick and
-// the final result message once the channel closes.
-func initializationFetchFilesWaitProgressCommand(
+// fetchFilesWaitProgressCommand drains the progress channel, returning a progress message per tick and the final result
+// message once the channel closes.
+func fetchFilesWaitProgressCommand(
 	progressChannel <-chan int,
-	resultChannel <-chan initializationFetchFilesResultMessage,
+	resultChannel <-chan fetchFilesResultMessage,
 	generation uint64,
 ) tea.Cmd {
 	return func() tea.Msg {
@@ -82,14 +83,14 @@ func initializationFetchFilesWaitProgressCommand(
 		if !ok {
 			result := <-resultChannel
 
-			return initializationFetchFilesResultMessage{
+			return fetchFilesResultMessage{
 				files:      result.files,
 				err:        result.err,
 				generation: result.generation,
 			}
 		}
 
-		return initializationFetchFilesWaitProgressMessage{
+		return fetchFilesWaitProgressMessage{
 			filesCount:      filesCount,
 			progressChannel: progressChannel,
 			resultChannel:   resultChannel,
@@ -98,7 +99,7 @@ func initializationFetchFilesWaitProgressCommand(
 	}
 }
 
-func initializationScanFilesMetatagStartCommand() tea.Cmd {
+func scanFilesMetatagStartCommand() tea.Cmd {
 	return func() tea.Msg {
 		return nil
 	}

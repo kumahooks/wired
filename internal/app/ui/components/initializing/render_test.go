@@ -30,29 +30,6 @@ func TestRenderWithNormalAndErrorLogs(t *testing.T) {
 	assertSnapshot(t, "render_logs_normal_and_error", model.Render(80, 24))
 }
 
-func TestRenderFetchInProgress(t *testing.T) {
-	t.Parallel()
-
-	model := New(testutil.DefaultKeyMap(t))
-	model.AppendLog("fetching total library files", LogNormal)
-	model.SetFetchFilesProgress(42)
-	model.SetConfigError()
-
-	assertSnapshot(t, "render_count_in_progress", model.Render(80, 24))
-}
-
-func TestRenderFetchDone(t *testing.T) {
-	t.Parallel()
-
-	model := New(testutil.DefaultKeyMap(t))
-	model.AppendLog("fetching total library files", LogNormal)
-	model.AppendLog("fetched a total of 137 audio files successfully", LogNormal)
-	model.SetFetchFilesProgress(-1)
-	model.SetConfigError()
-
-	assertSnapshot(t, "render_count_done", model.Render(80, 24))
-}
-
 func TestRenderAllErrorLogs(t *testing.T) {
 	t.Parallel()
 
@@ -63,19 +40,6 @@ func TestRenderAllErrorLogs(t *testing.T) {
 	model.SetConfigError()
 
 	assertSnapshot(t, "render_all_errors", model.Render(80, 24))
-}
-
-func TestRenderEmptyLibrary(t *testing.T) {
-	t.Parallel()
-
-	model := New(testutil.DefaultKeyMap(t))
-	model.AppendLog("config loaded successfully~", LogNormal)
-	model.AppendLog("theme loaded successfully~", LogNormal)
-	model.AppendLog("keybindings loaded successfully~", LogNormal)
-	model.AppendLog("no library found, do you want to scan now?", LogWarning)
-	model.SetEmptyLibrary()
-
-	assertSnapshot(t, "render_empty_library", model.Render(80, 24))
 }
 
 func TestRenderContainsPanelHeader(t *testing.T) {

@@ -1,9 +1,9 @@
 Completely unorganized and without a deep thought behind.
 
+- [ ] Leader key to trigger commands similar to nvim?
 - [ ] Metatag parsing of audio files.
 - [ ] Organization and definitions of albums and music, based on the retrieved metatag.
 - [ ] Cache of previously scanned files.
-- [ ] Leader key to trigger commands similar to nvim?
 - [ ] Dialog on the screen which *can* trigger actions depending on user's response.
 - [ ] Notification system to send messages to the user. (especially useful for debugging)
 - [ ] View: Application layout design.

@@ -8,8 +8,7 @@ import (
 type buttonAction int
 
 const (
-	actionScan buttonAction = iota
-	actionReload
+	actionReloadConfig buttonAction = iota
 	actionProceed
 )
 
@@ -28,9 +27,6 @@ const (
 
 	// modeConfigError means the config failed to load or has an unparseable keymap.
 	modeConfigError
-
-	// modeEmptyLibrary means the library cache is empty but library paths exist, so the user can trigger a full scan.
-	modeEmptyLibrary
 )
 
 // LogType marks a log line as normal or an error so it can be colored differently in the log area.
@@ -55,10 +51,6 @@ type Model struct {
 	// pulling the logs from this service then.
 	logLines []logLine
 	logCount int
-
-	// fetchFilesProgress is the live counter shown between the log area and the hint while the files are being fetched.
-	// a negative value means no fetch is in progress and the line is hidden.
-	fetchFilesProgress int
 
 	// mode decides which buttons are shown to the user depending on the config and cache state.
 	mode initMode

@@ -18,13 +18,11 @@ func New(defaultKeyMap keymap.KeyMap) *Model {
 	model := &Model{
 		mode: modeLoading,
 		buttons: []button{
-			{label: "scan files", action: actionScan},
-			{label: "reload config", action: actionReload},
-			{label: "proceed anyway", action: actionProceed},
+			{label: "reload config", action: actionReloadConfig},
+			{label: "proceed~", action: actionProceed},
 		},
-		keyMap:             defaultKeyMap,
-		style:              newStyle(theme.Default()),
-		fetchFilesProgress: -1,
+		keyMap: defaultKeyMap,
+		style:  newStyle(theme.Default()),
 	}
 
 	model.cursorPosition = model.canonicalIndexForVisible(model.firstVisibleAction())
@@ -69,10 +67,8 @@ func (model *Model) HandleMessage(message tea.Msg) action.Action {
 		}
 
 		switch model.buttons[model.cursorPosition].action {
-		case actionReload:
+		case actionReloadConfig:
 			return action.ReloadConfigAction{}
-		case actionScan:
-			return action.ScanLibraryFullAction{}
 		case actionProceed:
 			return action.ProceedFromInitAction{}
 		}
@@ -81,19 +77,9 @@ func (model *Model) HandleMessage(message tea.Msg) action.Action {
 	return action.NoAction{}
 }
 
-// SetFetchFilesProgress stores the latest fetched-files total for rendering.
-func (model *Model) SetFetchFilesProgress(count int) {
-	model.fetchFilesProgress = count
-}
-
 // SetConfigError transitions the screen to modeConfigError. The user can either reload the config, or just proceed.
 func (model *Model) SetConfigError() {
 	model.setMode(modeConfigError)
-}
-
-// SetEmptyLibrary transitions the screen to modeEmptyLibrary. The user can either trigger a scan, or just proceed.
-func (model *Model) SetEmptyLibrary() {
-	model.setMode(modeEmptyLibrary)
 }
 
 // setMode stores the given mode and moves the cursor onto the first visible button.
@@ -106,9 +92,7 @@ func (model *Model) setMode(mode initMode) {
 func buttonsForMode(mode initMode) []buttonAction {
 	switch mode {
 	case modeConfigError:
-		return []buttonAction{actionReload, actionProceed}
-	case modeEmptyLibrary:
-		return []buttonAction{actionScan, actionProceed}
+		return []buttonAction{actionReloadConfig, actionProceed}
 	default:
 		return []buttonAction{actionProceed}
 	}
@@ -173,9 +157,4 @@ func (model *Model) LastLogType() LogType {
 	}
 
 	return model.logLines[len(model.logLines)-1].logType
-}
-
-// FetchFilesProgress returns the current live counter value. A negative value means no fetch is in progress.
-func (model *Model) FetchFilesProgress() int {
-	return model.fetchFilesProgress
 }

@@ -53,7 +53,7 @@ func executeCmd(t *testing.T, command tea.Cmd) tea.Msg {
 }
 
 // runCmds drives the fetch drainer to completion. It executes the drainer command, feeds WaitProgress messages back
-// into model.Update to get the next drainer, and returns the first initializationFetchFilesResultMessage.
+// into model.Update to get the next drainer, and returns the first fetchFilesResultMessage.
 func runCmds(t *testing.T, model *UIModel, command tea.Cmd) tea.Msg {
 	t.Helper()
 
@@ -66,9 +66,9 @@ func runCmds(t *testing.T, model *UIModel, command tea.Cmd) tea.Msg {
 		select {
 		case message := <-result:
 			switch message := message.(type) {
-			case initializationFetchFilesResultMessage:
+			case fetchFilesResultMessage:
 				return message
-			case initializationFetchFilesWaitProgressMessage:
+			case fetchFilesWaitProgressMessage:
 				_, command = model.Update(message)
 			default:
 				t.Fatalf("unexpected message from drainer: %T", message)
@@ -108,10 +108,6 @@ func initLastLog(model *UIModel) (string, initializing.LogType) {
 	}
 
 	return texts[len(texts)-1], model.initializationModel.LastLogType()
-}
-
-func initProgress(model *UIModel) int {
-	return model.initializationModel.FetchFilesProgress()
 }
 
 func TestHandleInitializationLoadConfigResultError(t *testing.T) {
@@ -242,7 +238,7 @@ func TestHandleInitializationLoadConfigResultKeymapParseFailure(t *testing.T) {
 	assert.Nil(t, command, "returned cmd = nil, want nil on keymap parse failure")
 }
 
-func TestHandleInitializationLoadConfigResultNoLibrariesNoCountCmd(t *testing.T) {
+func TestHandleInitializationLoadConfigResultNoLibrariesErrorsOut(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
@@ -292,7 +288,7 @@ func TestHandleInitializationLoadConfigResultLibrariesEmitsCacheLoad(t *testing.
 	require.True(t, ok, "cmd produced %T, want initializationLoadLibraryCacheResultMessage", message)
 }
 
-func TestHandleEmptyLibraryCacheOffersScan(t *testing.T) {
+func TestHandleEmptyLibraryCacheWarnsUser(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
@@ -311,7 +307,7 @@ func TestHandleEmptyLibraryCacheOffersScan(t *testing.T) {
 	_, command = model.Update(message)
 
 	assert.Nil(t, command, "returned cmd should be nil on empty cache")
-	assert.True(t, initLogContains(model, "no scanned songs found, do you want to scan now?"))
+	assert.True(t, initLogContains(model, "no scanned songs found, you might want to scan them later"))
 	assert.False(
 		t,
 		model.initializationModel.IsConfigError(),
@@ -319,7 +315,7 @@ func TestHandleEmptyLibraryCacheOffersScan(t *testing.T) {
 	)
 }
 
-func TestHandleInitializationFetchFilesStartMessage(t *testing.T) {
+func TestHandleFetchFilesStartMessage(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
@@ -329,9 +325,9 @@ func TestHandleInitializationFetchFilesStartMessage(t *testing.T) {
 	t.Cleanup(cancel)
 
 	progressChannel := make(chan int, 1)
-	resultChannel := make(chan initializationFetchFilesResultMessage, 1)
+	resultChannel := make(chan fetchFilesResultMessage, 1)
 
-	message := initializationFetchFilesStartMessage{
+	message := fetchFilesStartMessage{
 		progressChannel: progressChannel,
 		resultChannel:   resultChannel,
 		scanCancel:      cancel,
@@ -340,65 +336,61 @@ func TestHandleInitializationFetchFilesStartMessage(t *testing.T) {
 
 	_, command := model.Update(message)
 
-	require.NotNil(t, model.library.scanCancel, "cancelInitializationScan = nil, want the cancel func")
+	require.NotNil(t, model.library.scanCancel, "scanCancel = nil, want the cancel func")
 
 	assert.Equal(t, uint64(7), model.library.scanGeneration)
-	assert.Equal(t, 0, initProgress(model))
 
 	require.NotNil(t, command, "returned cmd = nil, want the drainer cmd")
 }
 
-func TestHandleInitializationFetchFilesWaitProgressMessage(t *testing.T) {
+func TestHandleFetchFilesWaitProgressMessage(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
 
 	progressChannel := make(chan int, 1)
-	resultChannel := make(chan initializationFetchFilesResultMessage, 1)
+	resultChannel := make(chan fetchFilesResultMessage, 1)
 
-	_, command := model.Update(initializationFetchFilesWaitProgressMessage{
+	_, command := model.Update(fetchFilesWaitProgressMessage{
 		filesCount:      42,
 		progressChannel: progressChannel,
 		resultChannel:   resultChannel,
 		generation:      3,
 	})
 
-	assert.Equal(t, 42, initProgress(model))
 	assert.NotNil(t, command, "returned cmd = nil, want the next drainer cmd")
 }
 
-func TestHandleInitializationFetchFilesResultMessageStaleGeneration(t *testing.T) {
+func TestHandleFetchFilesResultMessageStaleGeneration(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
 	model.library.scanGeneration = 10
-	model.initializationModel.SetFetchFilesProgress(50)
 
 	sentinelCanceled := false
 	model.library.scanCancel = func() { sentinelCanceled = true }
 
 	initialLogCount := len(model.initializationModel.LogLines())
 
-	_, command := model.Update(initializationFetchFilesResultMessage{
+	_, command := model.Update(fetchFilesResultMessage{
 		files:      nil,
 		err:        nil,
 		generation: 5,
 	})
 
 	assert.Nil(t, command, "returned cmd should be nil on stale generation")
-	assert.False(t, sentinelCanceled, "stale result cleared cancelInitializationScan")
+	assert.False(t, sentinelCanceled, "stale result cleared scanCancel")
 
 	assert.NotNil(
 		t,
 		model.library.scanCancel,
-		"cancelInitializationScan = nil, want unchanged sentinel on stale generation",
+		"scanCancel = nil, want unchanged sentinel on stale generation",
 	)
 
-	assert.Equal(t, 50, initProgress(model), "fetchFilesProgress changed on stale")
 	assert.Len(t, model.initializationModel.LogLines(), initialLogCount, "logCount changed on stale")
 }
 
-func TestHandleInitializationFetchFilesResultMessageCurrentGeneration(t *testing.T) {
+func TestHandleFetchFilesResultMessageCurrentGeneration(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
@@ -409,42 +401,36 @@ func TestHandleInitializationFetchFilesResultMessageCurrentGeneration(t *testing
 
 	discoveredFiles := make([]audio.File, 137)
 
-	_, command := model.Update(initializationFetchFilesResultMessage{
+	_, command := model.Update(fetchFilesResultMessage{
 		files:      discoveredFiles,
 		err:        nil,
 		generation: 10,
 	})
 
 	assert.NotNil(t, command, "returned cmd should be the next-step scan cmd on current generation result")
-	assert.False(t, sentinelCanceled, "current result should set cancelInitializationScan to nil, not call it")
+	assert.False(t, sentinelCanceled, "current result should set scanCancel to nil, not call it")
 	assert.Nil(
 		t,
 		model.library.scanCancel,
-		"cancelInitializationScan = non-nil, want nil after current generation result",
+		"scanCancel = non-nil, want nil after current generation result",
 	)
-	assert.Equal(t, -1, initProgress(model))
-
-	text, logType := initLastLog(model)
-	assert.Equal(t, initializing.LogNormal, logType, "last log type = %v, want LogNormal (text: %q)", logType, text)
-	assert.True(t, strings.Contains(text, "a total of 137 audio files have been found~"))
+	assert.Equal(t, discoveredFiles, model.library.audioFiles)
 }
 
-func TestHandleInitializationFetchFilesResultMessageError(t *testing.T) {
+func TestHandleFetchFilesResultMessageError(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
 	model.library.scanGeneration = 10
-	model.initializationModel.SetFetchFilesProgress(50)
 
 	fetchError := errors.New("[audio:FetchFiles] walk failed")
-	_, command := model.Update(initializationFetchFilesResultMessage{
+	_, command := model.Update(fetchFilesResultMessage{
 		files:      nil,
 		err:        fetchError,
 		generation: 10,
 	})
 
 	assert.Nil(t, command, "returned cmd should be nil on error result")
-	assert.Equal(t, 50, initProgress(model), "fetchFilesProgress changed on error")
 
 	text, logType := initLastLog(model)
 	assert.Equal(t, initializing.LogError, logType, "last log type = %v, want LogError (text: %q)", logType, text)
@@ -474,8 +460,8 @@ func TestHandleKeyPressMsgQuit(t *testing.T) {
 	_, command := model.Update(tea.KeyPressMsg{Mod: tea.ModCtrl, Code: 'd'})
 
 	require.True(t, isTeaQuit(command), "returned cmd is not tea.Quit")
-	assert.True(t, sentinelCanceled, "cancelInitializationScan was not called on quit")
-	assert.Nil(t, model.library.scanCancel, "cancelInitializationScan = non-nil, want nil after quit")
+	assert.True(t, sentinelCanceled, "cancelCurrentFileScan was not called on quit")
+	assert.Nil(t, model.library.scanCancel, "scanCancel = non-nil, want nil after quit")
 }
 
 func TestHandleKeyPressMsgQuitDoesNotMatchNonQuitKey(t *testing.T) {
@@ -501,7 +487,7 @@ func TestHandleKeyPressMsgForwardsToComponentReload(t *testing.T) {
 
 	require.NotNil(t, command, "returned cmd = nil, want non-nil for reload action")
 
-	assert.True(t, sentinelCanceled, "cancelInitializationScan was not called on reload")
+	assert.True(t, sentinelCanceled, "cancelCurrentFileScan was not called on reload")
 	assert.Equal(t, uiInitializing, model.state)
 	assert.True(t, initLogContains(model, "reloading config..."))
 }
@@ -520,7 +506,7 @@ func TestHandleKeyPressMsgForwardsToComponentProceed(t *testing.T) {
 
 	assert.Nil(t, command, "returned cmd should be nil for proceed action")
 
-	assert.True(t, sentinelCanceled, "cancelInitializationScan was not called on proceed")
+	assert.True(t, sentinelCanceled, "cancelCurrentFileScan was not called on proceed")
 	assert.Equal(t, uiIdle, model.state)
 	assert.True(t, initLogContains(model, "proceeding without libraries"))
 }
@@ -579,14 +565,14 @@ func TestHandleComponentAction(t *testing.T) {
 			wantCleared:   true,
 		},
 		{
-			name:          "ScanLibraryFullAction returns count start cmd and stays initializing",
+			name:          "ScanLibraryFullAction returns fetch start cmd and stays initializing",
 			action:        action.ScanLibraryFullAction{},
 			wantCmdNonNil: true,
 			wantState:     uiInitializing,
 			wantStateSet:  true,
-			wantLogSubstr: "scanning library...",
 			wantCanceled:  true,
 			wantCleared:   true,
+			skipLogCheck:  true,
 		},
 		{
 			name:          "ProceedFromInitAction returns nil and goes idle",
@@ -630,14 +616,14 @@ func TestHandleComponentAction(t *testing.T) {
 			}
 
 			if test.wantCanceled {
-				assert.True(t, sentinelCanceled, "cancelInitializationScan was not called")
+				assert.True(t, sentinelCanceled, "cancelCurrentFileScan was not called")
 			}
 
 			if test.wantCleared {
 				assert.Nil(
 					t,
 					model.library.scanCancel,
-					"cancelInitializationScan = non-nil, want nil after action",
+					"scanCancel = non-nil, want nil after action",
 				)
 			}
 
@@ -657,7 +643,7 @@ func TestHandleComponentAction(t *testing.T) {
 	}
 }
 
-func TestInitializationFetchFilesStartCommandAsync(t *testing.T) {
+func TestFetchFilesStartCommandAsync(t *testing.T) {
 	t.Parallel()
 
 	libraryDir := t.TempDir()
@@ -668,21 +654,19 @@ func TestInitializationFetchFilesStartCommandAsync(t *testing.T) {
 	contextForFetch, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	startCommand := initializationFetchFilesStartCommand(contextForFetch, 1, []string{libraryDir})
-	startMessage := executeCmd(t, startCommand).(initializationFetchFilesStartMessage)
+	startCommand := fetchFilesStartCommand(contextForFetch, 1, []string{libraryDir})
+	startMessage := executeCmd(t, startCommand).(fetchFilesStartMessage)
 
 	_, drainerCommand := model.Update(startMessage)
 
 	resultMessage := runCmds(t, model, drainerCommand)
-	result, ok := resultMessage.(initializationFetchFilesResultMessage)
-	require.True(t, ok, "runCmds returned %T, want initializationFetchFilesResultMessage", resultMessage)
+	result, ok := resultMessage.(fetchFilesResultMessage)
+	require.True(t, ok, "runCmds returned %T, want fetchFilesResultMessage", resultMessage)
 
 	require.NoError(t, result.err)
 	assert.Len(t, result.files, 5, "result should carry the discovered audio files")
 
 	_, _ = model.Update(result)
 
-	assert.Equal(t, -1, initProgress(model), "fetchFilesProgress = %d, want -1 after result")
-	assert.True(t, initLogContains(model, "a total of 5 audio files have been found~"))
 	assert.Len(t, model.library.audioFiles, 5, "library.audioFiles should be populated from the result")
 }

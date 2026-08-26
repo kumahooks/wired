@@ -73,8 +73,9 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 }
 
 // handleInitializationLoadLibraryCacheResult routes the user depending on whether a library cache exists. A cache hit
-// moves straight to idle. A cache miss offers a full scan when library paths are configured, otherwise it is treated as
-// a config error since there is nothing to scan.
+// moves straight to idle. A cache miss, when tere are valid libraries path, warns the user about there not being any,
+// cache'd file, so they can scan later on. If no valid library path exists, it is treated as a config error since there
+// is nothing to scan.
 func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 	message initializationLoadLibraryCacheResultMessage,
 ) tea.Cmd {
@@ -85,11 +86,10 @@ func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 
 	if len(model.config.LibrariesPaths) > 0 {
 		model.initializationModel.AppendLog(
-			"no scanned songs found, do you want to scan now?",
+			"no scanned songs found, you might want to scan them later~",
 			initializing.LogWarning,
 		)
 
-		model.initializationModel.SetEmptyLibrary()
 		return nil
 	}
 
@@ -99,25 +99,21 @@ func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 	return nil
 }
 
-// handleInitializationFetchFilesStartMessage stores the scan's cancel func so reload/quit can abort the current scan,
-// seeds the live counter at zero, and launches the first drainer command.
-func (model *UIModel) handleInitializationFetchFilesStartMessage(message initializationFetchFilesStartMessage) tea.Cmd {
+// handleFetchFilesStartMessage stores the scan's cancel func so reload/quit can abort the current scan, seeds the live
+// counter at zero, and launches the first drainer command.
+func (model *UIModel) handleFetchFilesStartMessage(message fetchFilesStartMessage) tea.Cmd {
 	model.library.scanCancel = message.scanCancel
 	model.library.scanGeneration = message.generation
-	model.initializationModel.SetFetchFilesProgress(0)
 
-	return initializationFetchFilesWaitProgressCommand(
+	return fetchFilesWaitProgressCommand(
 		message.progressChannel,
 		message.resultChannel,
 		message.generation,
 	)
 }
 
-// handleInitializationFetchFilesResultMessage finalizes the fetch. It takes ownership of the file slice shipped through
-// the message so no shared mutable state remains with the walk goroutine.
-func (model *UIModel) handleInitializationFetchFilesResultMessage(
-	message initializationFetchFilesResultMessage,
-) tea.Cmd {
+// handleFetchFilesResultMessage finalizes the fetch.
+func (model *UIModel) handleFetchFilesResultMessage(message fetchFilesResultMessage) tea.Cmd {
 	if message.generation == model.library.scanGeneration {
 		model.library.scanCancel = nil
 	}
@@ -134,12 +130,5 @@ func (model *UIModel) handleInitializationFetchFilesResultMessage(
 
 	model.library.audioFiles = message.files
 
-	// Since the fetch has finished, we don't render the progress message anymore.
-	model.initializationModel.SetFetchFilesProgress(-1)
-	model.initializationModel.AppendLog(
-		fmt.Sprintf("a total of %d audio files have been found~", len(message.files)),
-		initializing.LogNormal,
-	)
-
-	return initializationScanFilesMetatagStartCommand()
+	return scanFilesMetatagStartCommand()
 }

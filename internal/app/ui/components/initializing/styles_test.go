@@ -19,9 +19,9 @@ func TestNewStyleAllFieldsNonZero(t *testing.T) {
 	styles := map[string]lipgloss.Style{
 		"panel":         style.panel,
 		"logArea":       style.logArea,
+		"logWarning":    style.logWarning,
 		"logError":      style.logError,
 		"header":        style.header,
-		"progress":      style.progress,
 		"buttonFocused": style.buttonFocused,
 		"buttonBlurred": style.buttonBlurred,
 		"hint":          style.hint,
