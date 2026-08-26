@@ -19,7 +19,7 @@ func New(defaultKeyMap keymap.KeyMap) *Model {
 		mode: modeLoading,
 		buttons: []button{
 			{label: "reload config", action: actionReloadConfig},
-			{label: "proceed~", action: actionProceed},
+			{label: "proceed", action: actionProceed},
 		},
 		keyMap: defaultKeyMap,
 		style:  newStyle(theme.Default()),
