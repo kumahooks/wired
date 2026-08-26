@@ -255,7 +255,7 @@ func TestHandleInitializationLoadConfigResultNoLibrariesErrorsOut(t *testing.T) 
 	require.NotNil(t, command, "returned cmd = nil, want a cache load command after config")
 
 	_, command = model.Update(initializationLoadLibraryCacheResultMessage{
-		library: Library{},
+		library: Library{audioFiles: &[]audio.File{}},
 		err:     nil,
 	})
 
@@ -414,7 +414,7 @@ func TestHandleFetchFilesResultMessageCurrentGeneration(t *testing.T) {
 		model.library.scanCancel,
 		"scanCancel = non-nil, want nil after current generation result",
 	)
-	assert.Equal(t, discoveredFiles, model.library.audioFiles)
+	assert.Equal(t, discoveredFiles, *model.library.audioFiles)
 }
 
 func TestHandleFetchFilesResultMessageError(t *testing.T) {
@@ -668,5 +668,5 @@ func TestFetchFilesStartCommandAsync(t *testing.T) {
 
 	_, _ = model.Update(result)
 
-	assert.Len(t, model.library.audioFiles, 5, "library.audioFiles should be populated from the result")
+	assert.Len(t, *model.library.audioFiles, 5, "library.audioFiles should be populated from the result")
 }

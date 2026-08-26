@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"wired/internal/app/ui"
+	"wired/internal/core/audio"
 	"wired/internal/core/config"
 	"wired/internal/core/keymap"
 )
@@ -15,11 +16,22 @@ import (
 // WiredOrchestrator holds the whole application state. It is kinda like "game state": config, library, playlist, UI, and
 // other domain states live here.
 type WiredOrchestrator struct {
+	// these are used for propagating cancels to the UIModel's contexts.
 	cancelContext  context.Context
 	cancelFunction context.CancelFunc
-	teaProgram     *tea.Program
-	uiModel        *ui.UIModel
-	config         *config.Config
+
+	// teaProgram is a reference to the tea program, a result from `tea.NewProgram`.
+	teaProgram *tea.Program
+
+	// uiModel is the tea's UI, which has it's own lifecycle methods e.g. Init, Update, View.
+	uiModel *ui.UIModel
+
+	// config is the loaded application's config, either the defaults or the users. the initialization pipeline updates
+	// this to the user's if it's a valid config schema. this is shared with uiModel so UI components can change config.
+	config *config.Config
+
+	// library holds the reference to the user's loaded audio files, and is shared with uiModel.
+	library *[]audio.File
 }
 
 // New initializes the WiredOrchestrator structure.
@@ -36,10 +48,11 @@ func New(ctx context.Context) (*WiredOrchestrator, error) {
 		return nil, fmt.Errorf("[wired:New] build default keymap: %w", err)
 	}
 	orchestrator.config = &configDefaults
+	orchestrator.library = &[]audio.File{}
 
 	// UI's model is created as per bubbletea pattern. It includes a reference to every UI component in the application.
 	// The orchestrator is passed down in order for background operations the UI spawns to be canceled elegantly.
-	uiModel, err := ui.New(orchestrator.cancelContext, defaultKeyMap, orchestrator.config)
+	uiModel, err := ui.New(orchestrator.cancelContext, defaultKeyMap, orchestrator.config, orchestrator.library)
 	if err != nil {
 		return nil, err
 	}

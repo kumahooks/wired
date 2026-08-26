@@ -23,7 +23,7 @@ type Library struct {
 	// TODO: this is just what we treat as "this is the library" currently.
 	// eventually, we will implement a more complex data structure once we get metatag parsing.
 	// furthermore, we will load this data from a cache before asking to scan.
-	audioFiles []audio.File
+	audioFiles *[]audio.File
 }
 
 // UIModel holds the tea model state, primitives, and components.
@@ -56,7 +56,12 @@ type UIModel struct {
 
 // New initializes the UIModel, which is basically the UI orchestrator of the application. It initializes the state to
 // `uiInitializing`. To avoid locking the user out of actions, default configs, keymaps, and styles are loaded at first.
-func New(orchestratorCtx context.Context, defaultKeyMap keymap.KeyMap, config *config.Config) (*UIModel, error) {
+func New(
+	orchestratorCtx context.Context,
+	defaultKeyMap keymap.KeyMap,
+	config *config.Config,
+	audioFiles *[]audio.File,
+) (*UIModel, error) {
 	model := &UIModel{
 		state:               uiInitializing,
 		keyMap:              defaultKeyMap,
@@ -64,6 +69,9 @@ func New(orchestratorCtx context.Context, defaultKeyMap keymap.KeyMap, config *c
 		config:              config,
 		orchestratorContext: orchestratorCtx,
 		initializationModel: initializing.New(defaultKeyMap),
+		library: Library{
+			audioFiles: audioFiles,
+		},
 	}
 
 	return model, nil

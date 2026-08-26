@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"wired/internal/core/audio"
 	"wired/internal/core/config"
 	"wired/internal/core/testutil"
 )
@@ -18,7 +19,9 @@ func newTestUI(t *testing.T) *UIModel {
 	t.Helper()
 
 	configValue := config.Defaults()
-	model, err := New(context.Background(), testutil.DefaultKeyMap(t), &configValue)
+	audioFiles := &[]audio.File{}
+
+	model, err := New(context.Background(), testutil.DefaultKeyMap(t), &configValue, audioFiles)
 	require.NoError(t, err)
 
 	updatedModel, _ := model.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
@@ -33,8 +36,9 @@ func TestNewSeedsDefaults(t *testing.T) {
 
 	configValue := config.Defaults()
 	keyMap := testutil.DefaultKeyMap(t)
+	audioFiles := &[]audio.File{}
 
-	model, err := New(context.Background(), keyMap, &configValue)
+	model, err := New(context.Background(), keyMap, &configValue, audioFiles)
 	require.NoError(t, err)
 	require.NotNil(t, model)
 
@@ -49,7 +53,8 @@ func TestInitReturnsNonNilCmd(t *testing.T) {
 	t.Parallel()
 
 	configValue := config.Defaults()
-	model, err := New(context.Background(), testutil.DefaultKeyMap(t), &configValue)
+	audioFiles := &[]audio.File{}
+	model, err := New(context.Background(), testutil.DefaultKeyMap(t), &configValue, audioFiles)
 	require.NoError(t, err)
 
 	// Init returns initializationLoadConfigCommand, which calls config.Load against the real user config dir. We do

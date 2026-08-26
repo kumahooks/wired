@@ -48,11 +48,11 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 
 		return nil
 	}
-
 	model.keyMap = resolvedKeyMap
 	model.initializationModel.ApplyKeyMap(model.keyMap)
 	model.initializationModel.AppendLog("keybindings loaded successfully~", initializing.LogNormal)
 
+	// If the user has any invalid path in it's config, we notify it as a log warning, so they can fix it if they wish.
 	if len(message.invalidLibraryPaths) > 0 {
 		var pluralSuffix string = ""
 		if len(message.invalidLibraryPaths) > 1 {
@@ -69,6 +69,7 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 		)
 	}
 
+	// Once we load configs, we attempt to load any library cache.
 	return initializationLoadLibraryCacheCommand()
 }
 
@@ -79,7 +80,7 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 	message initializationLoadLibraryCacheResultMessage,
 ) tea.Cmd {
-	if len(message.library.audioFiles) > 0 {
+	if len(*message.library.audioFiles) > 0 {
 		model.setState(uiIdle)
 		return nil
 	}
@@ -128,7 +129,7 @@ func (model *UIModel) handleFetchFilesResultMessage(message fetchFilesResultMess
 		return nil
 	}
 
-	model.library.audioFiles = message.files
+	*model.library.audioFiles = message.files
 
 	return scanFilesMetatagStartCommand()
 }

@@ -30,7 +30,7 @@ func initializationLoadLibraryCacheCommand() tea.Cmd {
 		if libraryCacheExists {
 			panic("TODO: implement caching storage and retrieval")
 		} else {
-			return initializationLoadLibraryCacheResultMessage{library: Library{}, err: nil}
+			return initializationLoadLibraryCacheResultMessage{library: Library{audioFiles: &[]audio.File{}}, err: nil}
 		}
 	}
 }
