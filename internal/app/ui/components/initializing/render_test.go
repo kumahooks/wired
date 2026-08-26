@@ -30,24 +30,24 @@ func TestRenderWithNormalAndErrorLogs(t *testing.T) {
 	assertSnapshot(t, "render_logs_normal_and_error", model.Render(80, 24))
 }
 
-func TestRenderCountInProgress(t *testing.T) {
+func TestRenderFetchInProgress(t *testing.T) {
 	t.Parallel()
 
 	model := New(testutil.DefaultKeyMap(t))
-	model.AppendLog("counting total library files", LogNormal)
-	model.SetCountFilesProgress(42)
+	model.AppendLog("fetching total library files", LogNormal)
+	model.SetFetchFilesProgress(42)
 	model.SetConfigError()
 
 	assertSnapshot(t, "render_count_in_progress", model.Render(80, 24))
 }
 
-func TestRenderCountDone(t *testing.T) {
+func TestRenderFetchDone(t *testing.T) {
 	t.Parallel()
 
 	model := New(testutil.DefaultKeyMap(t))
-	model.AppendLog("counting total library files", LogNormal)
-	model.AppendLog("counted a total of 137 audio files successfully", LogNormal)
-	model.SetCountFilesProgress(-1)
+	model.AppendLog("fetching total library files", LogNormal)
+	model.AppendLog("fetched a total of 137 audio files successfully", LogNormal)
+	model.SetFetchFilesProgress(-1)
 	model.SetConfigError()
 
 	assertSnapshot(t, "render_count_done", model.Render(80, 24))

@@ -24,14 +24,14 @@ type File struct {
 	FileName string
 }
 
-// CountFiles goes through every file in the sub-trees at rootPaths and returns how many audio files there are. When
-// audioFiles is non-nil, each discovered file is appended to it. When countChannel is non-nil, the running total is
-// emitted every progressInterval files and once at the end of each root walk.
-func CountFiles(
+// FetchFiles goes through every file in the sub-trees at rootPaths and returns every found audio file. When audioFiles
+// is non-nil, each discovered file is appended to it. When countChannel is non-nil, the running total is emitted every
+// progressInterval files and once at the end of each root walk.
+func FetchFiles(
 	ctx context.Context,
 	rootPaths []string,
 	audioFiles *[]File,
-	countChannel chan<- int,
+	progressChannel chan<- int,
 ) (int, error) {
 	filesCount := 0
 
@@ -68,9 +68,9 @@ func CountFiles(
 				*audioFiles = append(*audioFiles, File{FileName: filepath.Base(path)})
 			}
 
-			if countChannel != nil && filesCount%progressInterval == 0 {
+			if progressChannel != nil && filesCount%progressInterval == 0 {
 				select {
-				case countChannel <- filesCount:
+				case progressChannel <- filesCount:
 				case <-ctx.Done():
 					return ctx.Err()
 				}
@@ -85,9 +85,9 @@ func CountFiles(
 		}
 
 		// Emit a final progress value for this root so the live counter is accurate at the moment of completion.
-		if countChannel != nil {
+		if progressChannel != nil {
 			select {
-			case countChannel <- filesCount:
+			case progressChannel <- filesCount:
 			case <-ctx.Done():
 				return filesCount, ctx.Err()
 			}
@@ -102,10 +102,11 @@ func CountFiles(
 //
 // TODO: eventually, it will be necessary to implement a metatag retrieval here for each audio file. This should be
 // done using sync.WaitGroup with at least runtime.NumCPU()*4 workers, updating countChannel every processed file.
+// also, doing FetchFiles twice is not necessary. we just need to retrieve the []audio.File here.
 func ScanFiles(ctx context.Context, rootPaths []string, countChannel chan<- int) ([]File, error) {
 	var audioFiles []File
 
-	_, err := CountFiles(ctx, rootPaths, &audioFiles, nil)
+	_, err := FetchFiles(ctx, rootPaths, &audioFiles, nil)
 	if err != nil {
 		return nil, err
 	}

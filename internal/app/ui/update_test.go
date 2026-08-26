@@ -16,6 +16,7 @@ import (
 
 	"wired/internal/app/ui/action"
 	"wired/internal/app/ui/components/initializing"
+	"wired/internal/core/audio"
 	"wired/internal/core/config"
 	"wired/internal/core/keymap"
 	"wired/internal/core/theme"
@@ -51,8 +52,8 @@ func executeCmd(t *testing.T, command tea.Cmd) tea.Msg {
 	}
 }
 
-// runCmds drives the count drainer to completion. It executes the drainer command, feeds WaitProgress messages back
-// into model.Update to get the next drainer, and returns the first initializationCountFilesResultMessage.
+// runCmds drives the fetch drainer to completion. It executes the drainer command, feeds WaitProgress messages back
+// into model.Update to get the next drainer, and returns the first initializationFetchFilesResultMessage.
 func runCmds(t *testing.T, model *UIModel, command tea.Cmd) tea.Msg {
 	t.Helper()
 
@@ -65,15 +66,15 @@ func runCmds(t *testing.T, model *UIModel, command tea.Cmd) tea.Msg {
 		select {
 		case message := <-result:
 			switch message := message.(type) {
-			case initializationCountFilesResultMessage:
+			case initializationFetchFilesResultMessage:
 				return message
-			case initializationCountFilesWaitProgressMessage:
+			case initializationFetchFilesWaitProgressMessage:
 				_, command = model.Update(message)
 			default:
 				t.Fatalf("unexpected message from drainer: %T", message)
 			}
 		case <-timeout:
-			t.Fatal("timed out waiting for count result")
+			t.Fatal("timed out waiting for fetch result")
 		}
 	}
 
@@ -110,7 +111,7 @@ func initLastLog(model *UIModel) (string, initializing.LogType) {
 }
 
 func initProgress(model *UIModel) int {
-	return model.initializationModel.CountFilesProgress()
+	return model.initializationModel.FetchFilesProgress()
 }
 
 func TestHandleInitializationLoadConfigResultError(t *testing.T) {
@@ -318,44 +319,44 @@ func TestHandleEmptyLibraryCacheOffersScan(t *testing.T) {
 	)
 }
 
-func TestHandleInitializationCountFilesStartMessage(t *testing.T) {
+func TestHandleInitializationFetchFilesStartMessage(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
-	model.library.countingGeneration = 5
+	model.library.scanGeneration = 5
 
 	_, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
 	progressChannel := make(chan int, 1)
-	resultChannel := make(chan initializationCountFilesResultMessage, 1)
+	resultChannel := make(chan initializationFetchFilesResultMessage, 1)
 
-	message := initializationCountFilesStartMessage{
+	message := initializationFetchFilesStartMessage{
 		progressChannel: progressChannel,
 		resultChannel:   resultChannel,
-		countCancel:     cancel,
+		scanCancel:      cancel,
 		generation:      7,
 	}
 
 	_, command := model.Update(message)
 
-	require.NotNil(t, model.library.countingCancel, "cancelInitializationCount = nil, want the cancel func")
+	require.NotNil(t, model.library.scanCancel, "cancelInitializationScan = nil, want the cancel func")
 
-	assert.Equal(t, uint64(7), model.library.countingGeneration)
+	assert.Equal(t, uint64(7), model.library.scanGeneration)
 	assert.Equal(t, 0, initProgress(model))
 
 	require.NotNil(t, command, "returned cmd = nil, want the drainer cmd")
 }
 
-func TestHandleInitializationCountFilesWaitProgressMessage(t *testing.T) {
+func TestHandleInitializationFetchFilesWaitProgressMessage(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
 
 	progressChannel := make(chan int, 1)
-	resultChannel := make(chan initializationCountFilesResultMessage, 1)
+	resultChannel := make(chan initializationFetchFilesResultMessage, 1)
 
-	_, command := model.Update(initializationCountFilesWaitProgressMessage{
+	_, command := model.Update(initializationFetchFilesWaitProgressMessage{
 		filesCount:      42,
 		progressChannel: progressChannel,
 		resultChannel:   resultChannel,
@@ -366,58 +367,60 @@ func TestHandleInitializationCountFilesWaitProgressMessage(t *testing.T) {
 	assert.NotNil(t, command, "returned cmd = nil, want the next drainer cmd")
 }
 
-func TestHandleInitializationCountFilesResultMessageStaleGeneration(t *testing.T) {
+func TestHandleInitializationFetchFilesResultMessageStaleGeneration(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
-	model.library.countingGeneration = 10
-	model.initializationModel.SetCountFilesProgress(50)
+	model.library.scanGeneration = 10
+	model.initializationModel.SetFetchFilesProgress(50)
 
 	sentinelCanceled := false
-	model.library.countingCancel = func() { sentinelCanceled = true }
+	model.library.scanCancel = func() { sentinelCanceled = true }
 
 	initialLogCount := len(model.initializationModel.LogLines())
 
-	_, command := model.Update(initializationCountFilesResultMessage{
-		filesCount: 100,
+	_, command := model.Update(initializationFetchFilesResultMessage{
+		files:      nil,
 		err:        nil,
 		generation: 5,
 	})
 
 	assert.Nil(t, command, "returned cmd should be nil on stale generation")
-	assert.False(t, sentinelCanceled, "stale result cleared cancelInitializationCount")
+	assert.False(t, sentinelCanceled, "stale result cleared cancelInitializationScan")
 
 	assert.NotNil(
 		t,
-		model.library.countingCancel,
-		"cancelInitializationCount = nil, want unchanged sentinel on stale generation",
+		model.library.scanCancel,
+		"cancelInitializationScan = nil, want unchanged sentinel on stale generation",
 	)
 
-	assert.Equal(t, 50, initProgress(model), "countFilesProgress changed on stale")
+	assert.Equal(t, 50, initProgress(model), "fetchFilesProgress changed on stale")
 	assert.Len(t, model.initializationModel.LogLines(), initialLogCount, "logCount changed on stale")
 }
 
-func TestHandleInitializationCountFilesResultMessageCurrentGeneration(t *testing.T) {
+func TestHandleInitializationFetchFilesResultMessageCurrentGeneration(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
-	model.library.countingGeneration = 10
+	model.library.scanGeneration = 10
 
 	sentinelCanceled := false
-	model.library.countingCancel = func() { sentinelCanceled = true }
+	model.library.scanCancel = func() { sentinelCanceled = true }
 
-	_, command := model.Update(initializationCountFilesResultMessage{
-		filesCount: 137,
+	discoveredFiles := make([]audio.File, 137)
+
+	_, command := model.Update(initializationFetchFilesResultMessage{
+		files:      discoveredFiles,
 		err:        nil,
 		generation: 10,
 	})
 
-	assert.Nil(t, command, "returned cmd should be nil on current generation result")
-	assert.False(t, sentinelCanceled, "current result should set cancelInitializationCount to nil, not call it")
+	assert.NotNil(t, command, "returned cmd should be the next-step scan cmd on current generation result")
+	assert.False(t, sentinelCanceled, "current result should set cancelInitializationScan to nil, not call it")
 	assert.Nil(
 		t,
-		model.library.countingCancel,
-		"cancelInitializationCount = non-nil, want nil after current generation result",
+		model.library.scanCancel,
+		"cancelInitializationScan = non-nil, want nil after current generation result",
 	)
 	assert.Equal(t, -1, initProgress(model))
 
@@ -426,26 +429,26 @@ func TestHandleInitializationCountFilesResultMessageCurrentGeneration(t *testing
 	assert.True(t, strings.Contains(text, "a total of 137 audio files have been found~"))
 }
 
-func TestHandleInitializationCountFilesResultMessageError(t *testing.T) {
+func TestHandleInitializationFetchFilesResultMessageError(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
-	model.library.countingGeneration = 10
-	model.initializationModel.SetCountFilesProgress(50)
+	model.library.scanGeneration = 10
+	model.initializationModel.SetFetchFilesProgress(50)
 
-	countError := errors.New("[audio:CountFiles] walk failed")
-	_, command := model.Update(initializationCountFilesResultMessage{
-		filesCount: 0,
-		err:        countError,
+	fetchError := errors.New("[audio:FetchFiles] walk failed")
+	_, command := model.Update(initializationFetchFilesResultMessage{
+		files:      nil,
+		err:        fetchError,
 		generation: 10,
 	})
 
 	assert.Nil(t, command, "returned cmd should be nil on error result")
-	assert.Equal(t, 50, initProgress(model), "countFilesProgress changed on error")
+	assert.Equal(t, 50, initProgress(model), "fetchFilesProgress changed on error")
 
 	text, logType := initLastLog(model)
 	assert.Equal(t, initializing.LogError, logType, "last log type = %v, want LogError (text: %q)", logType, text)
-	assert.True(t, strings.Contains(text, countError.Error()))
+	assert.True(t, strings.Contains(text, fetchError.Error()))
 }
 
 func TestHandleWindowResize(t *testing.T) {
@@ -466,13 +469,13 @@ func TestHandleKeyPressMsgQuit(t *testing.T) {
 	model := newTestUI(t)
 
 	sentinelCanceled := false
-	model.library.countingCancel = func() { sentinelCanceled = true }
+	model.library.scanCancel = func() { sentinelCanceled = true }
 
 	_, command := model.Update(tea.KeyPressMsg{Mod: tea.ModCtrl, Code: 'd'})
 
 	require.True(t, isTeaQuit(command), "returned cmd is not tea.Quit")
-	assert.True(t, sentinelCanceled, "cancelInitializationCount was not called on quit")
-	assert.Nil(t, model.library.countingCancel, "cancelInitializationCount = non-nil, want nil after quit")
+	assert.True(t, sentinelCanceled, "cancelInitializationScan was not called on quit")
+	assert.Nil(t, model.library.scanCancel, "cancelInitializationScan = non-nil, want nil after quit")
 }
 
 func TestHandleKeyPressMsgQuitDoesNotMatchNonQuitKey(t *testing.T) {
@@ -492,13 +495,13 @@ func TestHandleKeyPressMsgForwardsToComponentReload(t *testing.T) {
 	model.initializationModel.SetConfigError()
 
 	sentinelCanceled := false
-	model.library.countingCancel = func() { sentinelCanceled = true }
+	model.library.scanCancel = func() { sentinelCanceled = true }
 
 	_, command := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	require.NotNil(t, command, "returned cmd = nil, want non-nil for reload action")
 
-	assert.True(t, sentinelCanceled, "cancelInitializationCount was not called on reload")
+	assert.True(t, sentinelCanceled, "cancelInitializationScan was not called on reload")
 	assert.Equal(t, uiInitializing, model.state)
 	assert.True(t, initLogContains(model, "reloading config..."))
 }
@@ -511,13 +514,13 @@ func TestHandleKeyPressMsgForwardsToComponentProceed(t *testing.T) {
 	model.Update(tea.KeyPressMsg{Code: 'l', Text: "l"})
 
 	sentinelCanceled := false
-	model.library.countingCancel = func() { sentinelCanceled = true }
+	model.library.scanCancel = func() { sentinelCanceled = true }
 
 	_, command := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	assert.Nil(t, command, "returned cmd should be nil for proceed action")
 
-	assert.True(t, sentinelCanceled, "cancelInitializationCount was not called on proceed")
+	assert.True(t, sentinelCanceled, "cancelInitializationScan was not called on proceed")
 	assert.Equal(t, uiIdle, model.state)
 	assert.True(t, initLogContains(model, "proceeding without libraries"))
 }
@@ -614,7 +617,7 @@ func TestHandleComponentAction(t *testing.T) {
 			model := newTestUI(t)
 
 			sentinelCanceled := false
-			model.library.countingCancel = func() { sentinelCanceled = true }
+			model.library.scanCancel = func() { sentinelCanceled = true }
 
 			command := model.handleComponentAction(test.action)
 
@@ -627,14 +630,14 @@ func TestHandleComponentAction(t *testing.T) {
 			}
 
 			if test.wantCanceled {
-				assert.True(t, sentinelCanceled, "cancelInitializationCount was not called")
+				assert.True(t, sentinelCanceled, "cancelInitializationScan was not called")
 			}
 
 			if test.wantCleared {
 				assert.Nil(
 					t,
-					model.library.countingCancel,
-					"cancelInitializationCount = non-nil, want nil after action",
+					model.library.scanCancel,
+					"cancelInitializationScan = non-nil, want nil after action",
 				)
 			}
 
@@ -654,7 +657,7 @@ func TestHandleComponentAction(t *testing.T) {
 	}
 }
 
-func TestInitializationCountFilesStartCommandAsync(t *testing.T) {
+func TestInitializationFetchFilesStartCommandAsync(t *testing.T) {
 	t.Parallel()
 
 	libraryDir := t.TempDir()
@@ -662,23 +665,24 @@ func TestInitializationCountFilesStartCommandAsync(t *testing.T) {
 
 	model := newTestUI(t)
 
-	contextForCount, cancel := context.WithCancel(context.Background())
+	contextForFetch, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	startCommand := initializationCountFilesStartCommand(contextForCount, 1, []string{libraryDir})
-	startMessage := executeCmd(t, startCommand).(initializationCountFilesStartMessage)
+	startCommand := initializationFetchFilesStartCommand(contextForFetch, 1, []string{libraryDir})
+	startMessage := executeCmd(t, startCommand).(initializationFetchFilesStartMessage)
 
 	_, drainerCommand := model.Update(startMessage)
 
 	resultMessage := runCmds(t, model, drainerCommand)
-	result, ok := resultMessage.(initializationCountFilesResultMessage)
-	require.True(t, ok, "runCmds returned %T, want initializationCountFilesResultMessage", resultMessage)
+	result, ok := resultMessage.(initializationFetchFilesResultMessage)
+	require.True(t, ok, "runCmds returned %T, want initializationFetchFilesResultMessage", resultMessage)
 
 	require.NoError(t, result.err)
-	assert.Equal(t, 5, result.filesCount)
+	assert.Len(t, result.files, 5, "result should carry the discovered audio files")
 
 	_, _ = model.Update(result)
 
-	assert.Equal(t, -1, initProgress(model), "countFilesProgress = %d, want -1 after result")
+	assert.Equal(t, -1, initProgress(model), "fetchFilesProgress = %d, want -1 after result")
 	assert.True(t, initLogContains(model, "a total of 5 audio files have been found~"))
+	assert.Len(t, model.library.audioFiles, 5, "library.audioFiles should be populated from the result")
 }

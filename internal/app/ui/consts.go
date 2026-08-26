@@ -14,5 +14,5 @@ const (
 	minWindowWidth  = 20
 )
 
-// countFilesProgressChannelBuffer is the size of the count progress channel.
-const countFilesProgressChannelBuffer = 64
+// fetchFilesProgressChannelBuffer is the size of the fetch progress channel.
+const fetchFilesProgressChannelBuffer = 64

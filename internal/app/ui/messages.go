@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 
+	"wired/internal/core/audio"
 	"wired/internal/core/config"
 )
 
@@ -21,27 +22,28 @@ type initializationLoadLibraryCacheResultMessage struct {
 	err     error
 }
 
-// initializationCountFilesStartMessage is produced by initializationCountFilesStartCommand right after the config is
+// initializationFetchFilesStartMessage is produced by initializationFetchFilesStartCommand right after the config is
 // loaded and libraries exist. It carries the channels and cancel func that the drainer and the cancel path share.
-type initializationCountFilesStartMessage struct {
+type initializationFetchFilesStartMessage struct {
 	progressChannel <-chan int
-	resultChannel   <-chan initializationCountFilesResultMessage
-	countCancel     context.CancelFunc
+	resultChannel   <-chan initializationFetchFilesResultMessage
+	scanCancel      context.CancelFunc
 	generation      uint64
 }
 
-// initializationCountFilesResultMessage is produced when the file count finishes, carrying the final total.
-type initializationCountFilesResultMessage struct {
-	filesCount int
+// initializationFetchFilesResultMessage is produced when the fetch finishes, carrying the discovered files. The file
+// slice is owned by the model after the handler runs.
+type initializationFetchFilesResultMessage struct {
+	files      []audio.File
 	err        error
 	generation uint64
 }
 
-// initializationCountFilesWaitProgressMessage is produced by initializationCountFilesWaitProgressCommand for each
+// initializationFetchFilesWaitProgressMessage is produced by initializationFetchFilesWaitProgressCommand for each
 // progress tick, carrying the running total and the channels to keep draining.
-type initializationCountFilesWaitProgressMessage struct {
+type initializationFetchFilesWaitProgressMessage struct {
 	filesCount      int
 	progressChannel <-chan int
-	resultChannel   <-chan initializationCountFilesResultMessage
+	resultChannel   <-chan initializationFetchFilesResultMessage
 	generation      uint64
 }

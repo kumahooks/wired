@@ -24,7 +24,7 @@ func New(defaultKeyMap keymap.KeyMap) *Model {
 		},
 		keyMap:             defaultKeyMap,
 		style:              newStyle(theme.Default()),
-		countFilesProgress: -1,
+		fetchFilesProgress: -1,
 	}
 
 	model.cursorPosition = model.canonicalIndexForVisible(model.firstVisibleAction())
@@ -81,9 +81,9 @@ func (model *Model) HandleMessage(message tea.Msg) action.Action {
 	return action.NoAction{}
 }
 
-// SetCountFilesProgress stores the latest counted-files total for rendering.
-func (model *Model) SetCountFilesProgress(count int) {
-	model.countFilesProgress = count
+// SetFetchFilesProgress stores the latest fetched-files total for rendering.
+func (model *Model) SetFetchFilesProgress(count int) {
+	model.fetchFilesProgress = count
 }
 
 // SetConfigError transitions the screen to modeConfigError. The user can either reload the config, or just proceed.
@@ -175,7 +175,7 @@ func (model *Model) LastLogType() LogType {
 	return model.logLines[len(model.logLines)-1].logType
 }
 
-// CountFilesProgress returns the current live counter value. A negative value means no count is in progress.
-func (model *Model) CountFilesProgress() int {
-	return model.countFilesProgress
+// FetchFilesProgress returns the current live counter value. A negative value means no fetch is in progress.
+func (model *Model) FetchFilesProgress() int {
+	return model.fetchFilesProgress
 }

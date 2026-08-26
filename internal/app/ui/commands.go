@@ -34,45 +34,47 @@ func initializationLoadLibraryCacheCommand() tea.Cmd {
 	}
 }
 
-// initializationCountFilesStartCommand launches the count goroutine and returns a StartMessage with the channels. The
-// count context is derived from the orchestrator context so an orchestrator shutdown cancels the count. The channel
-// is buffered so the walk does not stall on the tea message round-trip.
-func initializationCountFilesStartCommand(
+// initializationFetchFilesStartCommand launches the fetch goroutine and returns a StartMessage with the channels. The
+// scan context is derived from the orchestrator context so an orchestrator shutdown cancels the scan. The channel is
+// buffered so the walk does not stall on the tea message round-trip.
+func initializationFetchFilesStartCommand(
 	orchestratorContext context.Context,
 	generation uint64,
-	filePaths []string,
+	rootPaths []string,
 ) tea.Cmd {
 	return func() tea.Msg {
-		progressChannel := make(chan int, countFilesProgressChannelBuffer)
-		resultChannel := make(chan initializationCountFilesResultMessage, 1)
+		progressChannel := make(chan int, fetchFilesProgressChannelBuffer)
+		resultChannel := make(chan initializationFetchFilesResultMessage, 1)
 
-		countContext, countCancel := context.WithCancel(orchestratorContext)
+		scanContext, scanCancel := context.WithCancel(orchestratorContext)
 
 		go func() {
-			filesCount, err := audio.CountFiles(countContext, filePaths, nil, progressChannel)
+			var files []audio.File
+
+			_, err := audio.FetchFiles(scanContext, rootPaths, &files, progressChannel)
 			close(progressChannel)
 
-			resultChannel <- initializationCountFilesResultMessage{
-				filesCount: filesCount,
+			resultChannel <- initializationFetchFilesResultMessage{
+				files:      files,
 				err:        err,
 				generation: generation,
 			}
 		}()
 
-		return initializationCountFilesStartMessage{
+		return initializationFetchFilesStartMessage{
 			progressChannel: progressChannel,
 			resultChannel:   resultChannel,
-			countCancel:     countCancel,
+			scanCancel:      scanCancel,
 			generation:      generation,
 		}
 	}
 }
 
-// initializationCountFilesWaitProgressCommand drains the progress channel, returning a progress message per tick and
+// initializationFetchFilesWaitProgressCommand drains the progress channel, returning a progress message per tick and
 // the final result message once the channel closes.
-func initializationCountFilesWaitProgressCommand(
+func initializationFetchFilesWaitProgressCommand(
 	progressChannel <-chan int,
-	resultChannel <-chan initializationCountFilesResultMessage,
+	resultChannel <-chan initializationFetchFilesResultMessage,
 	generation uint64,
 ) tea.Cmd {
 	return func() tea.Msg {
@@ -80,18 +82,24 @@ func initializationCountFilesWaitProgressCommand(
 		if !ok {
 			result := <-resultChannel
 
-			return initializationCountFilesResultMessage{
-				filesCount: result.filesCount,
+			return initializationFetchFilesResultMessage{
+				files:      result.files,
 				err:        result.err,
 				generation: result.generation,
 			}
 		}
 
-		return initializationCountFilesWaitProgressMessage{
+		return initializationFetchFilesWaitProgressMessage{
 			filesCount:      filesCount,
 			progressChannel: progressChannel,
 			resultChannel:   resultChannel,
 			generation:      generation,
 		}
+	}
+}
+
+func initializationScanFilesMetatagStartCommand() tea.Cmd {
+	return func() tea.Msg {
+		return nil
 	}
 }

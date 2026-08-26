@@ -5,13 +5,13 @@
                                                                                 
             wire(d) is starting...                                              
                                                                                 
-             [1] counting total library files                                   
+             [1] fetching total library files                                   
                                                                                 
                                                                                 
                                                                                 
                                                                                 
                                                                                 
-            counting 42 audio files...                                          
+            fetching 42 audio files...                                          
                                                                                 
               reload config     proceed anyway                                  
                                                                                 

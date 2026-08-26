@@ -7,20 +7,23 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"wired/internal/app/ui/components/initializing"
+	"wired/internal/core/audio"
 	"wired/internal/core/config"
 	"wired/internal/core/keymap"
 	"wired/internal/core/theme"
 )
 
 type Library struct {
-	countingGeneration uint64             // tags the counter, with new counts incrementing it.
-	countingCancel     context.CancelFunc // aborts the current file counting
+	// scanGeneration tags the in-flight scan, incremented each time a new scan starts so stale results from a previous
+	// scan or a cancelled scan are ignored.
+	scanGeneration uint64
+	// scanCancel aborts the current scan, if any. It is nil when no scan is running.
+	scanCancel context.CancelFunc
 
 	// TODO: this is just what we treat as "this is the library" currently.
 	// eventually, we will implement a more complex data structure once we get metatag parsing.
 	// furthermore, we will load this data from a cache before asking to scan.
-	countingResult int
-	filePaths      []string
+	audioFiles []audio.File
 }
 
 // UIModel holds the tea model state, primitives, and components.

@@ -78,7 +78,7 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 	message initializationLoadLibraryCacheResultMessage,
 ) tea.Cmd {
-	if len(message.library.filePaths) > 0 {
+	if len(message.library.audioFiles) > 0 {
 		model.setState(uiIdle)
 		return nil
 	}
@@ -99,26 +99,27 @@ func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 	return nil
 }
 
-// handleInitializationCountFilesStartMessage stores the count's cancel func so reload/quit can abort the current count,
+// handleInitializationFetchFilesStartMessage stores the scan's cancel func so reload/quit can abort the current scan,
 // seeds the live counter at zero, and launches the first drainer command.
-func (model *UIModel) handleInitializationCountFilesStartMessage(message initializationCountFilesStartMessage) tea.Cmd {
-	model.library.countingCancel = message.countCancel
-	model.library.countingGeneration = message.generation
-	model.initializationModel.SetCountFilesProgress(0)
+func (model *UIModel) handleInitializationFetchFilesStartMessage(message initializationFetchFilesStartMessage) tea.Cmd {
+	model.library.scanCancel = message.scanCancel
+	model.library.scanGeneration = message.generation
+	model.initializationModel.SetFetchFilesProgress(0)
 
-	return initializationCountFilesWaitProgressCommand(
+	return initializationFetchFilesWaitProgressCommand(
 		message.progressChannel,
 		message.resultChannel,
 		message.generation,
 	)
 }
 
-// handleInitializationCountFilesResultMessage finalizes the count.
-func (model *UIModel) handleInitializationCountFilesResultMessage(
-	message initializationCountFilesResultMessage,
+// handleInitializationFetchFilesResultMessage finalizes the fetch. It takes ownership of the file slice shipped through
+// the message so no shared mutable state remains with the walk goroutine.
+func (model *UIModel) handleInitializationFetchFilesResultMessage(
+	message initializationFetchFilesResultMessage,
 ) tea.Cmd {
-	if message.generation == model.library.countingGeneration {
-		model.library.countingCancel = nil
+	if message.generation == model.library.scanGeneration {
+		model.library.scanCancel = nil
 	}
 
 	if message.err != nil {
@@ -126,19 +127,19 @@ func (model *UIModel) handleInitializationCountFilesResultMessage(
 		return nil
 	}
 
-	// Only the current count updates the UI.
-	if message.generation != model.library.countingGeneration {
+	// Only the current scan updates the UI.
+	if message.generation != model.library.scanGeneration {
 		return nil
 	}
 
-	// Since the counter has finished, we don't render the progress message anymore.
-	model.initializationModel.SetCountFilesProgress(-1)
+	model.library.audioFiles = message.files
+
+	// Since the fetch has finished, we don't render the progress message anymore.
+	model.initializationModel.SetFetchFilesProgress(-1)
 	model.initializationModel.AppendLog(
-		fmt.Sprintf("a total of %d audio files have been found~", message.filesCount),
+		fmt.Sprintf("a total of %d audio files have been found~", len(message.files)),
 		initializing.LogNormal,
 	)
 
-	// TODO: next step after this would be metatag scanning.
-
-	return nil
+	return initializationScanFilesMetatagStartCommand()
 }

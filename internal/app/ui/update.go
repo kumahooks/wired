@@ -12,25 +12,30 @@ func (model *UIModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	var commands []tea.Cmd
 
 	switch message := message.(type) {
+	// Initialization Step 1: Config loaded
 	case initializationLoadConfigResultMessage:
 		commands = append(commands, model.handleInitializationLoadConfigResult(message))
+	// Initialization Step 2: Load library cache (if any)
 	case initializationLoadLibraryCacheResultMessage:
 		commands = append(commands, model.handleInitializationLoadLibraryCacheResult(message))
-	case initializationCountFilesStartMessage:
-		commands = append(commands, model.handleInitializationCountFilesStartMessage(message))
-	case initializationCountFilesWaitProgressMessage:
-		model.initializationModel.SetCountFilesProgress(message.filesCount)
+	// Initialization (optional) Step 3.1: Scan files, starting with fetching them
+	case initializationFetchFilesStartMessage:
+		commands = append(commands, model.handleInitializationFetchFilesStartMessage(message))
+	// Initialization (optional) Step 3.2: Fetching files
+	case initializationFetchFilesWaitProgressMessage:
+		model.initializationModel.SetFetchFilesProgress(message.filesCount)
 
 		commands = append(
 			commands,
-			initializationCountFilesWaitProgressCommand(
+			initializationFetchFilesWaitProgressCommand(
 				message.progressChannel,
 				message.resultChannel,
 				message.generation,
 			),
 		)
-	case initializationCountFilesResultMessage:
-		commands = append(commands, model.handleInitializationCountFilesResultMessage(message))
+	// Initialization (optional) Step 4: After fetching files, we parse their metatag
+	case initializationFetchFilesResultMessage:
+		commands = append(commands, model.handleInitializationFetchFilesResultMessage(message))
 	case tea.WindowSizeMsg:
 		if command := model.handleWindowResize(message); command != nil {
 			commands = append(commands, command)
@@ -44,11 +49,11 @@ func (model *UIModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	return model, tea.Batch(commands...)
 }
 
-// cancelInFlightInitializationCount aborts the current count, if any, so its goroutine exits and stops feeding the drainer.
-func (model *UIModel) cancelInFlightInitializationCount() {
-	if model.library.countingCancel != nil {
-		model.library.countingCancel()
-		model.library.countingCancel = nil
+// cancelInFlightInitializationScan aborts the current scan, if any, so its goroutine exits and stops feeding the drainer.
+func (model *UIModel) cancelInFlightInitializationScan() {
+	if model.library.scanCancel != nil {
+		model.library.scanCancel()
+		model.library.scanCancel = nil
 	}
 }
 
@@ -62,7 +67,7 @@ func (model *UIModel) handleWindowResize(message tea.WindowSizeMsg) tea.Cmd {
 // handleKeyPressMsg is responsible for managing every keyboard action in the program. Quit is a global keybind.
 func (model *UIModel) handleKeyPressMsg(message tea.KeyPressMsg) tea.Cmd {
 	if key.Matches(message, model.keyMap.Quit) {
-		model.cancelInFlightInitializationCount()
+		model.cancelInFlightInitializationScan()
 		return tea.Quit
 	}
 
@@ -79,27 +84,27 @@ func (model *UIModel) handleComponentAction(act action.Action) tea.Cmd {
 	case nil, action.NoAction:
 		return nil
 	case action.QuitAction:
-		model.cancelInFlightInitializationCount()
+		model.cancelInFlightInitializationScan()
 		return tea.Quit
 	case action.ScanLibraryFullAction:
 		model.initializationModel.AppendLog("scanning library...", initializing.LogNormal)
 
-		model.cancelInFlightInitializationCount()
-		model.library.countingGeneration++
-		return initializationCountFilesStartCommand(
+		model.cancelInFlightInitializationScan()
+		model.library.scanGeneration++
+		return initializationFetchFilesStartCommand(
 			model.orchestratorContext,
-			model.library.countingGeneration,
+			model.library.scanGeneration,
 			model.config.LibrariesPaths,
 		)
 	case action.ReloadConfigAction:
 		model.initializationModel.AppendLog("reloading config...", initializing.LogNormal)
 
-		model.cancelInFlightInitializationCount()
+		model.cancelInFlightInitializationScan()
 		return initializationLoadConfigCommand()
 	case action.ProceedFromInitAction:
 		model.initializationModel.AppendLog("proceeding without libraries", initializing.LogNormal)
 
-		model.cancelInFlightInitializationCount()
+		model.cancelInFlightInitializationScan()
 		model.setState(uiIdle)
 		return nil
 	case action.ActionCommand:

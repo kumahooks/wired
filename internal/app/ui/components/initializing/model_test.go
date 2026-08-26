@@ -128,7 +128,7 @@ func TestAppendLogAccumulatesInOrder(t *testing.T) {
 	}
 }
 
-func TestSetCountFilesProgress(t *testing.T) {
+func TestSetFetchFilesProgress(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -145,9 +145,9 @@ func TestSetCountFilesProgress(t *testing.T) {
 			t.Parallel()
 
 			model := New(defaultKeyMap(t))
-			model.SetCountFilesProgress(test.value)
+			model.SetFetchFilesProgress(test.value)
 
-			assert.Equal(t, test.value, model.countFilesProgress)
+			assert.Equal(t, test.value, model.fetchFilesProgress)
 		})
 	}
 }

@@ -56,9 +56,9 @@ type Model struct {
 	logLines []logLine
 	logCount int
 
-	// countFilesProgress is the live counter shown between the log area and the hint while the files are being counted.
-	// a negative value means no count is in progress and the line is hidden.
-	countFilesProgress int
+	// fetchFilesProgress is the live counter shown between the log area and the hint while the files are being fetched.
+	// a negative value means no fetch is in progress and the line is hidden.
+	fetchFilesProgress int
 
 	// mode decides which buttons are shown to the user depending on the config and cache state.
 	mode initMode

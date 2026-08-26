@@ -21,8 +21,8 @@ func (model *Model) buildPanel() string {
 		model.renderLogArea(),
 	}
 
-	// The progress line only exists while a count is running.
-	if model.countFilesProgress >= 0 {
+	// The progress line only exists while files are being fetched.
+	if model.fetchFilesProgress >= 0 {
 		sections = append(sections, model.renderProgressLine())
 	}
 
@@ -75,9 +75,9 @@ func (model *Model) visibleLogRows() []string {
 	return logRows
 }
 
-// renderProgressLine shows the live count while files are being counted.
+// renderProgressLine shows the live count while files are being fetched.
 func (model *Model) renderProgressLine() string {
-	return model.style.progress.Render(fmt.Sprintf("counting %d audio files...", model.countFilesProgress))
+	return model.style.progress.Render(fmt.Sprintf("fetching %d audio files...", model.fetchFilesProgress))
 }
 
 // renderButtonRow renders the buttons visible in the current mode horizontally with spacing between them.

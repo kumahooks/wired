@@ -59,8 +59,8 @@ func buildAudioTree(t *testing.T, root string) int {
 	return audioCount
 }
 
-// testCountChannelBuffer is large enough that the walk never blocks on the drainer during tests.
-const testCountChannelBuffer = 64
+// testFetchChannelBuffer is large enough that the walk never blocks on the drainer during tests.
+const testFetchChannelBuffer = 64
 
 // plantManyAudioFiles creates count audio files under root/sub/ so the walk crosses progressInterval at least once.
 func plantManyAudioFiles(t *testing.T, root string, count int) {
@@ -75,7 +75,7 @@ func plantManyAudioFiles(t *testing.T, root string, count int) {
 	}
 }
 
-func TestCountFilesTotal(t *testing.T) {
+func TestFetchFilesTotal(t *testing.T) {
 	t.Parallel()
 
 	rootOne := t.TempDir()
@@ -84,19 +84,19 @@ func TestCountFilesTotal(t *testing.T) {
 	wantOne := buildAudioTree(t, rootOne)
 	wantTwo := buildAudioTree(t, rootTwo)
 
-	got, err := CountFiles(context.Background(), []string{rootOne, rootTwo}, nil, nil)
+	got, err := FetchFiles(context.Background(), []string{rootOne, rootTwo}, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, wantOne+wantTwo, got)
 }
 
-func TestCountFilesPopulatesAudioFiles(t *testing.T) {
+func TestFetchFilesPopulatesAudioFiles(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
 	want := buildAudioTree(t, root)
 
 	var files []File
-	got, err := CountFiles(context.Background(), []string{root}, &files, nil)
+	got, err := FetchFiles(context.Background(), []string{root}, &files, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, want, got)
@@ -108,7 +108,7 @@ func TestCountFilesPopulatesAudioFiles(t *testing.T) {
 	}
 }
 
-func TestCountChannelEmissions(t *testing.T) {
+func TestFetchChannelEmissions(t *testing.T) {
 	t.Parallel()
 
 	rootOne := t.TempDir()
@@ -117,26 +117,26 @@ func TestCountChannelEmissions(t *testing.T) {
 	plantManyAudioFiles(t, rootOne, 40)
 	plantManyAudioFiles(t, rootTwo, 10)
 
-	countChannel := make(chan int, testCountChannelBuffer)
+	fetchChannel := make(chan int, testFetchChannelBuffer)
 
-	_, err := CountFiles(context.Background(), []string{rootOne, rootTwo}, nil, countChannel)
+	_, err := FetchFiles(context.Background(), []string{rootOne, rootTwo}, nil, fetchChannel)
 	require.NoError(t, err)
 
-	// CountFiles does not close the channel.
-	close(countChannel)
+	// FetchFiles does not close the channel.
+	close(fetchChannel)
 
 	// Drain the channel with a timeout.
 	var values []int
 	for {
 		select {
-		case value, ok := <-countChannel:
+		case value, ok := <-fetchChannel:
 			if !ok {
 				goto done
 			}
 
 			values = append(values, value)
 		case <-time.After(2 * time.Second):
-			t.Fatalf("timed out waiting for countChannel, got %d values", len(values))
+			t.Fatalf("timed out waiting for fetchChannel, got %d values", len(values))
 		}
 	}
 
@@ -147,23 +147,23 @@ done:
 	assert.Equal(t, 50, values[len(values)-1])
 }
 
-func TestCountFilesCancelMidWalk(t *testing.T) {
+func TestFetchFilesCancelMidWalk(t *testing.T) {
 	root := t.TempDir()
 	plantManyAudioFiles(t, root, 40)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	countChannel := make(chan int, testCountChannelBuffer)
+	fetchChannel := make(chan int, testFetchChannelBuffer)
 
-	_, err := CountFiles(ctx, []string{root}, nil, countChannel)
+	_, err := FetchFiles(ctx, []string{root}, nil, fetchChannel)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ctx.Err())
 
 	// Drain any stray progress values so the sender is not blocked.
 	for {
 		select {
-		case <-countChannel:
+		case <-fetchChannel:
 		default:
 			return
 		}
@@ -176,24 +176,24 @@ func TestScanFiles(t *testing.T) {
 	root := t.TempDir()
 	want := buildAudioTree(t, root)
 
-	countChannel := make(chan int, 1)
+	fetchChannel := make(chan int, 1)
 
-	files, err := ScanFiles(context.Background(), []string{root}, countChannel)
+	files, err := ScanFiles(context.Background(), []string{root}, fetchChannel)
 	require.NoError(t, err)
 
 	assert.Len(t, files, want)
 
 	select {
-	case value := <-countChannel:
+	case value := <-fetchChannel:
 		assert.Equal(t, want, value)
 	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for countChannel")
+		t.Fatal("timed out waiting for fetchChannel")
 	}
 
 	// Exactly one value: the channel should now be empty.
 	select {
-	case value := <-countChannel:
-		t.Errorf("unexpected extra countChannel value %d", value)
+	case value := <-fetchChannel:
+		t.Errorf("unexpected extra fetchChannel value %d", value)
 	default:
 	}
 }
@@ -229,17 +229,17 @@ func TestIsAudio(t *testing.T) {
 	}
 }
 
-func TestCountFilesNonExistentRoot(t *testing.T) {
+func TestFetchFilesNonExistentRoot(t *testing.T) {
 	t.Parallel()
 
-	_, err := CountFiles(context.Background(), []string{"/this/path/does/not/exist"}, nil, nil)
+	_, err := FetchFiles(context.Background(), []string{"/this/path/does/not/exist"}, nil, nil)
 	require.Error(t, err)
 }
 
-func TestCountFilesEmptyRoots(t *testing.T) {
+func TestFetchFilesEmptyRoots(t *testing.T) {
 	t.Parallel()
 
-	got, err := CountFiles(context.Background(), []string{}, nil, nil)
+	got, err := FetchFiles(context.Background(), []string{}, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 0, got)
 }
