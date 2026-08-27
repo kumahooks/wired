@@ -28,10 +28,16 @@ func Defaults() Config {
 			Track:             "#4a4a4a",
 		},
 		Keybinds: KeybindMapping{
-			MoveLeft:  []string{"h", "left"},
-			MoveRight: []string{"l", "right"},
-			Select:    []string{"enter"},
-			Quit:      []string{"ctrl+d"},
+			MoveLeft:    []string{"h", "left"},
+			MoveRight:   []string{"l", "right"},
+			Select:      []string{"enter"},
+			Quit:        []string{"ctrl+d"},
+			GoBack:      []string{"escape"},
+			OpenActions: []string{"space"},
+
+			Actions: ActionsMapping{
+				ScanFiles: []string{"R"},
+			},
 		},
 	}
 }

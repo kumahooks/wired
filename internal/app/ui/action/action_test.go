@@ -11,6 +11,7 @@ import (
 var (
 	_ Action = NoAction{}
 	_ Action = QuitAction{}
+	_ Action = OpenWhichKeyAction{}
 	_ Action = ReloadConfigAction{}
 	_ Action = ProceedFromInitAction{}
 	_ Action = ActionCommand{Command: nil}

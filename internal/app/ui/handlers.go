@@ -30,8 +30,11 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 
 	// Parses and apply the config's loaded theme.
 	model.initializationModel.AppendLog("loading themes...", initializing.LogNormal)
+
 	model.theme = theme.New(model.config.Theme)
 	model.initializationModel.ApplyTheme(model.theme)
+	model.whichkeyModel.ApplyTheme(model.theme)
+
 	model.initializationModel.AppendLog("theme loaded successfully~", initializing.LogNormal)
 
 	// Parses and apply the config's loaded keybinds.
@@ -42,7 +45,12 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 		model.initializationModel.AppendLog("falling back to default keybindings...", initializing.LogError)
 
 		model.initializationModel.ApplyKeyMap(model.keyMap)
-		model.initializationModel.AppendLog("keybindings loaded successfully~", initializing.LogNormal)
+		model.whichkeyModel.ApplyKeyMap(model.keyMap)
+
+		model.initializationModel.AppendLog(
+			"keybindings failed to load, fallbacking to previous bindings",
+			initializing.LogError,
+		)
 
 		model.initializationModel.SetConfigError()
 
@@ -50,6 +58,7 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 	}
 	model.keyMap = resolvedKeyMap
 	model.initializationModel.ApplyKeyMap(model.keyMap)
+	model.whichkeyModel.ApplyKeyMap(model.keyMap)
 	model.initializationModel.AppendLog("keybindings loaded successfully~", initializing.LogNormal)
 
 	// If the user has any invalid path in it's config, we notify it as a log warning, so they can fix it if they wish.

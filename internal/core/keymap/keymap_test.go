@@ -52,6 +52,27 @@ func TestNewHappyPath(t *testing.T) {
 			wantKey:  bindings.Quit[0],
 			wantKeys: bindings.Quit,
 		},
+		{
+			name:     "go back",
+			binding:  func() string { return keyMap.GoBack.Help().Key },
+			keys:     func() []string { return keyMap.GoBack.Keys() },
+			wantKey:  bindings.GoBack[0],
+			wantKeys: bindings.GoBack,
+		},
+		{
+			name:     "open actions",
+			binding:  func() string { return keyMap.OpenActions.Help().Key },
+			keys:     func() []string { return keyMap.OpenActions.Keys() },
+			wantKey:  bindings.OpenActions[0],
+			wantKeys: bindings.OpenActions,
+		},
+		{
+			name:     "actions scan files",
+			binding:  func() string { return keyMap.Actions.ScanFiles.Help().Key },
+			keys:     func() []string { return keyMap.Actions.ScanFiles.Keys() },
+			wantKey:  bindings.Actions.ScanFiles[0],
+			wantKeys: bindings.Actions.ScanFiles,
+		},
 	}
 
 	for _, test := range tests {
@@ -103,6 +124,30 @@ func TestNewEmptyBindingErrors(t *testing.T) {
 				return bindings
 			},
 			wantError: "[keymap:New] quit must have at least one binding",
+		},
+		{
+			name: "empty go_back fails",
+			emptyFunc: func(bindings config.KeybindMapping) config.KeybindMapping {
+				bindings.GoBack = []string{}
+				return bindings
+			},
+			wantError: "[keymap:New] go_back must have at least one binding",
+		},
+		{
+			name: "empty open_actions fails",
+			emptyFunc: func(bindings config.KeybindMapping) config.KeybindMapping {
+				bindings.OpenActions = []string{}
+				return bindings
+			},
+			wantError: "[keymap:New] open_actions must have at least one binding",
+		},
+		{
+			name: "empty actions.scan_files fails",
+			emptyFunc: func(bindings config.KeybindMapping) config.KeybindMapping {
+				bindings.Actions.ScanFiles = []string{}
+				return bindings
+			},
+			wantError: "[keymap:New] scan_files must have at least one binding",
 		},
 	}
 

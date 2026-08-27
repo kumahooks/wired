@@ -41,11 +41,18 @@ type ThemeConfig struct {
 	Track             string `toml:"track"`
 }
 
+type ActionsMapping struct {
+	ScanFiles []string `toml:"scan_files"`
+}
+
 type KeybindMapping struct {
-	MoveLeft  []string `toml:"move_left"`
-	MoveRight []string `toml:"move_right"`
-	Select    []string `toml:"select"`
-	Quit      []string `toml:"quit"`
+	MoveLeft    []string       `toml:"move_left"`
+	MoveRight   []string       `toml:"move_right"`
+	Select      []string       `toml:"select"`
+	Quit        []string       `toml:"quit"`
+	GoBack      []string       `toml:"go_back"`
+	OpenActions []string       `toml:"open_actions"`
+	Actions     ActionsMapping `toml:"actions"`
 }
 
 type Config struct {
@@ -132,6 +139,10 @@ func (config *Config) validateConfigValues() error {
 	nonEmptyArray("keybinds.move_right", config.Keybinds.MoveRight)
 	nonEmptyArray("keybinds.select", config.Keybinds.Select)
 	nonEmptyArray("keybinds.quit", config.Keybinds.Quit)
+	nonEmptyArray("keybinds.go_back", config.Keybinds.GoBack)
+	nonEmptyArray("keybinds.open_actions", config.Keybinds.OpenActions)
+
+	nonEmptyArray("keybinds.actions.scan_files", config.Keybinds.Actions.ScanFiles)
 
 	hexColor("theme.surface", config.Theme.Surface)
 	hexColor("theme.surface_alt", config.Theme.SurfaceAlt)

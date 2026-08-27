@@ -9,15 +9,23 @@ import (
 	"wired/internal/core/config"
 )
 
+type WhichkeyKeyMap struct {
+	ScanFiles key.Binding
+}
+
 type KeyMap struct {
-	MoveLeft  key.Binding
-	MoveRight key.Binding
-	Select    key.Binding
-	Quit      key.Binding
+	MoveLeft    key.Binding
+	MoveRight   key.Binding
+	Select      key.Binding
+	Quit        key.Binding
+	GoBack      key.Binding
+	OpenActions key.Binding
+	Actions     WhichkeyKeyMap
 }
 
 // New initializes all of the keybindings recognized by the application.
 func New(bindings config.KeybindMapping) (KeyMap, error) {
+	// General keybinds.
 	if len(bindings.MoveLeft) == 0 {
 		return KeyMap{}, fmt.Errorf("[keymap:New] move_left must have at least one binding")
 	}
@@ -30,12 +38,29 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 	if len(bindings.Quit) == 0 {
 		return KeyMap{}, fmt.Errorf("[keymap:New] quit must have at least one binding")
 	}
+	if len(bindings.GoBack) == 0 {
+		return KeyMap{}, fmt.Errorf("[keymap:New] go_back must have at least one binding")
+	}
+
+	// Specific actions through the whichkey flow (lead_key + keybind).
+	if len(bindings.OpenActions) == 0 {
+		return KeyMap{}, fmt.Errorf("[keymap:New] open_actions must have at least one binding")
+	}
+	if len(bindings.Actions.ScanFiles) == 0 {
+		return KeyMap{}, fmt.Errorf("[keymap:New] scan_files must have at least one binding")
+	}
 
 	return KeyMap{
-		MoveLeft:  newBinding(bindings.MoveLeft, "move left"),
-		MoveRight: newBinding(bindings.MoveRight, "move right"),
-		Select:    newBinding(bindings.Select, "select"),
-		Quit:      newBinding(bindings.Quit, "quit"),
+		MoveLeft:    newBinding(bindings.MoveLeft, "move left"),
+		MoveRight:   newBinding(bindings.MoveRight, "move right"),
+		Select:      newBinding(bindings.Select, "select"),
+		Quit:        newBinding(bindings.Quit, "quit"),
+		GoBack:      newBinding(bindings.GoBack, "go back"),
+		OpenActions: newBinding(bindings.OpenActions, "open actions"),
+
+		Actions: WhichkeyKeyMap{
+			ScanFiles: newBinding(bindings.Actions.ScanFiles, "scan library files"),
+		},
 	}, nil
 }
 

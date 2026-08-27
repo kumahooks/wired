@@ -31,6 +31,9 @@ type WiredOrchestrator struct {
 	config *config.Config
 
 	// library holds the reference to the user's loaded audio files, and is shared with uiModel.
+	// TODO: this is just what we treat as "this is the library" currently.
+	// eventually, we will implement a more complex data structure once we get metatag parsing.
+	// furthermore, we will load this data from a cache before asking to scan.
 	library *[]audio.File
 }
 

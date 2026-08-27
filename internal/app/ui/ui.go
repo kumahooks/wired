@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"wired/internal/app/ui/components/initializing"
+	"wired/internal/app/ui/components/whichkey"
 	"wired/internal/core/audio"
 	"wired/internal/core/config"
 	"wired/internal/core/keymap"
@@ -20,9 +21,9 @@ type Library struct {
 	// scanCancel aborts the current scan, if any. It is nil when no scan is running.
 	scanCancel context.CancelFunc
 
-	// TODO: this is just what we treat as "this is the library" currently.
-	// eventually, we will implement a more complex data structure once we get metatag parsing.
-	// furthermore, we will load this data from a cache before asking to scan.
+	// audioFiles is a pointer to the orchestrator's owned library data structure. It holds every information of every
+	// audio file the application has both loaded and saved in cache. This is seeded at load time, and later on command
+	// through the ScanLibraryFullAction.
 	audioFiles *[]audio.File
 }
 
@@ -52,6 +53,7 @@ type UIModel struct {
 
 	// Components models.
 	initializationModel *initializing.Model
+	whichkeyModel       *whichkey.Model
 }
 
 // New initializes the UIModel, which is basically the UI orchestrator of the application. It initializes the state to
@@ -69,6 +71,7 @@ func New(
 		config:              config,
 		orchestratorContext: orchestratorCtx,
 		initializationModel: initializing.New(defaultKeyMap),
+		whichkeyModel:       whichkey.New(defaultKeyMap),
 		library: Library{
 			audioFiles: audioFiles,
 		},

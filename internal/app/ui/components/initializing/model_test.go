@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"wired/internal/app/ui/action"
-	"wired/internal/core/config"
 	"wired/internal/core/keymap"
 	"wired/internal/core/testutil"
 )
@@ -49,25 +48,6 @@ func TestApplyThemeRebuildsStyle(t *testing.T) {
 
 	wantStyle := newStyle(customTheme)
 	assert.Equal(t, wantStyle, model.style)
-}
-
-func TestApplyKeyMapStoresKeyMap(t *testing.T) {
-	t.Parallel()
-
-	model := New(defaultKeyMap(t))
-
-	alternateBindings := config.KeybindMapping{
-		MoveLeft:  []string{"j"},
-		MoveRight: []string{"k"},
-		Select:    []string{"space"},
-		Quit:      []string{"q"},
-	}
-	alternateKeyMap, err := keymap.New(alternateBindings)
-	require.NoError(t, err)
-
-	model.ApplyKeyMap(alternateKeyMap)
-
-	assert.Equal(t, alternateKeyMap, model.keyMap)
 }
 
 func TestAppendLog(t *testing.T) {

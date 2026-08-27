@@ -20,6 +20,9 @@ type NoAction struct{}
 // QuitAction requests application termination.
 type QuitAction struct{}
 
+// OpenWhichKeyAction opens the card with all the relevant application keybindings.
+type OpenWhichKeyAction struct{}
+
 // ReloadConfigAction requests a config reload.
 type ReloadConfigAction struct{}
 

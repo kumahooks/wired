@@ -7,10 +7,10 @@ import (
 )
 
 // Render returns the full-screen init view with the panel (log area and buttons) centered in it.
-func (model *Model) Render(width int, height int) string {
+func (model *Model) Render(windowWidth int, windowHeight int) string {
 	panel := model.buildPanel()
 
-	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, panel)
+	return lipgloss.Place(windowWidth, windowHeight, lipgloss.Center, lipgloss.Center, panel)
 }
 
 // buildPanel assembles the initialization panel, rendering title, log area, button row, and the hint.
@@ -18,17 +18,12 @@ func (model *Model) buildPanel() string {
 	sections := []string{
 		model.style.header.Render("wire(d) is starting..."),
 		model.renderLogArea(),
-	}
-
-	sections = append(
-		sections,
 		model.renderButtonRow(),
 		model.style.hint.Render(model.renderHint()),
-	)
+	}
 
 	content := strings.Join(sections, "\n\n")
-
-	return model.style.panel.Render(content)
+	return model.style.card.Render(content)
 }
 
 // renderLogArea builds a fixed-height log area of visibleLogLines lines.

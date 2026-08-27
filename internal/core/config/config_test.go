@@ -116,6 +116,33 @@ func TestValidateConfigValues(t *testing.T) {
 			wantError: "keybinds.quit must have at least one binding",
 		},
 		{
+			name: "empty go_back fails",
+			config: func() Config {
+				config := Defaults()
+				config.Keybinds.GoBack = []string{}
+				return config
+			}(),
+			wantError: "keybinds.go_back must have at least one binding",
+		},
+		{
+			name: "empty open_actions fails",
+			config: func() Config {
+				config := Defaults()
+				config.Keybinds.OpenActions = []string{}
+				return config
+			}(),
+			wantError: "keybinds.open_actions must have at least one binding",
+		},
+		{
+			name: "empty actions.scan_files fails",
+			config: func() Config {
+				config := Defaults()
+				config.Keybinds.Actions.ScanFiles = []string{}
+				return config
+			}(),
+			wantError: "keybinds.actions.scan_files must have at least one binding",
+		},
+		{
 			name: "empty surface color fails",
 			config: func() Config {
 				config := Defaults()
@@ -167,6 +194,7 @@ func TestValidateConfigValuesMultipleErrorsJoined(t *testing.T) {
 	config.Title = ""
 	config.Theme.Surface = "bad"
 	config.Keybinds.Quit = []string{}
+	config.Keybinds.Actions.ScanFiles = []string{}
 
 	err := config.validateConfigValues()
 	require.Error(t, err)
@@ -176,6 +204,7 @@ func TestValidateConfigValuesMultipleErrorsJoined(t *testing.T) {
 		"title must not contain empty strings",
 		"theme.surface must be a #RRGGBB hex color",
 		"keybinds.quit must have at least one binding",
+		"keybinds.actions.scan_files must have at least one binding",
 	} {
 		assert.Contains(t, joined, want)
 	}

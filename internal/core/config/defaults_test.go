@@ -31,6 +31,10 @@ func configsEqual(want Config, got Config) bool {
 		output.Keybinds.MoveRight = normalizeEmptyToNil(output.Keybinds.MoveRight)
 		output.Keybinds.Select = normalizeEmptyToNil(output.Keybinds.Select)
 		output.Keybinds.Quit = normalizeEmptyToNil(output.Keybinds.Quit)
+		output.Keybinds.GoBack = normalizeEmptyToNil(output.Keybinds.GoBack)
+		output.Keybinds.OpenActions = normalizeEmptyToNil(output.Keybinds.OpenActions)
+
+		output.Keybinds.Actions.ScanFiles = normalizeEmptyToNil(output.Keybinds.Actions.ScanFiles)
 
 		return output
 	}
@@ -62,18 +66,21 @@ func TestDefaults(t *testing.T) {
 		)
 	}
 
-	keybindsValue := reflect.ValueOf(defaults.Keybinds)
-	keybindsType := keybindsValue.Type()
-	for index := 0; index < keybindsValue.NumField(); index++ {
-		field := keybindsType.Field(index)
-		bindings := keybindsValue.Field(index).Interface().([]string)
-
-		require.NotEmpty(t, bindings, "Keybinds.%s = empty, want at least one binding", field.Name)
+	assertKeybinds := func(name string, bindings []string) {
+		require.NotEmpty(t, bindings, "Keybinds.%s = empty, want at least one binding", name)
 
 		for _, binding := range bindings {
-			assert.NotEmpty(t, strings.TrimSpace(binding), "Keybinds.%s contains empty binding", field.Name)
+			assert.NotEmpty(t, strings.TrimSpace(binding), "Keybinds.%s contains empty binding", name)
 		}
 	}
+
+	assertKeybinds("move_left", defaults.Keybinds.MoveLeft)
+	assertKeybinds("move_right", defaults.Keybinds.MoveRight)
+	assertKeybinds("select", defaults.Keybinds.Select)
+	assertKeybinds("quit", defaults.Keybinds.Quit)
+	assertKeybinds("go_back", defaults.Keybinds.GoBack)
+	assertKeybinds("open_actions", defaults.Keybinds.OpenActions)
+	assertKeybinds("actions.scan_files", defaults.Keybinds.Actions.ScanFiles)
 }
 
 func TestDefaultsTOMLRoundTrip(t *testing.T) {
