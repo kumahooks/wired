@@ -42,7 +42,7 @@ func TestRenderAllErrorLogs(t *testing.T) {
 	assertSnapshot(t, "render_all_errors", model.Render(80, 24))
 }
 
-func TestRenderContainsPanelHeader(t *testing.T) {
+func TestRenderContainsCardHeader(t *testing.T) {
 	t.Parallel()
 
 	model := New(testutil.DefaultKeyMap(t))
@@ -51,7 +51,7 @@ func TestRenderContainsPanelHeader(t *testing.T) {
 	assert.True(
 		t,
 		strings.Contains(rendered, "wire(d) is starting..."),
-		"render output missing panel header substring:\n%s",
+		"render output missing card header substring:\n%s",
 		rendered,
 	)
 }

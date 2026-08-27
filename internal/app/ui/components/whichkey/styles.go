@@ -8,7 +8,7 @@ import (
 
 // Style holds the component-specific lipgloss styles for the whichkey card.
 type Style struct {
-	card lipgloss.Style // panel is the full-width bottom rectangle.
+	card lipgloss.Style // card is the full-width bottom rectangle.
 
 	key         lipgloss.Style // key renders the command's shortcut key.
 	separator   lipgloss.Style // separator renders the "->" between the key and the description.

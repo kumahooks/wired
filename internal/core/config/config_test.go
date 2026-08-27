@@ -134,13 +134,13 @@ func TestValidateConfigValues(t *testing.T) {
 			wantError: "keybinds.open_actions must have at least one binding",
 		},
 		{
-			name: "empty actions.scan_files fails",
+			name: "empty actions.library_stats fails",
 			config: func() Config {
 				config := Defaults()
-				config.Keybinds.Actions.ScanFiles = []string{}
+				config.Keybinds.Actions.LibraryStats = []string{}
 				return config
 			}(),
-			wantError: "keybinds.actions.scan_files must have at least one binding",
+			wantError: "keybinds.actions.library_stats must have at least one binding",
 		},
 		{
 			name: "empty surface color fails",
@@ -194,7 +194,7 @@ func TestValidateConfigValuesMultipleErrorsJoined(t *testing.T) {
 	config.Title = ""
 	config.Theme.Surface = "bad"
 	config.Keybinds.Quit = []string{}
-	config.Keybinds.Actions.ScanFiles = []string{}
+	config.Keybinds.Actions.LibraryStats = []string{}
 
 	err := config.validateConfigValues()
 	require.Error(t, err)
@@ -204,7 +204,7 @@ func TestValidateConfigValuesMultipleErrorsJoined(t *testing.T) {
 		"title must not contain empty strings",
 		"theme.surface must be a #RRGGBB hex color",
 		"keybinds.quit must have at least one binding",
-		"keybinds.actions.scan_files must have at least one binding",
+		"keybinds.actions.library_stats must have at least one binding",
 	} {
 		assert.Contains(t, joined, want)
 	}

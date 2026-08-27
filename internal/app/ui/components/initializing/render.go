@@ -6,15 +6,15 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-// Render returns the full-screen init view with the panel (log area and buttons) centered in it.
+// Render returns the full-screen init view with the card (log area and buttons) centered in it.
 func (model *Model) Render(windowWidth int, windowHeight int) string {
-	panel := model.buildPanel()
+	card := model.buildCard()
 
-	return lipgloss.Place(windowWidth, windowHeight, lipgloss.Center, lipgloss.Center, panel)
+	return lipgloss.Place(windowWidth, windowHeight, lipgloss.Center, lipgloss.Center, card)
 }
 
-// buildPanel assembles the initialization panel, rendering title, log area, button row, and the hint.
-func (model *Model) buildPanel() string {
+// buildCard assembles the initialization card, rendering title, log area, button row, and the hint.
+func (model *Model) buildCard() string {
 	sections := []string{
 		model.style.header.Render("wire(d) is starting..."),
 		model.renderLogArea(),

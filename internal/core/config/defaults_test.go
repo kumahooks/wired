@@ -34,7 +34,7 @@ func configsEqual(want Config, got Config) bool {
 		output.Keybinds.GoBack = normalizeEmptyToNil(output.Keybinds.GoBack)
 		output.Keybinds.OpenActions = normalizeEmptyToNil(output.Keybinds.OpenActions)
 
-		output.Keybinds.Actions.ScanFiles = normalizeEmptyToNil(output.Keybinds.Actions.ScanFiles)
+		output.Keybinds.Actions.LibraryStats = normalizeEmptyToNil(output.Keybinds.Actions.LibraryStats)
 
 		return output
 	}
@@ -80,7 +80,8 @@ func TestDefaults(t *testing.T) {
 	assertKeybinds("quit", defaults.Keybinds.Quit)
 	assertKeybinds("go_back", defaults.Keybinds.GoBack)
 	assertKeybinds("open_actions", defaults.Keybinds.OpenActions)
-	assertKeybinds("actions.scan_files", defaults.Keybinds.Actions.ScanFiles)
+
+	assertKeybinds("actions.library_stats", defaults.Keybinds.Actions.LibraryStats)
 }
 
 func TestDefaultsTOMLRoundTrip(t *testing.T) {

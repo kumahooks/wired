@@ -67,11 +67,11 @@ func TestNewHappyPath(t *testing.T) {
 			wantKeys: bindings.OpenActions,
 		},
 		{
-			name:     "actions scan files",
-			binding:  func() string { return keyMap.Actions.ScanFiles.Help().Key },
-			keys:     func() []string { return keyMap.Actions.ScanFiles.Keys() },
-			wantKey:  bindings.Actions.ScanFiles[0],
-			wantKeys: bindings.Actions.ScanFiles,
+			name:     "actions library stats",
+			binding:  func() string { return keyMap.Actions.LibraryStats.Help().Key },
+			keys:     func() []string { return keyMap.Actions.LibraryStats.Keys() },
+			wantKey:  bindings.Actions.LibraryStats[0],
+			wantKeys: bindings.Actions.LibraryStats,
 		},
 	}
 
@@ -142,12 +142,12 @@ func TestNewEmptyBindingErrors(t *testing.T) {
 			wantError: "[keymap:New] open_actions must have at least one binding",
 		},
 		{
-			name: "empty actions.scan_files fails",
+			name: "empty actions.library_stats fails",
 			emptyFunc: func(bindings config.KeybindMapping) config.KeybindMapping {
-				bindings.Actions.ScanFiles = []string{}
+				bindings.Actions.LibraryStats = []string{}
 				return bindings
 			},
-			wantError: "[keymap:New] scan_files must have at least one binding",
+			wantError: "[keymap:New] library_stats must have at least one binding",
 		},
 	}
 

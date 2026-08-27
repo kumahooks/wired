@@ -36,7 +36,7 @@ func Defaults() Config {
 			OpenActions: []string{"space"},
 
 			Actions: ActionsMapping{
-				ScanFiles: []string{"R"},
+				LibraryStats: []string{"L"},
 			},
 		},
 	}

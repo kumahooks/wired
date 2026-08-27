@@ -50,8 +50,8 @@ type actionEntry struct {
 
 // mappedActions compiles every WhichkeyKeyMap key into an actionEntry.
 func (model *Model) mappedActions() []actionEntry {
-	scanFiles := model.keyMap.Actions.ScanFiles.Help()
-	entry := model.renderEntry(scanFiles.Key, scanFiles.Desc)
+	libraryStats := model.keyMap.Actions.LibraryStats.Help()
+	entry := model.renderEntry(libraryStats.Key, libraryStats.Desc)
 
 	return []actionEntry{
 		{

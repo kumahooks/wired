@@ -42,7 +42,7 @@ type ThemeConfig struct {
 }
 
 type ActionsMapping struct {
-	ScanFiles []string `toml:"scan_files"`
+	LibraryStats []string `toml:"library_stats"`
 }
 
 type KeybindMapping struct {
@@ -142,7 +142,7 @@ func (config *Config) validateConfigValues() error {
 	nonEmptyArray("keybinds.go_back", config.Keybinds.GoBack)
 	nonEmptyArray("keybinds.open_actions", config.Keybinds.OpenActions)
 
-	nonEmptyArray("keybinds.actions.scan_files", config.Keybinds.Actions.ScanFiles)
+	nonEmptyArray("keybinds.actions.library_stats", config.Keybinds.Actions.LibraryStats)
 
 	hexColor("theme.surface", config.Theme.Surface)
 	hexColor("theme.surface_alt", config.Theme.SurfaceAlt)

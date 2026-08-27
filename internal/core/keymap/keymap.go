@@ -10,7 +10,7 @@ import (
 )
 
 type WhichkeyKeyMap struct {
-	ScanFiles key.Binding
+	LibraryStats key.Binding
 }
 
 type KeyMap struct {
@@ -46,8 +46,8 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 	if len(bindings.OpenActions) == 0 {
 		return KeyMap{}, fmt.Errorf("[keymap:New] open_actions must have at least one binding")
 	}
-	if len(bindings.Actions.ScanFiles) == 0 {
-		return KeyMap{}, fmt.Errorf("[keymap:New] scan_files must have at least one binding")
+	if len(bindings.Actions.LibraryStats) == 0 {
+		return KeyMap{}, fmt.Errorf("[keymap:New] library_stats must have at least one binding")
 	}
 
 	return KeyMap{
@@ -59,7 +59,7 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 		OpenActions: newBinding(bindings.OpenActions, "open actions"),
 
 		Actions: WhichkeyKeyMap{
-			ScanFiles: newBinding(bindings.Actions.ScanFiles, "scan library files"),
+			LibraryStats: newBinding(bindings.Actions.LibraryStats, "library stats"),
 		},
 	}, nil
 }

@@ -48,7 +48,7 @@ func TestViewContentInitializing(t *testing.T) {
 	assert.True(
 		t,
 		strings.Contains(testutil.StripANSI(rendered), "wire(d) is starting..."),
-		"viewContent() missing panel header substring:\n%s",
+		"viewContent() missing card header substring:\n%s",
 		rendered,
 	)
 }

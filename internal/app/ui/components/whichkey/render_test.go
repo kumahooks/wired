@@ -29,7 +29,7 @@ func TestRenderContainsCommandEntry(t *testing.T) {
 	model := New(testutil.DefaultKeyMap(t))
 	rendered := testutil.StripANSI(model.Render(40, 10))
 
-	assert.Contains(t, rendered, "R -> scan library files")
+	assert.Contains(t, rendered, "L -> library stats")
 }
 
 func TestRenderSnapshot(t *testing.T) {
