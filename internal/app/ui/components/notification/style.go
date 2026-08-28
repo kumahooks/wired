@@ -8,12 +8,18 @@ import (
 
 type Style struct {
 	card    lipgloss.Style // card is the small dialog rectangle of a notification.
-	content lipgloss.Style // text represents the content within a notification.
+	content lipgloss.Style // content represents the text within a notification.
 }
 
 func newStyle(resolvedTheme theme.Theme) Style {
 	return Style{
-		card:    lipgloss.NewStyle(),
-		content: lipgloss.NewStyle().Foreground(resolvedTheme.AccentDeep),
+		// card draws a rounded border around the wrapped notification text.
+		card: lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			Padding(0, 1).
+			BorderForeground(resolvedTheme.AccentInteractive),
+
+		// content is simply the text within the card.
+		content: lipgloss.NewStyle().Foreground(resolvedTheme.TextPrimary),
 	}
 }
