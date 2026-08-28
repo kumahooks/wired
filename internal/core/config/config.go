@@ -42,6 +42,7 @@ type ThemeConfig struct {
 }
 
 type ActionsMapping struct {
+	Playlist     []string `toml:"playlist"`
 	LibraryStats []string `toml:"library_stats"`
 }
 
@@ -142,6 +143,7 @@ func (config *Config) validateConfigValues() error {
 	nonEmptyArray("keybinds.go_back", config.Keybinds.GoBack)
 	nonEmptyArray("keybinds.open_actions", config.Keybinds.OpenActions)
 
+	nonEmptyArray("keybinds.actions.playlist", config.Keybinds.Actions.Playlist)
 	nonEmptyArray("keybinds.actions.library_stats", config.Keybinds.Actions.LibraryStats)
 
 	hexColor("theme.surface", config.Theme.Surface)

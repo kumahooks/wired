@@ -9,7 +9,8 @@ import (
 	"wired/internal/core/config"
 )
 
-type WhichkeyKeyMap struct {
+type ActionsKeyMap struct {
+	Playlist     key.Binding
 	LibraryStats key.Binding
 }
 
@@ -20,7 +21,7 @@ type KeyMap struct {
 	Quit        key.Binding
 	GoBack      key.Binding
 	OpenActions key.Binding
-	Actions     WhichkeyKeyMap
+	Actions     ActionsKeyMap
 }
 
 // New initializes all of the keybindings recognized by the application.
@@ -46,6 +47,9 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 	if len(bindings.OpenActions) == 0 {
 		return KeyMap{}, fmt.Errorf("[keymap:New] open_actions must have at least one binding")
 	}
+	if len(bindings.Actions.Playlist) == 0 {
+		return KeyMap{}, fmt.Errorf("[keymap:New] playlist must have at least one binding")
+	}
 	if len(bindings.Actions.LibraryStats) == 0 {
 		return KeyMap{}, fmt.Errorf("[keymap:New] library_stats must have at least one binding")
 	}
@@ -58,7 +62,8 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 		GoBack:      newBinding(bindings.GoBack, "go back"),
 		OpenActions: newBinding(bindings.OpenActions, "open actions"),
 
-		Actions: WhichkeyKeyMap{
+		Actions: ActionsKeyMap{
+			Playlist:     newBinding(bindings.Actions.Playlist, "playlist"),
 			LibraryStats: newBinding(bindings.Actions.LibraryStats, "library stats"),
 		},
 	}, nil

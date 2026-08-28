@@ -507,7 +507,7 @@ func TestHandleKeyPressMsgForwardsToComponentProceed(t *testing.T) {
 	assert.Nil(t, command, "returned cmd should be nil for proceed action")
 
 	assert.True(t, sentinelCanceled, "cancelCurrentFileScan was not called on proceed")
-	assert.Equal(t, uiIdle, model.state)
+	assert.Equal(t, uiPlaylist, model.state)
 	assert.True(t, initLogContains(model, "proceeding without libraries"))
 }
 
@@ -519,6 +519,82 @@ func TestHandleKeyPressMsgMoveLeftIsNoOp(t *testing.T) {
 	_, command := model.Update(tea.KeyPressMsg{Code: 'h', Text: "h"})
 
 	assert.Nil(t, command, "returned cmd should be nil for move left (NoAction)")
+}
+
+func TestHandleKeyPressMsgWhichKeyRouting(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		sequence     []tea.KeyPressMsg
+		wantHidden   bool
+		wantState    uiState
+		wantStateSet bool
+	}{
+		{
+			name:         "open actions opens the card and maps playlist key to playlist state",
+			sequence:     []tea.KeyPressMsg{{Code: ' '}, {Code: 'P'}},
+			wantHidden:   true,
+			wantState:    uiPlaylist,
+			wantStateSet: true,
+		},
+		{
+			name:         "open actions opens the card and maps library stats key to library stats state",
+			sequence:     []tea.KeyPressMsg{{Code: ' '}, {Code: 'L'}},
+			wantHidden:   true,
+			wantState:    uiLibraryStats,
+			wantStateSet: true,
+		},
+		{
+			name:       "open actions opens the card and go back closes it keeping the state",
+			sequence:   []tea.KeyPressMsg{{Code: ' '}, {Code: tea.KeyEscape}},
+			wantHidden: true,
+			wantState:  uiPlaylist,
+		},
+		{
+			name:       "unmapped key while card is open closes it and does nothing",
+			sequence:   []tea.KeyPressMsg{{Code: ' '}, {Code: 'x', Text: "x"}},
+			wantHidden: true,
+			wantState:  uiPlaylist,
+		},
+		{
+			name:       "open actions while card is open closes it keeping the state",
+			sequence:   []tea.KeyPressMsg{{Code: ' '}, {Code: ' '}},
+			wantHidden: true,
+			wantState:  uiPlaylist,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			model := newTestUI(t)
+			model.setState(uiPlaylist)
+
+			for _, keyPress := range test.sequence {
+				model.Update(keyPress)
+			}
+
+			assert.Equal(t, test.wantHidden, !model.whichkeyModel.IsVisible(), "whichkey card visibility mismatch")
+
+			if test.wantStateSet {
+				assert.Equal(t, test.wantState, model.state)
+			}
+		})
+	}
+}
+
+func TestHandleKeyPressMsgWhichKeyDoesNotSinkIntoInitializing(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+	require.Equal(t, uiInitializing, model.state)
+
+	_, command := model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
+
+	assert.Nil(t, command, "returned cmd should be nil while initializing")
+	assert.False(t, model.whichkeyModel.IsVisible(), "whichkey must not capture keys during initialization")
 }
 
 func TestHandleComponentAction(t *testing.T) {
@@ -575,13 +651,27 @@ func TestHandleComponentAction(t *testing.T) {
 			skipLogCheck:  true,
 		},
 		{
-			name:          "ProceedFromInitAction returns nil and goes idle",
+			name:          "ProceedFromInitAction returns nil and goes to playlist",
 			action:        action.ProceedFromInitAction{},
-			wantState:     uiIdle,
+			wantState:     uiPlaylist,
 			wantStateSet:  true,
 			wantLogSubstr: "proceeding without libraries",
 			wantCanceled:  true,
 			wantCleared:   true,
+		},
+		{
+			name:         "OpenPlaylistAction returns nil and goes to playlist",
+			action:       action.OpenPlaylistAction{},
+			wantState:    uiPlaylist,
+			wantStateSet: true,
+			skipLogCheck: true,
+		},
+		{
+			name:         "OpenLibraryStatsAction returns nil and goes to library stats",
+			action:       action.OpenLibraryStatsAction{},
+			wantState:    uiLibraryStats,
+			wantStateSet: true,
+			skipLogCheck: true,
 		},
 		{
 			name:         "ActionCommand returns the carried cmd",

@@ -67,6 +67,13 @@ func TestNewHappyPath(t *testing.T) {
 			wantKeys: bindings.OpenActions,
 		},
 		{
+			name:     "actions playlist",
+			binding:  func() string { return keyMap.Actions.Playlist.Help().Key },
+			keys:     func() []string { return keyMap.Actions.Playlist.Keys() },
+			wantKey:  bindings.Actions.Playlist[0],
+			wantKeys: bindings.Actions.Playlist,
+		},
+		{
 			name:     "actions library stats",
 			binding:  func() string { return keyMap.Actions.LibraryStats.Help().Key },
 			keys:     func() []string { return keyMap.Actions.LibraryStats.Keys() },
@@ -140,6 +147,14 @@ func TestNewEmptyBindingErrors(t *testing.T) {
 				return bindings
 			},
 			wantError: "[keymap:New] open_actions must have at least one binding",
+		},
+		{
+			name: "empty actions.playlist fails",
+			emptyFunc: func(bindings config.KeybindMapping) config.KeybindMapping {
+				bindings.Actions.Playlist = []string{}
+				return bindings
+			},
+			wantError: "[keymap:New] playlist must have at least one binding",
 		},
 		{
 			name: "empty actions.library_stats fails",

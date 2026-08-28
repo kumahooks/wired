@@ -78,13 +78,8 @@ func (model *UIModel) handleKeyPressMsg(message tea.KeyPressMsg) tea.Cmd {
 		return model.handleComponentAction(model.initializationModel.HandleMessage(message))
 	}
 
-	if model.whichkeyModel.IsVisible() {
-		panic("TODO: what to do when whichkey is active?")
-	}
-
-	if key.Matches(message, model.keyMap.OpenActions) {
-		model.whichkeyModel.FlipIsVisible()
-		return nil
+	if key.Matches(message, model.keyMap.OpenActions) || model.whichkeyModel.IsVisible() {
+		return model.handleComponentAction(model.whichkeyModel.HandleMessage(message))
 	}
 
 	return nil
@@ -114,12 +109,18 @@ func (model *UIModel) handleComponentAction(act action.Action) tea.Cmd {
 		return initializationLoadConfigCommand()
 	case action.ProceedFromInitAction:
 		model.initializationModel.AppendLog("proceeding without libraries", initializing.LogNormal)
-
 		model.cancelCurrentFileScan()
-		model.setState(uiIdle)
+		model.setState(uiPlaylist)
+
 		return nil
 	case action.ActionCommand:
 		return act.Command
+	case action.OpenPlaylistAction:
+		model.setState(uiPlaylist)
+		return nil
+	case action.OpenLibraryStatsAction:
+		model.setState(uiLibraryStats)
+		return nil
 	default:
 		return nil
 	}

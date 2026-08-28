@@ -36,6 +36,7 @@ func Defaults() Config {
 			OpenActions: []string{"space"},
 
 			Actions: ActionsMapping{
+				Playlist:     []string{"P"},
 				LibraryStats: []string{"L"},
 			},
 		},

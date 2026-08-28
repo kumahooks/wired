@@ -27,8 +27,8 @@ func TestNewSeedsButtonsAndDefaults(t *testing.T) {
 	model := New(keyMap)
 
 	require.Len(t, model.buttons, 2)
-	assert.Equal(t, actionReloadConfig, model.buttons[0].action)
-	assert.Equal(t, actionProceed, model.buttons[1].action)
+	assert.Equal(t, reloadConfigAction, model.buttons[0].action)
+	assert.Equal(t, proceedAction, model.buttons[1].action)
 	assert.Equal(t, modeLoading, model.mode)
 	assert.Equal(t, 1, model.cursorPosition)
 	assert.Equal(t, keyMap, model.keyMap)
@@ -113,13 +113,13 @@ func TestButtonsForMode(t *testing.T) {
 	tests := []struct {
 		name      string
 		mode      initMode
-		wantOrder []buttonAction
+		wantOrder []actionButton
 	}{
-		{name: "loading shows only proceed", mode: modeLoading, wantOrder: []buttonAction{actionProceed}},
+		{name: "loading shows only proceed", mode: modeLoading, wantOrder: []actionButton{proceedAction}},
 		{
 			name:      "config error shows reload and proceed",
 			mode:      modeConfigError,
-			wantOrder: []buttonAction{actionReloadConfig, actionProceed},
+			wantOrder: []actionButton{reloadConfigAction, proceedAction},
 		},
 	}
 

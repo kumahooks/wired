@@ -24,7 +24,7 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 		model.initializationModel.AppendLog("no config file found, loading one using defaults~", initializing.LogNormal)
 	}
 
-	// Publish the fresh config through the shared pointer so the orchestrator and the UI see the same values.
+	// Publish the loaded config through the shared pointer so the orchestrator and the UI see the same values.
 	*model.config = *message.config
 	model.initializationModel.AppendLog("config loaded successfully~", initializing.LogNormal)
 
@@ -61,7 +61,7 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 	model.whichkeyModel.ApplyKeyMap(model.keyMap)
 	model.initializationModel.AppendLog("keybindings loaded successfully~", initializing.LogNormal)
 
-	// If the user has any invalid path in it's config, we notify it as a log warning, so they can fix it if they wish.
+	// If the user has any invalid path in it's config, we notify it as a log warning in the initialization component.
 	if len(message.invalidLibraryPaths) > 0 {
 		var pluralSuffix string = ""
 		if len(message.invalidLibraryPaths) > 1 {
@@ -90,7 +90,7 @@ func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 	message initializationLoadLibraryCacheResultMessage,
 ) tea.Cmd {
 	if len(*message.library.audioFiles) > 0 {
-		model.setState(uiIdle)
+		model.setState(uiPlaylist)
 		return nil
 	}
 

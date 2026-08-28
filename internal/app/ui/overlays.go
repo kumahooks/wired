@@ -15,7 +15,8 @@ import (
 func (model *UIModel) composeOverlays(base string) string {
 	baseLayer := lipgloss.NewLayer(base)
 
-	if model.state == uiIdle && model.whichkeyModel.IsVisible() {
+	// whichkey is the "command palette" overlay. it basically maps all the currently available commands.
+	if model.state != uiInitializing && model.whichkeyModel.IsVisible() {
 		baseLayer.AddLayers(whichkey.Anchor(
 			model.whichkeyModel.Render(model.windowWidth, model.windowHeight),
 			model.windowWidth,
@@ -23,6 +24,7 @@ func (model *UIModel) composeOverlays(base string) string {
 		))
 	}
 
+	// notifications is a FIFO queue where UIModel can push notifications to and show to the user in an overlay.
 	if model.notificationModel.HasActiveNotifications() {
 		baseLayer.AddLayers(notification.Anchor(
 			model.notificationModel.Render(model.windowWidth, model.windowHeight),

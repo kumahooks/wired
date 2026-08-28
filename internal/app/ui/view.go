@@ -30,20 +30,35 @@ func (model *UIModel) baseView() string {
 	switch model.state {
 	case uiInitializing:
 		return model.initializationModel.Render(model.windowWidth, model.windowHeight)
-	case uiIdle:
-		return model.idleView()
+	case uiPlaylist:
+		return model.playlistView()
+	case uiLibraryStats:
+		return model.libraryStatsView()
 	default:
 		return ""
 	}
 }
 
-// idleView centers the idle message on the terminal. Temporary shit.
-func (model *UIModel) idleView() string {
+// playlistView centers the playlist message on the terminal. Temporary shit.
+// TODO: this should be its own component I think
+func (model *UIModel) playlistView() string {
 	return lipgloss.Place(
 		model.windowWidth,
 		model.windowHeight,
 		lipgloss.Center,
 		lipgloss.Center,
-		strings.Repeat(strings.Repeat("program loaded successfully. idle~", 10)+"\n", 44),
+		strings.Repeat(strings.Repeat("this is the playlist view ", 10)+"\n", 44),
+	)
+}
+
+// libraryStatsView centers the library stats message on the terminal. Temporary shit.
+// TODO: this should be its own component I think
+func (model *UIModel) libraryStatsView() string {
+	return lipgloss.Place(
+		model.windowWidth,
+		model.windowHeight,
+		lipgloss.Center,
+		lipgloss.Center,
+		strings.Repeat(strings.Repeat("this is the library stats view ", 10)+"\n", 44),
 	)
 }

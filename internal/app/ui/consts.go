@@ -5,7 +5,8 @@ type uiState uint8
 
 const (
 	uiInitializing uiState = iota
-	uiIdle
+	uiPlaylist
+	uiLibraryStats
 )
 
 // Constants for the UI dimensions.

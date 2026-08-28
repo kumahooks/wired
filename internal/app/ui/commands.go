@@ -11,7 +11,7 @@ import (
 	"wired/internal/core/config"
 )
 
-// initializationLoadConfigCommand returns a tea.Cmd that loads config from disk into a fresh *Config.
+// initializationLoadConfigCommand returns a tea.Cmd after loading config from disk, into a fresh *Config in the Orchestrator.
 func initializationLoadConfigCommand() tea.Cmd {
 	return func() tea.Msg {
 		loadedConfig, isConfigDefaults, invalidLibraryPaths, err := config.Load()

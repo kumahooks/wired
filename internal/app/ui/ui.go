@@ -61,8 +61,8 @@ type UIModel struct {
 	notificationModel   *notification.Model
 }
 
-// New initializes the UIModel, which is basically the UI orchestrator of the application. It initializes the state to
-// `uiInitializing`. To avoid locking the user out of actions, default configs, keymaps, and styles are loaded at first.
+// New initializes the UIModel, which is basically the UI orchestrator of the application. It starts with the state `uiInitializing`.
+// To avoid locking the user out of actions, default configs, keymaps, and styles are loaded at first.
 func New(
 	orchestratorCtx context.Context,
 	defaultKeyMap keymap.KeyMap,
@@ -86,8 +86,9 @@ func New(
 	return model, nil
 }
 
-// Init sends a tea.Cmd message to load the user's config.
+// Init is the first function that will be called. It returns an optional initial command. (bubbletea's own words)
 func (model *UIModel) Init() tea.Cmd {
+	// Init sends a tea.Cmd message to load the user's config. It's the very first thing we run, getting the app ready to use.
 	return initializationLoadConfigCommand()
 }
 

@@ -23,7 +23,7 @@ type WiredOrchestrator struct {
 	// teaProgram is a reference to the tea program, a result from `tea.NewProgram`.
 	teaProgram *tea.Program
 
-	// uiModel is the tea's UI, which has it's own lifecycle methods e.g. Init, Update, View.
+	// uiModel is the tea's UI, which has it's own lifecycle methods (Init, Update, View) following bubbletea Elm architecture.
 	uiModel *ui.UIModel
 
 	// config is the loaded application's config, either the defaults or the users. the initialization pipeline updates

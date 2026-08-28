@@ -26,6 +26,12 @@ type OpenWhichKeyAction struct{}
 // ReloadConfigAction requests a config reload.
 type ReloadConfigAction struct{}
 
+// OpenPlaylistAction goes to the playlist screen.
+type OpenPlaylistAction struct{}
+
+// OpenLibraryStatsAction goes to the library stats screen.
+type OpenLibraryStatsAction struct{}
+
 // ScanLibraryFullAction requests a full re-scan of the known library paths.
 type ScanLibraryFullAction struct{}
 

@@ -4,18 +4,18 @@ import (
 	"wired/internal/core/keymap"
 )
 
-// buttonAction maps a button to the action it produces on select.
-type buttonAction int
+// actionButton maps a button to the action it produces on select.
+type actionButton int
 
 const (
-	actionReloadConfig buttonAction = iota
-	actionProceed
+	reloadConfigAction actionButton = iota
+	proceedAction
 )
 
 // button is a selectable action rendered in the button row.
 type button struct {
 	label  string
-	action buttonAction
+	action actionButton
 }
 
 // initMode represents the state of the initialization screen, which decides which buttons are shown to the user.

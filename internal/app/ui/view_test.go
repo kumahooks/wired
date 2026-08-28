@@ -53,17 +53,27 @@ func TestViewContentInitializing(t *testing.T) {
 	)
 }
 
-func TestViewContentIdle(t *testing.T) {
+func TestViewContentPlaylist(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
-	model.state = uiIdle
+	model.state = uiPlaylist
 
 	rendered := model.viewContent()
 	assert.True(
 		t,
-		strings.Contains(testutil.StripANSI(rendered), "program loaded successfully. idle~"),
-		"viewContent() missing idle substring:\n%s",
+		strings.Contains(testutil.StripANSI(rendered), "this is the playlist view"),
+		"viewContent() missing playlist substring:\n%s",
+		rendered,
+	)
+
+	model.state = uiLibraryStats
+
+	rendered = model.viewContent()
+	assert.True(
+		t,
+		strings.Contains(testutil.StripANSI(rendered), "this is the library stats view"),
+		"viewContent() missing library stats substring:\n%s",
 		rendered,
 	)
 }

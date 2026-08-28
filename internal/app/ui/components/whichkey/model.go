@@ -3,6 +3,10 @@
 package whichkey
 
 import (
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+
+	"wired/internal/app/ui/action"
 	"wired/internal/core/keymap"
 	"wired/internal/core/theme"
 )
@@ -32,6 +36,26 @@ func (model *Model) IsVisible() bool {
 	return model.isVisible
 }
 
-func (model *Model) FlipIsVisible() {
+func (model *Model) HandleMessage(message tea.Msg) action.Action {
+	keyPress, ok := message.(tea.KeyPressMsg)
+	if !ok {
+		return action.NoAction{}
+	}
+
+	model.flipIsVisible()
+
+	switch {
+	case key.Matches(keyPress, model.keyMap.GoBack), key.Matches(keyPress, model.keyMap.OpenActions):
+		return action.NoAction{}
+	case key.Matches(keyPress, model.keyMap.Actions.Playlist):
+		return action.OpenPlaylistAction{}
+	case key.Matches(keyPress, model.keyMap.Actions.LibraryStats):
+		return action.OpenLibraryStatsAction{}
+	}
+
+	return action.NoAction{}
+}
+
+func (model *Model) flipIsVisible() {
 	model.isVisible = !model.isVisible
 }

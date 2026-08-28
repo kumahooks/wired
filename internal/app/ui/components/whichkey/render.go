@@ -48,17 +48,21 @@ type actionEntry struct {
 	width int
 }
 
-// mappedActions compiles every WhichkeyKeyMap key into an actionEntry.
+// mappedActions compiles every ActionsKeyMap key into an actionEntry.
 func (model *Model) mappedActions() []actionEntry {
+	playlist := model.keyMap.Actions.Playlist.Help()
 	libraryStats := model.keyMap.Actions.LibraryStats.Help()
-	entry := model.renderEntry(libraryStats.Key, libraryStats.Desc)
 
 	return []actionEntry{
-		{
-			text:  entry,
-			width: lipgloss.Width(entry),
-		},
+		model.actionEntry(playlist.Key, playlist.Desc),
+		model.actionEntry(libraryStats.Key, libraryStats.Desc),
 	}
+}
+
+// actionEntry renders one "{key} -> {description}" line together with its width.
+func (model *Model) actionEntry(key string, description string) actionEntry {
+	text := model.renderEntry(key, description)
+	return actionEntry{text: text, width: lipgloss.Width(text)}
 }
 
 // layoutRows renders the mapped action entries as rows.

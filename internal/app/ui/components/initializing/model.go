@@ -18,8 +18,8 @@ func New(defaultKeyMap keymap.KeyMap) *Model {
 	model := &Model{
 		mode: modeLoading,
 		buttons: []button{
-			{label: "reload config", action: actionReloadConfig},
-			{label: "proceed", action: actionProceed},
+			{label: "reload config", action: reloadConfigAction},
+			{label: "proceed", action: proceedAction},
 		},
 		keyMap: defaultKeyMap,
 		style:  newStyle(theme.Default()),
@@ -67,9 +67,9 @@ func (model *Model) HandleMessage(message tea.Msg) action.Action {
 		}
 
 		switch model.buttons[model.cursorPosition].action {
-		case actionReloadConfig:
+		case reloadConfigAction:
 			return action.ReloadConfigAction{}
-		case actionProceed:
+		case proceedAction:
 			return action.ProceedFromInitAction{}
 		}
 	}
@@ -89,27 +89,27 @@ func (model *Model) setMode(mode initMode) {
 }
 
 // buttonsForMode returns the subset of buttonActions visible in the given mode.
-func buttonsForMode(mode initMode) []buttonAction {
+func buttonsForMode(mode initMode) []actionButton {
 	switch mode {
 	case modeConfigError:
-		return []buttonAction{actionReloadConfig, actionProceed}
+		return []actionButton{reloadConfigAction, proceedAction}
 	default:
-		return []buttonAction{actionProceed}
+		return []actionButton{proceedAction}
 	}
 }
 
 // firstVisibleAction returns the first visible buttonAction in the current mode.
-func (model *Model) firstVisibleAction() buttonAction {
+func (model *Model) firstVisibleAction() actionButton {
 	return buttonsForMode(model.mode)[0]
 }
 
 // visibleActions returns the list of buttonActions visible in the current mode.
-func (model *Model) visibleActions() []buttonAction {
+func (model *Model) visibleActions() []actionButton {
 	return buttonsForMode(model.mode)
 }
 
 // canonicalIndexForVisible maps a buttonAction to its index within the model's buttons slice.
-func (model *Model) canonicalIndexForVisible(action buttonAction) int {
+func (model *Model) canonicalIndexForVisible(action actionButton) int {
 	for index, candidate := range model.buttons {
 		if candidate.action == action {
 			return index
@@ -120,7 +120,7 @@ func (model *Model) canonicalIndexForVisible(action buttonAction) int {
 }
 
 // positionOfVisible returns the position of the given action within the current mode's visible actions.
-func (model *Model) positionOfVisible(action buttonAction) int {
+func (model *Model) positionOfVisible(action actionButton) int {
 	for index, visible := range model.visibleActions() {
 		if visible == action {
 			return index
