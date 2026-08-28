@@ -231,7 +231,7 @@ func TestHandleInitializationLoadConfigResultKeymapParseFailure(t *testing.T) {
 
 	assert.True(t, initLogContains(model, "[keymap:New]"))
 	assert.True(t, initLogContains(model, "falling back to default keybindings"))
-	assert.True(t, initLogContains(model, "keybindings failed to load, using previously held bindings"))
+	assert.True(t, initLogContains(model, "keybindings failed to load, fallbacking to previous bindings"))
 
 	assert.Equal(t, initialKeyMap, model.keyMap, "model.keyMap changed on parse failure")
 	assert.True(t, model.initializationModel.IsConfigError(), "expected modeConfigError on keymap parse failure")

@@ -2,9 +2,11 @@ package ui
 
 import (
 	"context"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
+	"wired/internal/app/ui/components/notification"
 	"wired/internal/core/audio"
 	"wired/internal/core/config"
 )
@@ -103,4 +105,11 @@ func scanFilesMetatagStartCommand() tea.Cmd {
 	return func() tea.Msg {
 		return nil
 	}
+}
+
+// notificationExpireCommand returns a tea.Cmd that emits notificationExpireMessage after a notification's lifetime ends.
+func notificationExpireCommand() tea.Cmd {
+	return tea.Tick(notification.Lifetime, func(time.Time) tea.Msg {
+		return notificationExpireMessage{}
+	})
 }

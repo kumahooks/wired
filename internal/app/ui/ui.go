@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"wired/internal/app/ui/components/initializing"
+	"wired/internal/app/ui/components/notification"
 	"wired/internal/app/ui/components/whichkey"
 	"wired/internal/core/audio"
 	"wired/internal/core/config"
@@ -51,9 +52,13 @@ type UIModel struct {
 	// library is the user's loaded library data.
 	library Library
 
+	// expireNotificationCmds holds expire commands queued by PushNotification. Update drains it into the batch before returning.
+	expireNotificationCmds []tea.Cmd
+
 	// Components models.
 	initializationModel *initializing.Model
 	whichkeyModel       *whichkey.Model
+	notificationModel   *notification.Model
 }
 
 // New initializes the UIModel, which is basically the UI orchestrator of the application. It initializes the state to
@@ -72,6 +77,7 @@ func New(
 		orchestratorContext: orchestratorCtx,
 		initializationModel: initializing.New(defaultKeyMap),
 		whichkeyModel:       whichkey.New(defaultKeyMap),
+		notificationModel:   notification.New(),
 		library: Library{
 			audioFiles: audioFiles,
 		},
@@ -83,6 +89,20 @@ func New(
 // Init sends a tea.Cmd message to load the user's config.
 func (model *UIModel) Init() tea.Cmd {
 	return initializationLoadConfigCommand()
+}
+
+// PushNotification queues a notification for display and schedules its expiry command.
+func (model *UIModel) PushNotification(message string) {
+	model.notificationModel.PushNotification(message)
+	model.expireNotificationCmds = append(model.expireNotificationCmds, notificationExpireCommand())
+}
+
+// drainNotificationCmds hands over the expire commands queued and resets the queue.
+func (model *UIModel) drainNotificationCmds() []tea.Cmd {
+	commands := model.expireNotificationCmds
+	model.expireNotificationCmds = nil
+
+	return commands
 }
 
 func (model *UIModel) setState(state uiState) {

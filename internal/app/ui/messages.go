@@ -46,3 +46,6 @@ type fetchFilesWaitProgressMessage struct {
 	resultChannel   <-chan fetchFilesResultMessage
 	generation      uint64
 }
+
+// notificationExpireMessage is produced by notificationExpireCommand after a notification's lifetime ends.
+type notificationExpireMessage struct{}

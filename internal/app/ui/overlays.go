@@ -3,6 +3,7 @@ package ui
 import (
 	"charm.land/lipgloss/v2"
 
+	"wired/internal/app/ui/components/notification"
 	"wired/internal/app/ui/components/whichkey"
 )
 
@@ -17,6 +18,14 @@ func (model *UIModel) composeOverlays(base string) string {
 	if model.state == uiIdle && model.whichkeyModel.IsVisible() {
 		baseLayer.AddLayers(whichkey.Anchor(
 			model.whichkeyModel.Render(model.windowWidth, model.windowHeight),
+			model.windowWidth,
+			model.windowHeight,
+		))
+	}
+
+	if model.notificationModel.HasActiveNotifications() {
+		baseLayer.AddLayers(notification.Anchor(
+			model.notificationModel.Render(model.windowWidth, model.windowHeight),
 			model.windowWidth,
 			model.windowHeight,
 		))

@@ -34,6 +34,9 @@ func (model *UIModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	// User Action - Scan files Step 3: start scanning the fetched files metatag.
 	case fetchFilesResultMessage:
 		commands = append(commands, model.handleFetchFilesResultMessage(message))
+	// Notification expiration routine: each push schedules its own expiry.
+	case notificationExpireMessage:
+		model.notificationModel.PruneExpired()
 	case tea.WindowSizeMsg:
 		if command := model.handleWindowResize(message); command != nil {
 			commands = append(commands, command)
@@ -44,6 +47,8 @@ func (model *UIModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Notification expiration: drain expire commands queued, if any.
+	commands = append(commands, model.drainNotificationCmds()...)
 	return model, tea.Batch(commands...)
 }
 
