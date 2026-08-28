@@ -17,7 +17,7 @@ func TestRenderSnapshot(t *testing.T) {
 	model.PushNotification("config reloaded")
 	model.PushNotification("scan finished: 42 files")
 
-	assertSnapshot(t, "render_default", model.Render(80, 24))
+	testutil.AssertSnapshot(t, "render_default", model.Render(80, 24))
 }
 
 func TestRenderEmptyIsBlank(t *testing.T) {

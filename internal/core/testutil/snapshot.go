@@ -1,4 +1,4 @@
-package initializing
+package testutil
 
 import (
 	"flag"
@@ -6,18 +6,16 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"wired/internal/core/testutil"
 )
 
 var updateGolden = flag.Bool("update", false, "regenerate render golden files")
 
-// assertSnapshot compares the stripped content against testdata/<name>.golden, writing the file when -update is set.
-func assertSnapshot(t *testing.T, name string, content string) {
+// AssertSnapshot compares the ANSI-stripped content against testdata/<name>.golden, writing the file when -update is set.
+func AssertSnapshot(t *testing.T, name string, content string) {
 	t.Helper()
 
 	goldenPath := "testdata/" + name + ".golden"
-	stripped := testutil.StripANSI(content)
+	stripped := StripANSI(content)
 
 	if *updateGolden {
 		if err := os.MkdirAll("testdata", 0o755); err != nil {
@@ -37,9 +35,4 @@ func assertSnapshot(t *testing.T, name string, content string) {
 	}
 
 	assert.Equal(t, string(want), stripped, "snapshot %q mismatch", name)
-}
-
-func TestMain(m *testing.M) {
-	flag.Parse()
-	os.Exit(m.Run())
 }

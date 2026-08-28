@@ -37,5 +37,5 @@ func TestRenderSnapshot(t *testing.T) {
 
 	model := New(testutil.DefaultKeyMap(t))
 
-	assertSnapshot(t, "render_default", model.Render(40, 10))
+	testutil.AssertSnapshot(t, "render_default", model.Render(40, 10))
 }

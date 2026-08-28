@@ -1,13 +1,13 @@
 Completely unorganized and without a deep thought behind.
 
-- [ ] Leader key to trigger commands similar to nvim?
+- [x] Leader key to trigger commands similar to nvim?
 - [ ] Initialization screen supports j/k to move up/down the log lines.
 - [ ] Metatag parsing of audio files.
 - [ ] Organization and definitions of albums and music, based on the retrieved metatag.
 - [ ] Cache of previously scanned files.
 - [ ] Dialog on the screen which *can* trigger actions depending on user's response.
-- [ ] Refactor `assertSnapshot` and the `-update` golden flag into shared `testutil`.
-- [ ] Notification system to send messages to the user. (especially useful for debugging)
+- [x] Refactor `assertSnapshot` and the `-update` golden flag into shared `testutil`.
+- [x] Notification system to send messages to the user. (especially useful for debugging)
 - [ ] View: Application layout design.
 - [ ] View: Currently library.
 - [ ] View: Currently selected album.

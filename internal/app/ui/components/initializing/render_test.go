@@ -15,7 +15,7 @@ func TestRenderDefaultModel(t *testing.T) {
 	model := New(testutil.DefaultKeyMap(t))
 	model.SetConfigError()
 
-	assertSnapshot(t, "render_default", model.Render(80, 24))
+	testutil.AssertSnapshot(t, "render_default", model.Render(80, 24))
 }
 
 func TestRenderWithNormalAndErrorLogs(t *testing.T) {
@@ -27,7 +27,7 @@ func TestRenderWithNormalAndErrorLogs(t *testing.T) {
 	model.AppendLog("library scan starting", LogNormal)
 	model.SetConfigError()
 
-	assertSnapshot(t, "render_logs_normal_and_error", model.Render(80, 24))
+	testutil.AssertSnapshot(t, "render_logs_normal_and_error", model.Render(80, 24))
 }
 
 func TestRenderAllErrorLogs(t *testing.T) {
@@ -39,7 +39,7 @@ func TestRenderAllErrorLogs(t *testing.T) {
 	model.AppendLog("theme.track must be a #RRGGBB hex color", LogError)
 	model.SetConfigError()
 
-	assertSnapshot(t, "render_all_errors", model.Render(80, 24))
+	testutil.AssertSnapshot(t, "render_all_errors", model.Render(80, 24))
 }
 
 func TestRenderContainsCardHeader(t *testing.T) {
