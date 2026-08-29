@@ -102,9 +102,10 @@ func TestFetchFilesPopulatesAudioFiles(t *testing.T) {
 	assert.Equal(t, want, got)
 	require.Len(t, files, want)
 
-	// Every populated file name should be an audio file by base name.
+	// Every populated file name should be an audio file by base name, and its size should be the written byte length.
 	for _, file := range files {
 		assert.True(t, isAudio(file.FileName), "non-audio file in slice: %q", file.FileName)
+		assert.Equal(t, int64(1), file.SizeBytes, "unexpected size for %q", file.FileName)
 	}
 }
 

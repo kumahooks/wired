@@ -1,5 +1,5 @@
-// Package initializing implements the initialization view, responsible for sending feedbacks to the user regarding the
-// initialization pipeline.
+// Package initializing implements a view responsible for sending feedbacks to the user regarding the initialization pipeline.
+// If everything goes well in the initialization, the user does not see this screen and is taken instantly to the playlist.
 package initializing
 
 import (

@@ -21,7 +21,8 @@ var audioExtensions = map[string]struct{}{
 
 // File is a single audio file discovered in a library.
 type File struct {
-	FileName string
+	FileName  string
+	SizeBytes int64
 }
 
 // FetchFiles goes through every file in the sub-trees at rootPaths and returns every found audio file. When audioFiles
@@ -38,7 +39,7 @@ func FetchFiles(
 	for _, rootPath := range rootPaths {
 		currentRoot := rootPath
 
-		walkDirectory := func(path string, directory fs.DirEntry, err error) error {
+		walkDirectory := func(path string, entry fs.DirEntry, err error) error {
 			if err != nil {
 				// If the very first directory errors, we should return it. Otherwise we just continue.
 				if path == currentRoot {
@@ -54,7 +55,7 @@ func FetchFiles(
 			default:
 			}
 
-			if directory.IsDir() {
+			if entry.IsDir() {
 				return nil
 			}
 
@@ -64,8 +65,13 @@ func FetchFiles(
 
 			filesCount++
 
+			fileSize := int64(0)
+			if info, infoErr := entry.Info(); infoErr == nil {
+				fileSize = info.Size()
+			}
+
 			if audioFiles != nil {
-				*audioFiles = append(*audioFiles, File{FileName: filepath.Base(path)})
+				*audioFiles = append(*audioFiles, File{FileName: filepath.Base(path), SizeBytes: fileSize})
 			}
 
 			if progressChannel != nil && filesCount%progressInterval == 0 {
