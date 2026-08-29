@@ -3,11 +3,19 @@
 package action
 
 import (
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 )
 
 // Action is any value a component returns from HandleMessage. UIModel type-switches on it.
 type Action any
+
+// Binding associates a key binding with its action. UIModel exposes a commandBindingsFor primitive where it returns
+// all of the bindings given the current UI state.
+type Binding struct {
+	Keys   key.Binding
+	Action Action
+}
 
 // Component is a UI unit the UIModel forwards messages to and receives actions from.
 type Component interface {

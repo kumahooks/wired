@@ -1,7 +1,7 @@
 package whichkey
 
 import (
-	"wired/internal/core/keymap"
+	"wired/internal/app/ui/action"
 )
 
 type Model struct {
@@ -9,8 +9,11 @@ type Model struct {
 	// action sink into this component, render the card with the actions mapped, etc.
 	isVisible bool
 
-	// keymap is used to properly map actions, and render their hint on the whichkey card.
-	keyMap keymap.KeyMap
+	// bindings is the list of active bindings based on the current UI's state, compiled and pushed by the UIModel.
+	bindings []action.Binding
+
+	// closeKey is the key hint rendered on the card's last line for closing the card.
+	closeKey string
 
 	// style is the styles (such as lipgloss colors) used in the view rendering.
 	style Style

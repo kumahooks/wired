@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"wired/internal/app/ui/action"
 	"wired/internal/app/ui/components/initializing"
 	"wired/internal/app/ui/components/notification"
 	"wired/internal/app/ui/components/whichkey"
@@ -76,12 +77,14 @@ func New(
 		config:              config,
 		orchestratorContext: orchestratorCtx,
 		initializationModel: initializing.New(defaultKeyMap),
-		whichkeyModel:       whichkey.New(defaultKeyMap),
+		whichkeyModel:       whichkey.New(),
 		notificationModel:   notification.New(),
 		library: Library{
 			audioFiles: audioFiles,
 		},
 	}
+
+	model.whichkeyModel.SetBindings(model.commandBindingsFor(model.state))
 
 	return model, nil
 }
@@ -108,4 +111,26 @@ func (model *UIModel) drainNotificationCmds() []tea.Cmd {
 
 func (model *UIModel) setState(state uiState) {
 	model.state = state
+	model.whichkeyModel.SetBindings(model.commandBindingsFor(state))
+}
+
+// commandBindingsFor compiles the bindings active for the given UI state.
+func (model *UIModel) commandBindingsFor(state uiState) []action.Binding {
+	// TODO: there will obviously be more actions and states... is this way really good enough?
+	var bindings []action.Binding
+
+	switch state {
+	case uiPlaylist:
+		bindings = append(
+			bindings,
+			action.Binding{Keys: model.keyMap.Actions.LibraryStats, Action: action.OpenLibraryStatsAction{}},
+		)
+	case uiLibraryStats:
+		bindings = append(
+			bindings,
+			action.Binding{Keys: model.keyMap.Actions.Playlist, Action: action.OpenPlaylistAction{}},
+		)
+	}
+
+	return bindings
 }

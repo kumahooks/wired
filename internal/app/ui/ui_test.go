@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"wired/internal/app/ui/action"
 	"wired/internal/core/audio"
 	"wired/internal/core/config"
 	"wired/internal/core/testutil"
@@ -72,4 +73,81 @@ func TestNewTestUIAppliesWindowSize(t *testing.T) {
 	assert.Equal(t, 24, model.windowHeight)
 	assert.Equal(t, uiInitializing, model.state)
 	require.NotNil(t, model.initializationModel, "initializationModel is nil after newTestUI")
+}
+
+func TestBindingsForOmitsCurrentStateAction(t *testing.T) {
+	t.Parallel()
+
+	// TODO: this will not scale well.. ;x
+	tests := []struct {
+		name         string
+		state        uiState
+		wantPlaylist bool
+		wantLibStats bool
+	}{
+		{
+			name:         "initializing has no bindings",
+			state:        uiInitializing,
+			wantPlaylist: false,
+			wantLibStats: false,
+		},
+		{
+			name:         "playlist omits open playlist",
+			state:        uiPlaylist,
+			wantPlaylist: false,
+			wantLibStats: true,
+		},
+		{
+			name:         "library stats omits open library stats",
+			state:        uiLibraryStats,
+			wantPlaylist: true,
+			wantLibStats: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			configValue := config.Defaults()
+			model, err := New(context.Background(), testutil.DefaultKeyMap(t), &configValue, &[]audio.File{})
+			require.NoError(t, err)
+
+			bindings := model.commandBindingsFor(test.state)
+
+			var gotPlaylist, gotLibStats bool
+			for _, binding := range bindings {
+				switch binding.Action.(type) {
+				case action.OpenPlaylistAction:
+					gotPlaylist = true
+				case action.OpenLibraryStatsAction:
+					gotLibStats = true
+				}
+			}
+
+			assert.Equal(t, test.wantPlaylist, gotPlaylist, "playlist binding presence mismatch")
+			assert.Equal(t, test.wantLibStats, gotLibStats, "library stats binding presence mismatch")
+		})
+	}
+}
+
+func TestSetStateRefreshesWhichKeyBindings(t *testing.T) {
+	t.Parallel()
+
+	configValue := config.Defaults()
+	model, err := New(context.Background(), testutil.DefaultKeyMap(t), &configValue, &[]audio.File{})
+	require.NoError(t, err)
+	model.setState(uiLibraryStats)
+
+	// Leader then 'P' from the stats state navigates to the playlist.
+	model.Update(tea.KeyPressMsg{Code: ' '})
+	updatedModel, _ := model.Update(tea.KeyPressMsg{Code: 'P'})
+	model = updatedModel.(*UIModel)
+	assert.Equal(t, uiPlaylist, model.state, "'P' through the whichkey card must navigate to the playlist")
+
+	// Without leaving the playlist, leader then 'P' again must be a no-op.
+	model.Update(tea.KeyPressMsg{Code: ' '})
+	updatedModel, _ = model.Update(tea.KeyPressMsg{Code: 'P'})
+	model = updatedModel.(*UIModel)
+	assert.Equal(t, uiPlaylist, model.state, "'P' in the playlist state must not toggle away from the playlist")
 }

@@ -14,12 +14,12 @@ import (
 func TestRenderRectangleAtExpectedCardHeight(t *testing.T) {
 	t.Parallel()
 
-	model := New(testutil.DefaultKeyMap(t))
+	model := newTestModel(t)
 
 	rendered := model.Render(40, 10)
 	lines := strings.Split(testutil.StripANSI(rendered), "\n")
 
-	assert.Len(t, lines, model.cardHeight(1), "card must render padding, one action row, gap, and hint")
+	assert.Len(t, lines, model.cardHeight(2), "card must render padding, both action rows, gap, and hint")
 	for index, line := range lines {
 		assert.Len(t, []rune(line), 40, "card line %d must span the full window width", index)
 	}
@@ -28,7 +28,7 @@ func TestRenderRectangleAtExpectedCardHeight(t *testing.T) {
 func TestRenderContainsCommandEntry(t *testing.T) {
 	t.Parallel()
 
-	model := New(testutil.DefaultKeyMap(t))
+	model := newTestModel(t)
 	rendered := testutil.StripANSI(model.Render(40, 10))
 
 	assert.Contains(t, rendered, "P -> playlist")
@@ -38,26 +38,24 @@ func TestRenderContainsCommandEntry(t *testing.T) {
 func TestMappedActions(t *testing.T) {
 	t.Parallel()
 
-	keyMap := testutil.DefaultKeyMap(t)
-	model := New(keyMap)
+	bindings := testBindings(t)
+	model := newTestModel(t)
 
 	actions := model.mappedActions()
 
-	require.Len(t, actions, 2)
+	require.Len(t, actions, len(bindings))
 
-	playlistHelp := keyMap.Actions.Playlist.Help()
-	assert.Equal(t, model.renderEntry(playlistHelp.Key, playlistHelp.Desc), actions[0].text)
-	assert.Equal(t, lipgloss.Width(actions[0].text), actions[0].width)
-
-	libraryStatsHelp := keyMap.Actions.LibraryStats.Help()
-	assert.Equal(t, model.renderEntry(libraryStatsHelp.Key, libraryStatsHelp.Desc), actions[1].text)
-	assert.Equal(t, lipgloss.Width(actions[1].text), actions[1].width)
+	for index, binding := range bindings {
+		help := binding.Keys.Help()
+		assert.Equal(t, model.renderEntry(help.Key, help.Desc), actions[index].text)
+		assert.Equal(t, lipgloss.Width(actions[index].text), actions[index].width)
+	}
 }
 
 func TestRenderSnapshot(t *testing.T) {
 	t.Parallel()
 
-	model := New(testutil.DefaultKeyMap(t))
+	model := newTestModel(t)
 
 	testutil.AssertSnapshot(t, "render_default", model.Render(40, 10))
 }

@@ -48,15 +48,15 @@ type actionEntry struct {
 	width int
 }
 
-// mappedActions compiles every ActionsKeyMap key into an actionEntry.
+// mappedActions compiles every active binding into an actionEntry.
 func (model *Model) mappedActions() []actionEntry {
-	playlist := model.keyMap.Actions.Playlist.Help()
-	libraryStats := model.keyMap.Actions.LibraryStats.Help()
-
-	return []actionEntry{
-		model.actionEntry(playlist.Key, playlist.Desc),
-		model.actionEntry(libraryStats.Key, libraryStats.Desc),
+	entries := make([]actionEntry, 0, len(model.bindings))
+	for _, binding := range model.bindings {
+		help := binding.Keys.Help()
+		entries = append(entries, model.actionEntry(help.Key, help.Desc))
 	}
+
+	return entries
 }
 
 // actionEntry renders one "{key} -> {description}" line together with its width.
@@ -120,10 +120,8 @@ func (model *Model) renderEntry(key string, description string) string {
 
 // renderHint builds the close hint shown on the card's last line.
 func (model *Model) renderHint() string {
-	goBackKey := model.keyMap.GoBack.Help().Key
-
 	parts := []string{
-		model.style.key.Render(goBackKey),
+		model.style.key.Render(model.closeKey),
 		model.style.separator.Render("·"),
 		model.style.description.Render("close"),
 	}

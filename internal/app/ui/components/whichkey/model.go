@@ -7,24 +7,22 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"wired/internal/app/ui/action"
-	"wired/internal/core/keymap"
 	"wired/internal/core/theme"
 )
 
-// New returns a Model seeded with the buttons actions, the default keymap, and the default theme.
-func New(defaultKeyMap keymap.KeyMap) *Model {
+// New returns a Model seeded with the default theme, while bindings are provided through the SetBindings primitive.
+func New() *Model {
 	model := &Model{
 		isVisible: false,
-		keyMap:    defaultKeyMap,
 		style:     newStyle(theme.Default()),
 	}
 
 	return model
 }
 
-// ApplyKeyMap stores the keymap used for mapping the keys list with their respective hints.
-func (model *Model) ApplyKeyMap(resolvedKeyMap keymap.KeyMap) {
-	model.keyMap = resolvedKeyMap
+// SetBindings replaces the active binding list.
+func (model *Model) SetBindings(bindings []action.Binding) {
+	model.bindings = bindings
 }
 
 // ApplyTheme rebuilds the component style from a resolved `theme.Theme`.
@@ -36,6 +34,11 @@ func (model *Model) IsVisible() bool {
 	return model.isVisible
 }
 
+// ApplyCloseKeybinding stores the close key shown in the card's hint line.
+func (model *Model) ApplyCloseKeybinding(closeKeybind key.Binding) {
+	model.closeKey = closeKeybind.Help().Key
+}
+
 func (model *Model) HandleMessage(message tea.Msg) action.Action {
 	keyPress, ok := message.(tea.KeyPressMsg)
 	if !ok {
@@ -44,13 +47,10 @@ func (model *Model) HandleMessage(message tea.Msg) action.Action {
 
 	model.flipIsVisible()
 
-	switch {
-	case key.Matches(keyPress, model.keyMap.GoBack), key.Matches(keyPress, model.keyMap.OpenActions):
-		return action.NoAction{}
-	case key.Matches(keyPress, model.keyMap.Actions.Playlist):
-		return action.OpenPlaylistAction{}
-	case key.Matches(keyPress, model.keyMap.Actions.LibraryStats):
-		return action.OpenLibraryStatsAction{}
+	for _, binding := range model.bindings {
+		if key.Matches(keyPress, binding.Keys) {
+			return binding.Action
+		}
 	}
 
 	return action.NoAction{}

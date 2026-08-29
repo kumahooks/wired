@@ -45,7 +45,8 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 		model.initializationModel.AppendLog("falling back to default keybindings...", initializing.LogError)
 
 		model.initializationModel.ApplyKeyMap(model.keyMap)
-		model.whichkeyModel.ApplyKeyMap(model.keyMap)
+		model.whichkeyModel.SetBindings(model.commandBindingsFor(model.state))
+		model.whichkeyModel.ApplyCloseKeybinding(model.keyMap.GoBack)
 
 		model.initializationModel.AppendLog(
 			"keybindings failed to load, fallbacking to previous bindings",
@@ -58,7 +59,8 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 	}
 	model.keyMap = resolvedKeyMap
 	model.initializationModel.ApplyKeyMap(model.keyMap)
-	model.whichkeyModel.ApplyKeyMap(model.keyMap)
+	model.whichkeyModel.SetBindings(model.commandBindingsFor(model.state))
+	model.whichkeyModel.ApplyCloseKeybinding(model.keyMap.GoBack)
 	model.initializationModel.AppendLog("keybindings loaded successfully~", initializing.LogNormal)
 
 	// If the user has any invalid path in it's config, we notify it as a log warning in the initialization component.

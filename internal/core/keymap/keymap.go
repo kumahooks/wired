@@ -63,8 +63,8 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 		OpenActions: newBinding(bindings.OpenActions, "open actions"),
 
 		Actions: ActionsKeyMap{
-			Playlist:     newBinding(bindings.Actions.Playlist, "playlist"),
-			LibraryStats: newBinding(bindings.Actions.LibraryStats, "library stats"),
+			Playlist:     newBinding(bindings.Actions.Playlist, "playlist screen"),
+			LibraryStats: newBinding(bindings.Actions.LibraryStats, "library stats screen"),
 		},
 	}, nil
 }
