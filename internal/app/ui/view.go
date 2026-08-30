@@ -1,10 +1,10 @@
 package ui
 
 import (
-	"strings"
-
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
+	"wired/internal/app/ui/components/librarystats"
 )
 
 func (model *UIModel) View() tea.View {
@@ -17,7 +17,12 @@ func (model *UIModel) View() tea.View {
 }
 
 func (model *UIModel) viewContent() string {
-	if model.windowWidth < minWindowWidth || model.windowHeight < minWindowHeight {
+	// TODO: eventually every component must express their minimum sizes, I think... I wonder what is the best architecture here.
+	if model.state == uiLibraryStats {
+		if model.windowWidth < librarystats.MinWidth || model.windowHeight < minWindowHeight {
+			return "terminal size is too small"
+		}
+	} else if model.windowWidth < minWindowWidth || model.windowHeight < minWindowHeight {
 		return "terminal size is too small"
 	}
 
@@ -47,18 +52,11 @@ func (model *UIModel) playlistView() string {
 		model.windowHeight,
 		lipgloss.Center,
 		lipgloss.Center,
-		strings.Repeat(strings.Repeat("this is the playlist view ", 10)+"\n", 44),
+		"this is the playlist view~ TODO: actually implement this lol",
 	)
 }
 
-// libraryStatsView centers the library stats message on the terminal. Temporary shit.
-// TODO: this should be its own component I think
+// libraryStatsView renders the library stats screen through its component.
 func (model *UIModel) libraryStatsView() string {
-	return lipgloss.Place(
-		model.windowWidth,
-		model.windowHeight,
-		lipgloss.Center,
-		lipgloss.Center,
-		strings.Repeat(strings.Repeat("this is the library stats view ", 10)+"\n", 44),
-	)
+	return model.libraryStatsModel.Render(model.windowWidth, model.windowHeight)
 }

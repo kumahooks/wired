@@ -8,6 +8,7 @@ import (
 
 	"wired/internal/app/ui/action"
 	"wired/internal/app/ui/components/initializing"
+	"wired/internal/app/ui/components/librarystats"
 	"wired/internal/app/ui/components/notification"
 	"wired/internal/app/ui/components/whichkey"
 	"wired/internal/core/audio"
@@ -58,6 +59,7 @@ type UIModel struct {
 
 	// Components models.
 	initializationModel *initializing.Model
+	libraryStatsModel   *librarystats.Model
 	whichkeyModel       *whichkey.Model
 	notificationModel   *notification.Model
 }
@@ -77,6 +79,7 @@ func New(
 		config:              config,
 		orchestratorContext: orchestratorCtx,
 		initializationModel: initializing.New(defaultKeyMap),
+		libraryStatsModel:   librarystats.New(audioFiles),
 		whichkeyModel:       whichkey.New(),
 		notificationModel:   notification.New(),
 		library: Library{

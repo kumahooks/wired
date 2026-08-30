@@ -72,7 +72,7 @@ func TestViewContentPlaylist(t *testing.T) {
 	rendered = model.viewContent()
 	assert.True(
 		t,
-		strings.Contains(testutil.StripANSI(rendered), "this is the library stats view"),
+		strings.Contains(testutil.StripANSI(rendered), "library stats"),
 		"viewContent() missing library stats substring:\n%s",
 		rendered,
 	)

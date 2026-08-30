@@ -26,6 +26,7 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 
 	// Publish the loaded config through the shared pointer so the orchestrator and the UI see the same values.
 	*model.config = *message.config
+	model.libraryStatsModel.SetLibraryPaths(model.config.LibrariesPaths)
 	model.initializationModel.AppendLog("config loaded successfully~", initializing.LogNormal)
 
 	// Parses and apply the config's loaded theme.
@@ -33,7 +34,9 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 
 	model.theme = theme.New(model.config.Theme)
 	model.initializationModel.ApplyTheme(model.theme)
+	model.libraryStatsModel.ApplyTheme(model.theme)
 	model.whichkeyModel.ApplyTheme(model.theme)
+	model.notificationModel.ApplyTheme(model.theme)
 
 	model.initializationModel.AppendLog("theme loaded successfully~", initializing.LogNormal)
 
