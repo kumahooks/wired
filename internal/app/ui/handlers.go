@@ -95,7 +95,7 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 	message initializationLoadLibraryCacheResultMessage,
 ) tea.Cmd {
-	if len(*message.library.audioFiles) > 0 {
+	if message.library.FilesCount() > 0 {
 		model.setState(uiPlaylist)
 		return nil
 	}
@@ -118,9 +118,18 @@ func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 // handleFetchFilesStartMessage stores the scan's cancel func so reload/quit can abort the current scan, seeds the live
 // counter at zero, and launches the first drainer command.
 func (model *UIModel) handleFetchFilesStartMessage(message fetchFilesStartMessage) tea.Cmd {
-	model.library.scanCancel = message.scanCancel
-	model.library.scanGeneration = message.generation
+	model.libraryScanCancel = message.scanCancel
+	model.libraryScanGeneration = message.generation
 
+	return fetchFilesWaitProgressCommand(
+		message.progressChannel,
+		message.resultChannel,
+		message.generation,
+	)
+}
+
+// handleFetchFilesWaitProgressMessage keeps draining the scan's progress channel.
+func (model *UIModel) handleFetchFilesWaitProgressMessage(message fetchFilesWaitProgressMessage) tea.Cmd {
 	return fetchFilesWaitProgressCommand(
 		message.progressChannel,
 		message.resultChannel,
@@ -130,8 +139,8 @@ func (model *UIModel) handleFetchFilesStartMessage(message fetchFilesStartMessag
 
 // handleFetchFilesResultMessage finalizes the fetch.
 func (model *UIModel) handleFetchFilesResultMessage(message fetchFilesResultMessage) tea.Cmd {
-	if message.generation == model.library.scanGeneration {
-		model.library.scanCancel = nil
+	if message.generation == model.libraryScanGeneration {
+		model.libraryScanCancel = nil
 	}
 
 	if message.err != nil {
@@ -140,11 +149,9 @@ func (model *UIModel) handleFetchFilesResultMessage(message fetchFilesResultMess
 	}
 
 	// Only the current scan updates the UI.
-	if message.generation != model.library.scanGeneration {
+	if message.generation != model.libraryScanGeneration {
 		return nil
 	}
 
-	*model.library.audioFiles = message.files
-
-	return scanFilesMetatagStartCommand(message.files)
+	return scanFilesMetatagStartCommand(message.library)
 }

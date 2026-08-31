@@ -31,10 +31,7 @@ type WiredOrchestrator struct {
 	config *config.Config
 
 	// library holds the reference to the user's loaded audio files, and is shared with uiModel.
-	// TODO: this is just what we treat as "this is the library" currently.
-	// eventually, we will implement a more complex data structure once we get metatag parsing.
-	// furthermore, we will load this data from a cache before asking to scan.
-	library *[]audio.File
+	library *audio.Library
 }
 
 // New initializes the WiredOrchestrator structure.
@@ -51,7 +48,7 @@ func New(ctx context.Context) (*WiredOrchestrator, error) {
 		return nil, fmt.Errorf("[wired:New] build default keymap: %w", err)
 	}
 	orchestrator.config = &configDefaults
-	orchestrator.library = &[]audio.File{}
+	orchestrator.library = audio.NewLibrary()
 
 	// UI's model is created as per bubbletea pattern. It includes a reference to every UI component in the application.
 	// The orchestrator is passed down in order for background operations the UI spawns to be canceled elegantly.

@@ -20,9 +20,9 @@ func newTestUI(t *testing.T) *UIModel {
 	t.Helper()
 
 	configValue := config.Defaults()
-	audioFiles := &[]audio.File{}
+	audioLibrary := audio.NewLibrary()
 
-	model, err := New(context.Background(), testutil.DefaultKeyMap(t), &configValue, audioFiles)
+	model, err := New(context.Background(), testutil.DefaultKeyMap(t), &configValue, audioLibrary)
 	require.NoError(t, err)
 
 	updatedModel, _ := model.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
@@ -37,9 +37,9 @@ func TestNewSeedsDefaults(t *testing.T) {
 
 	configValue := config.Defaults()
 	keyMap := testutil.DefaultKeyMap(t)
-	audioFiles := &[]audio.File{}
+	audioLibrary := audio.NewLibrary()
 
-	model, err := New(context.Background(), keyMap, &configValue, audioFiles)
+	model, err := New(context.Background(), keyMap, &configValue, audioLibrary)
 	require.NoError(t, err)
 	require.NotNil(t, model)
 
@@ -54,8 +54,7 @@ func TestInitReturnsNonNilCmd(t *testing.T) {
 	t.Parallel()
 
 	configValue := config.Defaults()
-	audioFiles := &[]audio.File{}
-	model, err := New(context.Background(), testutil.DefaultKeyMap(t), &configValue, audioFiles)
+	model, err := New(context.Background(), testutil.DefaultKeyMap(t), &configValue, audio.NewLibrary())
 	require.NoError(t, err)
 
 	// Init returns initializationLoadConfigCommand, which calls config.Load against the real user config dir. We do
@@ -110,7 +109,7 @@ func TestBindingsForOmitsCurrentStateAction(t *testing.T) {
 			t.Parallel()
 
 			configValue := config.Defaults()
-			model, err := New(context.Background(), testutil.DefaultKeyMap(t), &configValue, &[]audio.File{})
+			model, err := New(context.Background(), testutil.DefaultKeyMap(t), &configValue, audio.NewLibrary())
 			require.NoError(t, err)
 
 			bindings := model.commandBindingsFor(test.state)
@@ -135,7 +134,7 @@ func TestSetStateRefreshesWhichKeyBindings(t *testing.T) {
 	t.Parallel()
 
 	configValue := config.Defaults()
-	model, err := New(context.Background(), testutil.DefaultKeyMap(t), &configValue, &[]audio.File{})
+	model, err := New(context.Background(), testutil.DefaultKeyMap(t), &configValue, audio.NewLibrary())
 	require.NoError(t, err)
 	model.setState(uiLibraryStats)
 

@@ -255,7 +255,7 @@ func TestHandleInitializationLoadConfigResultNoLibrariesErrorsOut(t *testing.T) 
 	require.NotNil(t, command, "returned cmd = nil, want a cache load command after config")
 
 	_, command = model.Update(initializationLoadLibraryCacheResultMessage{
-		library: Library{audioFiles: &[]audio.File{}},
+		library: audio.NewLibrary(),
 		err:     nil,
 	})
 
@@ -319,7 +319,7 @@ func TestHandleFetchFilesStartMessage(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
-	model.library.scanGeneration = 5
+	model.libraryScanGeneration = 5
 
 	_, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -336,9 +336,9 @@ func TestHandleFetchFilesStartMessage(t *testing.T) {
 
 	_, command := model.Update(message)
 
-	require.NotNil(t, model.library.scanCancel, "scanCancel = nil, want the cancel func")
+	require.NotNil(t, model.libraryScanCancel, "scanCancel = nil, want the cancel func")
 
-	assert.Equal(t, uint64(7), model.library.scanGeneration)
+	assert.Equal(t, uint64(7), model.libraryScanGeneration)
 
 	require.NotNil(t, command, "returned cmd = nil, want the drainer cmd")
 }
@@ -365,15 +365,15 @@ func TestHandleFetchFilesResultMessageStaleGeneration(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
-	model.library.scanGeneration = 10
+	model.libraryScanGeneration = 10
 
 	sentinelCanceled := false
-	model.library.scanCancel = func() { sentinelCanceled = true }
+	model.libraryScanCancel = func() { sentinelCanceled = true }
 
 	initialLogCount := len(model.initializationModel.LogLines())
 
 	_, command := model.Update(fetchFilesResultMessage{
-		files:      nil,
+		library:    nil,
 		err:        nil,
 		generation: 5,
 	})
@@ -383,7 +383,7 @@ func TestHandleFetchFilesResultMessageStaleGeneration(t *testing.T) {
 
 	assert.NotNil(
 		t,
-		model.library.scanCancel,
+		model.libraryScanCancel,
 		"scanCancel = nil, want unchanged sentinel on stale generation",
 	)
 
@@ -394,15 +394,13 @@ func TestHandleFetchFilesResultMessageCurrentGeneration(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
-	model.library.scanGeneration = 10
+	model.libraryScanGeneration = 10
 
 	sentinelCanceled := false
-	model.library.scanCancel = func() { sentinelCanceled = true }
-
-	discoveredFiles := make([]audio.File, 137)
+	model.libraryScanCancel = func() { sentinelCanceled = true }
 
 	_, command := model.Update(fetchFilesResultMessage{
-		files:      discoveredFiles,
+		library:    audio.NewLibrary(),
 		err:        nil,
 		generation: 10,
 	})
@@ -411,21 +409,20 @@ func TestHandleFetchFilesResultMessageCurrentGeneration(t *testing.T) {
 	assert.False(t, sentinelCanceled, "current result should set scanCancel to nil, not call it")
 	assert.Nil(
 		t,
-		model.library.scanCancel,
+		model.libraryScanCancel,
 		"scanCancel = non-nil, want nil after current generation result",
 	)
-	assert.Equal(t, discoveredFiles, *model.library.audioFiles)
 }
 
 func TestHandleFetchFilesResultMessageError(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
-	model.library.scanGeneration = 10
+	model.libraryScanGeneration = 10
 
 	fetchError := errors.New("[audio:FetchFiles] walk failed")
 	_, command := model.Update(fetchFilesResultMessage{
-		files:      nil,
+		library:    nil,
 		err:        fetchError,
 		generation: 10,
 	})
@@ -455,13 +452,13 @@ func TestHandleKeyPressMsgQuit(t *testing.T) {
 	model := newTestUI(t)
 
 	sentinelCanceled := false
-	model.library.scanCancel = func() { sentinelCanceled = true }
+	model.libraryScanCancel = func() { sentinelCanceled = true }
 
 	_, command := model.Update(tea.KeyPressMsg{Mod: tea.ModCtrl, Code: 'd'})
 
 	require.True(t, isTeaQuit(command), "returned cmd is not tea.Quit")
 	assert.True(t, sentinelCanceled, "cancelCurrentFileScan was not called on quit")
-	assert.Nil(t, model.library.scanCancel, "scanCancel = non-nil, want nil after quit")
+	assert.Nil(t, model.libraryScanCancel, "scanCancel = non-nil, want nil after quit")
 }
 
 func TestHandleKeyPressMsgQuitDoesNotMatchNonQuitKey(t *testing.T) {
@@ -481,7 +478,7 @@ func TestHandleKeyPressMsgForwardsToComponentReload(t *testing.T) {
 	model.initializationModel.SetConfigError()
 
 	sentinelCanceled := false
-	model.library.scanCancel = func() { sentinelCanceled = true }
+	model.libraryScanCancel = func() { sentinelCanceled = true }
 
 	_, command := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
@@ -500,7 +497,7 @@ func TestHandleKeyPressMsgForwardsToComponentProceed(t *testing.T) {
 	model.Update(tea.KeyPressMsg{Code: 'l', Text: "l"})
 
 	sentinelCanceled := false
-	model.library.scanCancel = func() { sentinelCanceled = true }
+	model.libraryScanCancel = func() { sentinelCanceled = true }
 
 	_, command := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
@@ -693,7 +690,7 @@ func TestHandleComponentAction(t *testing.T) {
 			model := newTestUI(t)
 
 			sentinelCanceled := false
-			model.library.scanCancel = func() { sentinelCanceled = true }
+			model.libraryScanCancel = func() { sentinelCanceled = true }
 
 			command := model.handleComponentAction(test.action)
 
@@ -712,7 +709,7 @@ func TestHandleComponentAction(t *testing.T) {
 			if test.wantCleared {
 				assert.Nil(
 					t,
-					model.library.scanCancel,
+					model.libraryScanCancel,
 					"scanCancel = non-nil, want nil after action",
 				)
 			}
@@ -744,19 +741,16 @@ func TestFetchFilesStartCommandAsync(t *testing.T) {
 	contextForFetch, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	startCommand := fetchFilesStartCommand(contextForFetch, 1, []string{libraryDir})
+	startCommand := fetchFilesStartCommand(contextForFetch, 1, []string{libraryDir}, audio.NewLibrary())
 	startMessage := executeCmd(t, startCommand).(fetchFilesStartMessage)
 
-	_, drainerCommand := model.Update(startMessage)
+	// Bypass Update so we get the drainer directly instead of the notification batch around it.
+	drainerCommand := model.handleFetchFilesStartMessage(startMessage)
 
 	resultMessage := runCmds(t, model, drainerCommand)
 	result, ok := resultMessage.(fetchFilesResultMessage)
 	require.True(t, ok, "runCmds returned %T, want fetchFilesResultMessage", resultMessage)
 
 	require.NoError(t, result.err)
-	assert.Len(t, result.files, 5, "result should carry the discovered audio files")
-
-	_, _ = model.Update(result)
-
-	assert.Len(t, *model.library.audioFiles, 5, "library.audioFiles should be populated from the result")
+	assert.Equal(t, 5, result.library.FilesCount(), "result should carry the discovered audio files")
 }

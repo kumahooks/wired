@@ -14,24 +14,9 @@ import (
 func TestRenderEmptyLibrary(t *testing.T) {
 	t.Parallel()
 
-	model := New(&[]audio.File{})
+	model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
 
 	testutil.AssertSnapshot(t, "render_empty_library", model.Render(80, 24))
-}
-
-func TestRenderPopulatedLibrary(t *testing.T) {
-	t.Parallel()
-
-	model := New(&[]audio.File{
-		{FileName: "track44.flac", SizeBytes: 30 << 20},
-		{FileName: "track42.flac", SizeBytes: 28 << 20},
-		{FileName: "lain.mp3", SizeBytes: 3 << 20},
-		{FileName: "boa.ogg", SizeBytes: 1 << 20},
-		{FileName: "owo.wav", SizeBytes: 10 << 20},
-	})
-	model.SetLibraryPaths([]string{"/home/kuma/music", "/mnt/d/kuma/music/"})
-
-	testutil.AssertSnapshot(t, "render_populated_library", model.Render(80, 24))
 }
 
 func TestRenderManyPathsTruncatesAndCountsRemainder(t *testing.T) {
@@ -42,7 +27,7 @@ func TestRenderManyPathsTruncatesAndCountsRemainder(t *testing.T) {
 		paths = append(paths, strings.Repeat("/very/deep/library/path", 3)+"/dir"+string(rune('a'+index)))
 	}
 
-	model := New(nil)
+	model := New(testutil.DefaultKeyMap(t), nil)
 	model.SetLibraryPaths(paths)
 
 	rendered := testutil.StripANSI(model.Render(80, 24))
@@ -53,7 +38,7 @@ func TestRenderTruncatesLongPaths(t *testing.T) {
 	t.Parallel()
 
 	longPath := strings.Repeat("/verylongdirectoryname", 10)
-	model := New(nil)
+	model := New(testutil.DefaultKeyMap(t), nil)
 	model.SetLibraryPaths([]string{longPath})
 
 	rendered := testutil.StripANSI(model.Render(80, 24))
@@ -64,7 +49,7 @@ func TestRenderTruncatesMultiBytePathsWithoutCorruption(t *testing.T) {
 	t.Parallel()
 
 	longPath := strings.Repeat("あいうえおかきくけこ", 10)
-	model := New(nil)
+	model := New(testutil.DefaultKeyMap(t), nil)
 	model.SetLibraryPaths([]string{longPath})
 
 	rendered := model.Render(80, 24)
@@ -76,7 +61,7 @@ func TestRenderTruncatesMultiBytePathsWithoutCorruption(t *testing.T) {
 func TestRenderNilLibraryPointer(t *testing.T) {
 	t.Parallel()
 
-	model := New(nil)
+	model := New(testutil.DefaultKeyMap(t), nil)
 
 	rendered := testutil.StripANSI(model.Render(80, 24))
 	assert.True(t, strings.Contains(rendered, "no library paths in config"), "render output:\n%s", rendered)
@@ -86,7 +71,7 @@ func TestRenderNilLibraryPointer(t *testing.T) {
 func TestApplyThemeAndSetLibraryPaths(t *testing.T) {
 	t.Parallel()
 
-	model := New(nil)
+	model := New(testutil.DefaultKeyMap(t), nil)
 	model.ApplyTheme(testutil.DefaultTheme())
 	model.SetLibraryPaths([]string{"/new/path"})
 

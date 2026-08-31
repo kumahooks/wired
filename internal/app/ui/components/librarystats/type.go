@@ -7,8 +7,8 @@ import (
 
 // Model holds the library stats view state and data.
 type Model struct {
-	// audioFiles points at the orchestrator's library.
-	audioFiles *[]audio.File
+	// library points at the orchestrator's library.
+	library *audio.Library
 
 	// libraryPaths are the configured library directories read from the config.
 	libraryPaths []string

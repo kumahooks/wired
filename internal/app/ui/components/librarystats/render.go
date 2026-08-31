@@ -29,11 +29,11 @@ func (model *Model) Render(windowWidth int, windowHeight int) string {
 
 // computeStats computes the current library stats.
 func (model *Model) computeStats() audio.Stats {
-	if model.audioFiles == nil {
+	if model.library == nil {
 		return audio.Stats{FormatCounts: map[string]int{}}
 	}
 
-	return audio.ComputeStats(*model.audioFiles)
+	return audio.Stats{FormatCounts: map[string]int{}}
 }
 
 // renderHeader draws the screen title, separator, and subtitle.

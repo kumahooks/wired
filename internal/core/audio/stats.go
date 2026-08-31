@@ -2,31 +2,13 @@ package audio
 
 import (
 	"fmt"
-	"path/filepath"
-	"strings"
 )
 
-// Stats represents a summary of a given library.
+// TODO: rework Stats against the new Library structure once metatag parsing lands.
 type Stats struct {
 	FilesCount   int            // the total number of audio files.
 	FormatCounts map[string]int // a map of each file extension and its total amount.
 	TotalBytes   int64          // the sum of the size of the whole library in bytes.
-}
-
-// ComputeStats calculates and returns the stats for a given library.
-func ComputeStats(files []File) Stats {
-	stats := Stats{
-		FilesCount:   len(files),
-		FormatCounts: make(map[string]int),
-	}
-
-	for _, file := range files {
-		format := strings.ToLower(filepath.Ext(file.FileName))
-		stats.FormatCounts[format]++
-		stats.TotalBytes += file.SizeBytes
-	}
-
-	return stats
 }
 
 var byteSizeUnits = []struct {

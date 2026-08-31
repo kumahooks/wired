@@ -6,45 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestComputeStatsEmpty(t *testing.T) {
-	t.Parallel()
-
-	stats := ComputeStats(nil)
-
-	assert.Equal(t, 0, stats.FilesCount)
-	assert.Empty(t, stats.FormatCounts)
-	assert.Equal(t, int64(0), stats.TotalBytes)
-}
-
-func TestComputeStatsMixedFormats(t *testing.T) {
-	t.Parallel()
-
-	files := []File{
-		{FileName: "uwu.mp3", SizeBytes: 100},
-		{FileName: "owo.mp3", SizeBytes: 200},
-		{FileName: "lain.flac", SizeBytes: 1000},
-		{FileName: "wired.MP3", SizeBytes: 1},
-		{FileName: "uwu?", SizeBytes: 10},
-		{FileName: "yep.ogg", SizeBytes: 5},
-	}
-
-	stats := ComputeStats(files)
-
-	assert.Equal(t, 6, stats.FilesCount)
-	assert.Equal(t, int64(1316), stats.TotalBytes)
-	assert.Equal(t, map[string]int{".mp3": 3, ".flac": 1, ".ogg": 1, "": 1}, stats.FormatCounts)
-}
-
-func TestComputeStatsDoesNotMutateCallerCopy(t *testing.T) {
-	t.Parallel()
-
-	files := []File{{FileName: "a.mp3", SizeBytes: 10}}
-	stats := ComputeStats(files)
-	stats.FormatCounts[".wav"] = 99
-
-	assert.Equal(t, map[string]int{".mp3": 1}, ComputeStats(files).FormatCounts)
-}
-
 func TestHumanSize(t *testing.T) {
 	t.Parallel()
 

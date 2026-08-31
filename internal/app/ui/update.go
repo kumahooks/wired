@@ -18,23 +18,18 @@ func (model *UIModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	// Initialization Step 2: Load library cache (if any).
 	case initializationLoadLibraryCacheResultMessage:
 		commands = append(commands, model.handleInitializationLoadLibraryCacheResult(message))
+
 	// User Action - Scan files Step 1: starting with fetching them.
 	case fetchFilesStartMessage:
 		model.PushNotification("starting file scan...")
 		commands = append(commands, model.handleFetchFilesStartMessage(message))
 	// User Action - Scan files Step 2: waiting fetching to finish.
 	case fetchFilesWaitProgressMessage:
-		commands = append(
-			commands,
-			fetchFilesWaitProgressCommand(
-				message.progressChannel,
-				message.resultChannel,
-				message.generation,
-			),
-		)
+		commands = append(commands, model.handleFetchFilesWaitProgressMessage(message))
 	// User Action - Scan files Step 3: start scanning the fetched files metatag.
 	case fetchFilesResultMessage:
 		commands = append(commands, model.handleFetchFilesResultMessage(message))
+
 	// Notification expiration routine: each push schedules its own expiry.
 	case notificationExpireMessage:
 		model.notificationModel.PruneExpired()
@@ -55,9 +50,9 @@ func (model *UIModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 // cancelCurrentFileScan aborts the current scan, if any, so its goroutine exits and stops feeding the drainer.
 func (model *UIModel) cancelCurrentFileScan() {
-	if model.library.scanCancel != nil {
-		model.library.scanCancel()
-		model.library.scanCancel = nil
+	if model.libraryScanCancel != nil {
+		model.libraryScanCancel()
+		model.libraryScanCancel = nil
 	}
 }
 
@@ -101,11 +96,12 @@ func (model *UIModel) handleComponentAction(act action.Action) tea.Cmd {
 	case action.ScanLibraryFullAction:
 		model.cancelCurrentFileScan()
 
-		model.library.scanGeneration++
+		model.libraryScanGeneration++
 		return fetchFilesStartCommand(
 			model.orchestratorContext,
-			model.library.scanGeneration,
+			model.libraryScanGeneration,
 			model.config.LibrariesPaths,
+			model.library,
 		)
 	case action.ReloadConfigAction:
 		model.cancelCurrentFileScan()

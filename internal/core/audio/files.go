@@ -11,6 +11,7 @@ import (
 // progressInterval is how many files we count between two progress emissions.
 const progressInterval = 32
 
+// TODO: can't I retrieve through taglib whether a file is an audiofile without having to map like this...?
 var audioExtensions = map[string]struct{}{
 	".mp3":  {},
 	".flac": {},
@@ -19,20 +20,54 @@ var audioExtensions = map[string]struct{}{
 	".wav":  {},
 }
 
-// File is a single audio file discovered in a library.
-type File struct {
-	FileName  string
-	FilePath  string
-	SizeBytes int64
+// AudioFile is a single audio file within a library.
+type AudioFile struct {
+	Title      string
+	Artist     string
+	Album      string
+	Comment    string
+	Genre      string
+	Year       string
+	Track      string
+	Length     int
+	Bitrate    int
+	Samplerate int
+	Channels   int
+	SizeBytes  int64
 }
 
-// FetchFiles goes through every file in the sub-trees at rootPaths and returns every found audio file. When audioFiles
-// is non-nil, each discovered file is appended to it. When countChannel is non-nil, the running total is emitted every
-// progressInterval files and once at the end of each root walk.
+// Library holds every known audio file, indexed by their path, and by their artist and album.
+type Library struct {
+	File     map[string]*AudioFile   // all files are loaded in a map keyed by their full filepath.
+	ByAlbum  map[string][]*AudioFile // keyed by "artist:album", references a file within File.
+	ByArtist map[string][]*AudioFile // keyed by "artist", references a file within File.
+}
+
+func NewLibrary() *Library {
+	return &Library{
+		File:     make(map[string]*AudioFile),
+		ByAlbum:  make(map[string][]*AudioFile),
+		ByArtist: make(map[string][]*AudioFile),
+	}
+}
+
+// Add inserts a file under the given path as an unmetatagged AudioFile.
+func (library *Library) Add(path string, sizeBytes int64) {
+	library.File[path] = &AudioFile{SizeBytes: sizeBytes}
+}
+
+// FilesCount returns the number of audio files currently held.
+func (library *Library) FilesCount() int {
+	return len(library.File)
+}
+
+// FetchFiles goes through every file in the sub-trees at rootPaths and inserts every found audio file into the library.
+// When library is non-nil, each discovered file is added to it. When progressChannel is non-nil, the running total is
+// emitted every progressInterval files and once at the end of each root walk.
 func FetchFiles(
 	ctx context.Context,
 	rootPaths []string,
-	audioFiles *[]File,
+	library *Library,
 	progressChannel chan<- int,
 ) (int, error) {
 	filesCount := 0
@@ -66,16 +101,13 @@ func FetchFiles(
 
 			filesCount++
 
-			fileSize := int64(0)
+			var fileSizeBytes int64
 			if info, infoErr := entry.Info(); infoErr == nil {
-				fileSize = info.Size()
+				fileSizeBytes = info.Size()
 			}
 
-			if audioFiles != nil {
-				*audioFiles = append(
-					*audioFiles,
-					File{FileName: filepath.Base(path), FilePath: path, SizeBytes: fileSize},
-				)
+			if library != nil {
+				library.Add(path, fileSizeBytes)
 			}
 
 			if progressChannel != nil && filesCount%progressInterval == 0 {
@@ -109,8 +141,7 @@ func FetchFiles(
 
 // ScanFiles goes through every fetched path, retrieving and updating each audio file's metatag information.
 // TODO: finish this
-func ScanFiles(audioFiles []File) {
-	return
+func ScanFiles(library *Library) {
 }
 
 func isAudio(path string) bool {

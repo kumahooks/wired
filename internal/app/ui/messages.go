@@ -18,7 +18,7 @@ type initializationLoadConfigResultMessage struct {
 // initializationLoadLibraryCacheResultMessage is produced by initializationLoadLibraryCacheCommand when the library
 // cache lookup completes.
 type initializationLoadLibraryCacheResultMessage struct {
-	library Library
+	library *audio.Library
 	err     error
 }
 
@@ -33,7 +33,7 @@ type fetchFilesStartMessage struct {
 
 // fetchFilesResultMessage is produced when the fetch finishes, carrying the discovered files.
 type fetchFilesResultMessage struct {
-	files      []audio.File
+	library    *audio.Library
 	err        error
 	generation uint64
 }

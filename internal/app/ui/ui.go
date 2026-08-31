@@ -17,19 +17,6 @@ import (
 	"wired/internal/core/theme"
 )
 
-type Library struct {
-	// scanGeneration tags the in-flight scan, incremented each time a new scan starts so stale results from a previous
-	// scan or a cancelled scan are ignored.
-	scanGeneration uint64
-	// scanCancel aborts the current scan, if any. It is nil when no scan is running.
-	scanCancel context.CancelFunc
-
-	// audioFiles is a pointer to the orchestrator's owned library data structure. It holds every information of every
-	// audio file the application has both loaded and saved in cache. This is seeded at load time, and later on command
-	// through the ScanLibraryFullAction.
-	audioFiles *[]audio.File
-}
-
 // UIModel holds the tea model state, primitives, and components.
 type UIModel struct {
 	// windowHeight and windowWidth are actual view space excluding borders.
@@ -51,8 +38,12 @@ type UIModel struct {
 	// orchestratorContext is the application's context, used to propagate cancel everywhere else.
 	orchestratorContext context.Context
 
-	// library is the user's loaded library data.
-	library Library
+	// library is a pointer to the orchestrator's owned library data structure.
+	library *audio.Library
+	// libraryScanGeneration tags the in-flight scan, incremented each time a new scan starts.
+	libraryScanGeneration uint64
+	// libraryScanCancel aborts the current scan, if any.
+	libraryScanCancel context.CancelFunc
 
 	// expireNotificationCmds holds expire commands queued by PushNotification. Update drains it into the batch before returning.
 	expireNotificationCmds []tea.Cmd
@@ -70,7 +61,7 @@ func New(
 	orchestratorCtx context.Context,
 	defaultKeyMap keymap.KeyMap,
 	config *config.Config,
-	audioFiles *[]audio.File,
+	audioLibrary *audio.Library,
 ) (*UIModel, error) {
 	model := &UIModel{
 		state:               uiInitializing,
@@ -79,12 +70,10 @@ func New(
 		config:              config,
 		orchestratorContext: orchestratorCtx,
 		initializationModel: initializing.New(defaultKeyMap),
-		libraryStatsModel:   librarystats.New(defaultKeyMap, audioFiles),
+		libraryStatsModel:   librarystats.New(defaultKeyMap, audioLibrary),
 		whichkeyModel:       whichkey.New(),
 		notificationModel:   notification.New(),
-		library: Library{
-			audioFiles: audioFiles,
-		},
+		library:             audioLibrary,
 	}
 
 	model.whichkeyModel.SetBindings(model.commandBindingsFor(model.state))

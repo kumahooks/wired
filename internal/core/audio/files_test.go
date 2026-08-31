@@ -89,23 +89,23 @@ func TestFetchFilesTotal(t *testing.T) {
 	assert.Equal(t, wantOne+wantTwo, got)
 }
 
-func TestFetchFilesPopulatesAudioFiles(t *testing.T) {
+func TestFetchFilesPopulatesLibrary(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
 	want := buildAudioTree(t, root)
 
-	var files []File
-	got, err := FetchFiles(context.Background(), []string{root}, &files, nil)
+	library := NewLibrary()
+	got, err := FetchFiles(context.Background(), []string{root}, library, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, want, got)
-	require.Len(t, files, want)
+	require.Len(t, library.File, want)
 
-	// Every populated file name should be an audio file by base name, and its size should be the written byte length.
-	for _, file := range files {
-		assert.True(t, isAudio(file.FileName), "non-audio file in slice: %q", file.FileName)
-		assert.Equal(t, int64(1), file.SizeBytes, "unexpected size for %q", file.FileName)
+	// Every discovered path should carry an AudioFile with the written byte length.
+	for path, file := range library.File {
+		assert.True(t, isAudio(path), "non-audio file in library: %q", path)
+		assert.Equal(t, int64(1), file.SizeBytes, "unexpected size for %q", path)
 	}
 }
 
@@ -168,34 +168,6 @@ func TestFetchFilesCancelMidWalk(t *testing.T) {
 		default:
 			return
 		}
-	}
-}
-
-func TestScanFiles(t *testing.T) {
-	t.Parallel()
-
-	root := t.TempDir()
-	want := buildAudioTree(t, root)
-
-	fetchChannel := make(chan int, 1)
-
-	files, err := ScanFiles(context.Background(), []string{root}, fetchChannel)
-	require.NoError(t, err)
-
-	assert.Len(t, files, want)
-
-	select {
-	case value := <-fetchChannel:
-		assert.Equal(t, want, value)
-	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for fetchChannel")
-	}
-
-	// Exactly one value: the channel should now be empty.
-	select {
-	case value := <-fetchChannel:
-		t.Errorf("unexpected extra fetchChannel value %d", value)
-	default:
 	}
 }
 

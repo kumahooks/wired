@@ -32,7 +32,10 @@ func initializationLoadLibraryCacheCommand() tea.Cmd {
 		if libraryCacheExists {
 			panic("TODO: implement caching storage and retrieval")
 		} else {
-			return initializationLoadLibraryCacheResultMessage{library: Library{audioFiles: &[]audio.File{}}, err: nil}
+			return initializationLoadLibraryCacheResultMessage{
+				library: audio.NewLibrary(),
+				err:     nil,
+			}
 		}
 	}
 }
@@ -44,6 +47,7 @@ func fetchFilesStartCommand(
 	orchestratorContext context.Context,
 	generation uint64,
 	rootPaths []string,
+	library *audio.Library,
 ) tea.Cmd {
 	return func() tea.Msg {
 		progressChannel := make(chan int, fetchFilesProgressChannelBuffer)
@@ -52,13 +56,11 @@ func fetchFilesStartCommand(
 		scanContext, scanCancel := context.WithCancel(orchestratorContext)
 
 		go func() {
-			var files []audio.File
-
-			_, err := audio.FetchFiles(scanContext, rootPaths, &files, progressChannel)
+			_, err := audio.FetchFiles(scanContext, rootPaths, library, progressChannel)
 			close(progressChannel)
 
 			resultChannel <- fetchFilesResultMessage{
-				files:      files,
+				library:    library,
 				err:        err,
 				generation: generation,
 			}
@@ -86,7 +88,7 @@ func fetchFilesWaitProgressCommand(
 			result := <-resultChannel
 
 			return fetchFilesResultMessage{
-				files:      result.files,
+				library:    result.library,
 				err:        result.err,
 				generation: result.generation,
 			}
@@ -103,7 +105,7 @@ func fetchFilesWaitProgressCommand(
 
 // scanFilesMetatagStartCommand runs the metatag scan over the already-fetched files.
 // TODO: finish this
-func scanFilesMetatagStartCommand(files []audio.File) tea.Cmd {
+func scanFilesMetatagStartCommand(library *audio.Library) tea.Cmd {
 	return func() tea.Msg {
 		return nil
 	}

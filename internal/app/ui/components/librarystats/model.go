@@ -12,9 +12,9 @@ import (
 )
 
 // New returns a Model for the given library pointer, with empty paths and default theme.
-func New(defaultKeyMap keymap.KeyMap, audioFiles *[]audio.File) *Model {
+func New(defaultKeyMap keymap.KeyMap, library *audio.Library) *Model {
 	return &Model{
-		audioFiles:   audioFiles,
+		library:      library,
 		libraryPaths: []string{},
 		keyMap:       defaultKeyMap,
 		style:        newStyle(theme.Default()),
