@@ -62,6 +62,7 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 	}
 	model.keyMap = resolvedKeyMap
 	model.initializationModel.ApplyKeyMap(model.keyMap)
+	model.libraryStatsModel.ApplyKeyMap(model.keyMap)
 	model.whichkeyModel.SetBindings(model.commandBindingsFor(model.state))
 	model.whichkeyModel.ApplyCloseKeybinding(model.keyMap.GoBack)
 	model.initializationModel.AppendLog("keybindings loaded successfully~", initializing.LogNormal)
@@ -145,5 +146,5 @@ func (model *UIModel) handleFetchFilesResultMessage(message fetchFilesResultMess
 
 	*model.library.audioFiles = message.files
 
-	return scanFilesMetatagStartCommand()
+	return scanFilesMetatagStartCommand(message.files)
 }

@@ -79,7 +79,7 @@ func New(
 		config:              config,
 		orchestratorContext: orchestratorCtx,
 		initializationModel: initializing.New(defaultKeyMap),
-		libraryStatsModel:   librarystats.New(audioFiles),
+		libraryStatsModel:   librarystats.New(defaultKeyMap, audioFiles),
 		whichkeyModel:       whichkey.New(),
 		notificationModel:   notification.New(),
 		library: Library{

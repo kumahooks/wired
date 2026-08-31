@@ -20,6 +20,7 @@ func (model *UIModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		commands = append(commands, model.handleInitializationLoadLibraryCacheResult(message))
 	// User Action - Scan files Step 1: starting with fetching them.
 	case fetchFilesStartMessage:
+		model.PushNotification("starting file scan...")
 		commands = append(commands, model.handleFetchFilesStartMessage(message))
 	// User Action - Scan files Step 2: waiting fetching to finish.
 	case fetchFilesWaitProgressMessage:
@@ -80,6 +81,10 @@ func (model *UIModel) handleKeyPressMsg(message tea.KeyPressMsg) tea.Cmd {
 
 	if key.Matches(message, model.keyMap.OpenActions) || model.whichkeyModel.IsVisible() {
 		return model.handleComponentAction(model.whichkeyModel.HandleMessage(message))
+	}
+
+	if model.state == uiLibraryStats {
+		return model.handleComponentAction(model.libraryStatsModel.HandleMessage(message))
 	}
 
 	return nil

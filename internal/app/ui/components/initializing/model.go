@@ -49,7 +49,7 @@ func (model *Model) AppendLog(line string, logType LogType) {
 	})
 }
 
-// HandleMessage handles keyboard navigation for the button row.
+// HandleMessage handles keyboard navigation and actions for the button row.
 func (model *Model) HandleMessage(message tea.Msg) action.Action {
 	keyPress, ok := message.(tea.KeyPressMsg)
 	if !ok {

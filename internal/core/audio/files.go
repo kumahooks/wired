@@ -22,6 +22,7 @@ var audioExtensions = map[string]struct{}{
 // File is a single audio file discovered in a library.
 type File struct {
 	FileName  string
+	FilePath  string
 	SizeBytes int64
 }
 
@@ -71,7 +72,10 @@ func FetchFiles(
 			}
 
 			if audioFiles != nil {
-				*audioFiles = append(*audioFiles, File{FileName: filepath.Base(path), SizeBytes: fileSize})
+				*audioFiles = append(
+					*audioFiles,
+					File{FileName: filepath.Base(path), FilePath: path, SizeBytes: fileSize},
+				)
 			}
 
 			if progressChannel != nil && filesCount%progressInterval == 0 {
@@ -103,27 +107,10 @@ func FetchFiles(
 	return filesCount, nil
 }
 
-// ScanFiles goes through every file in the sub-trees at rootPaths and saves every file name in a slice. It emits the
-// final count on countChannel once at completion.
-//
-// TODO: eventually, it will be necessary to implement a metatag retrieval here for each audio file. This should be
-// done using sync.WaitGroup with at least runtime.NumCPU()*4 workers, updating countChannel every processed file.
-// also, doing FetchFiles twice is not necessary. we just need to retrieve the []audio.File here.
-func ScanFiles(ctx context.Context, rootPaths []string, countChannel chan<- int) ([]File, error) {
-	var audioFiles []File
-
-	_, err := FetchFiles(ctx, rootPaths, &audioFiles, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	select {
-	case countChannel <- len(audioFiles):
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
-
-	return audioFiles, nil
+// ScanFiles goes through every fetched path, retrieving and updating each audio file's metatag information.
+// TODO: finish this
+func ScanFiles(audioFiles []File) {
+	return
 }
 
 func isAudio(path string) bool {

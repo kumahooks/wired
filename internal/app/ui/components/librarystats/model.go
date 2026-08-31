@@ -2,39 +2,21 @@
 package librarystats
 
 import (
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+
+	"wired/internal/app/ui/action"
 	"wired/internal/core/audio"
+	"wired/internal/core/keymap"
 	"wired/internal/core/theme"
 )
 
-// Model holds the library stats view state and data.
-type Model struct {
-	// audioFiles points at the orchestrator's library.
-	audioFiles *[]audio.File
-
-	// libraryPaths are the configured library directories read from the config.
-	libraryPaths []string
-
-	// style is the styles (such as lipgloss colors) used in the view rendering.
-	style Style
-}
-
-// formatBar is one row in the formats card.
-type formatBar struct {
-	// format is the file extension, or "(unknown)" for files with no extension.
-	format string
-
-	// count is how many files carry this format.
-	count int
-
-	// fraction is count over total files (in [0, 1]).
-	fraction float64
-}
-
 // New returns a Model for the given library pointer, with empty paths and default theme.
-func New(audioFiles *[]audio.File) *Model {
+func New(defaultKeyMap keymap.KeyMap, audioFiles *[]audio.File) *Model {
 	return &Model{
 		audioFiles:   audioFiles,
 		libraryPaths: []string{},
+		keyMap:       defaultKeyMap,
 		style:        newStyle(theme.Default()),
 	}
 }
@@ -44,7 +26,26 @@ func (model *Model) ApplyTheme(resolvedTheme theme.Theme) {
 	model.style = newStyle(resolvedTheme)
 }
 
+// ApplyKeyMap stores the keymap used for the rescan button's activation.
+func (model *Model) ApplyKeyMap(resolvedKeyMap keymap.KeyMap) {
+	model.keyMap = resolvedKeyMap
+}
+
 // SetLibraryPaths sets the library paths.
 func (model *Model) SetLibraryPaths(libraryPaths []string) {
 	model.libraryPaths = libraryPaths
+}
+
+// HandleMessage handles keyboard navigation and actions for the button row.
+func (model *Model) HandleMessage(message tea.Msg) action.Action {
+	keyPress, ok := message.(tea.KeyPressMsg)
+	if !ok {
+		return action.NoAction{}
+	}
+
+	if key.Matches(keyPress, model.keyMap.Select) {
+		return action.ScanLibraryFullAction{}
+	}
+
+	return action.NoAction{}
 }

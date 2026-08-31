@@ -101,7 +101,9 @@ func fetchFilesWaitProgressCommand(
 	}
 }
 
-func scanFilesMetatagStartCommand() tea.Cmd {
+// scanFilesMetatagStartCommand runs the metatag scan over the already-fetched files.
+// TODO: finish this
+func scanFilesMetatagStartCommand(files []audio.File) tea.Cmd {
 	return func() tea.Msg {
 		return nil
 	}
