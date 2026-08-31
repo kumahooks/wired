@@ -13,6 +13,12 @@ type Model struct {
 	// libraryPaths are the configured library directories read from the config.
 	libraryPaths []string
 
+	// isScanning reports whether a library scan is currently running.
+	isScanning bool
+
+	// scannedFilesCount is the running total of audio files found by the active scan.
+	scannedFilesCount int
+
 	// keymap is used to properly map actions.
 	keyMap keymap.KeyMap
 

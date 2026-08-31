@@ -120,6 +120,7 @@ func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 func (model *UIModel) handleFetchFilesStartMessage(message fetchFilesStartMessage) tea.Cmd {
 	model.libraryScanCancel = message.scanCancel
 	model.libraryScanGeneration = message.generation
+	model.libraryStatsModel.StartScan()
 
 	return fetchFilesWaitProgressCommand(
 		message.progressChannel,
@@ -128,8 +129,13 @@ func (model *UIModel) handleFetchFilesStartMessage(message fetchFilesStartMessag
 	)
 }
 
-// handleFetchFilesWaitProgressMessage keeps draining the scan's progress channel.
+// handleFetchFilesWaitProgressMessage forwards the running file count to the library stats view and keeps draining the
+// scan's progress channel.
 func (model *UIModel) handleFetchFilesWaitProgressMessage(message fetchFilesWaitProgressMessage) tea.Cmd {
+	if message.generation == model.libraryScanGeneration {
+		model.libraryStatsModel.SetScanProgress(message.filesCount)
+	}
+
 	return fetchFilesWaitProgressCommand(
 		message.progressChannel,
 		message.resultChannel,
@@ -137,10 +143,11 @@ func (model *UIModel) handleFetchFilesWaitProgressMessage(message fetchFilesWait
 	)
 }
 
-// handleFetchFilesResultMessage finalizes the fetch.
+// handleFetchFilesResultMessage finalizes the file fetching routine.
 func (model *UIModel) handleFetchFilesResultMessage(message fetchFilesResultMessage) tea.Cmd {
 	if message.generation == model.libraryScanGeneration {
 		model.libraryScanCancel = nil
+		model.libraryStatsModel.FinishScan()
 	}
 
 	if message.err != nil {

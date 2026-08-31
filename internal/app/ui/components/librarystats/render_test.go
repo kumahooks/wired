@@ -78,3 +78,40 @@ func TestApplyThemeAndSetLibraryPaths(t *testing.T) {
 	rendered := testutil.StripANSI(model.Render(80, 24))
 	assert.True(t, strings.Contains(rendered, "/new/path"), "render output:\n%s", rendered)
 }
+
+func TestRenderHidesScanStatusWhenNotScanning(t *testing.T) {
+	t.Parallel()
+
+	model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
+
+	rendered := testutil.StripANSI(model.Render(80, 24))
+	assert.False(t, strings.Contains(rendered, "audio files"), "render output:\n%s", rendered)
+}
+
+func TestRenderShowsScanProgressWhileScanning(t *testing.T) {
+	t.Parallel()
+
+	model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
+	model.StartScan()
+	model.SetScanProgress(42)
+
+	rendered := testutil.StripANSI(model.Render(80, 24))
+	assert.True(
+		t,
+		strings.Contains(rendered, "found 42 audio files at library paths..."),
+		"render output:\n%s",
+		rendered,
+	)
+}
+
+func TestRenderHidesScanStatusAfterFinish(t *testing.T) {
+	t.Parallel()
+
+	model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
+	model.StartScan()
+	model.SetScanProgress(7)
+	model.FinishScan()
+
+	rendered := testutil.StripANSI(model.Render(80, 24))
+	assert.False(t, strings.Contains(rendered, "audio files"), "render output:\n%s", rendered)
+}

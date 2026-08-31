@@ -21,10 +21,25 @@ func (model *Model) Render(windowWidth int, windowHeight int) string {
 		model.renderHeader(),
 		model.renderTopCard(stats),
 		model.renderBottomCards(stats),
-		model.style.buttonFocused.Render(rescanButtonLabel),
+		model.renderButton(),
+		model.renderScanStatus(),
 	)
 
 	return lipgloss.Place(windowWidth, windowHeight, lipgloss.Center, lipgloss.Center, content)
+}
+
+// renderButton draws the focused rescan button.
+func (model *Model) renderButton() string {
+	return model.style.buttonFocused.Render(rescanButtonLabel)
+}
+
+// renderScanStatus draws the live scan progress line below the button, only while a scan is running.
+func (model *Model) renderScanStatus() string {
+	if !model.isScanning {
+		return ""
+	}
+
+	return model.style.scanStatus.Render(fmt.Sprintf(scanStatusText, model.scannedFilesCount))
 }
 
 // computeStats computes the current library stats.

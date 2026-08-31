@@ -36,6 +36,22 @@ func (model *Model) SetLibraryPaths(libraryPaths []string) {
 	model.libraryPaths = libraryPaths
 }
 
+// StartScan marks a library scan as running and resets the progress counter.
+func (model *Model) StartScan() {
+	model.isScanning = true
+	model.scannedFilesCount = 0
+}
+
+// SetScanProgress updates the running count of found audio files for the active scan.
+func (model *Model) SetScanProgress(filesCount int) {
+	model.scannedFilesCount = filesCount
+}
+
+// FinishScan marks the library scan as no longer running.
+func (model *Model) FinishScan() {
+	model.isScanning = false
+}
+
 // HandleMessage handles keyboard navigation and actions for the button row.
 func (model *Model) HandleMessage(message tea.Msg) action.Action {
 	keyPress, ok := message.(tea.KeyPressMsg)

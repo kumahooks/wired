@@ -46,6 +46,9 @@ const (
 	// rescanButtonLabel is the "rescan library paths" button's label.
 	rescanButtonLabel = "rescan library paths"
 
+	// scanStatusText is the format of the scan status line below the button, shown while a scan is running.
+	scanStatusText = "found %d audio files at library paths..."
+
 	// noPathsText is shown in the paths card when no library paths are found.
 	noPathsText = "no library paths in config"
 
