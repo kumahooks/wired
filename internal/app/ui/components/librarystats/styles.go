@@ -24,9 +24,9 @@ type Style struct {
 	libraryPathIndex lipgloss.Style // libraryPathIndex renders the number prefix of a row in "library paths" card.
 	libraryPath      lipgloss.Style // libraryPath renders the path of a row in "library paths" card.
 
-	buttonFocused lipgloss.Style // buttonFocused renders the button the cursor is at.
-	scanStatus    lipgloss.Style // scanStatus renders the live scan progress line below the button.
-	dash          lipgloss.Style // dash renders the placeholder dashes for empty values.
+	buttonFocused   lipgloss.Style // buttonFocused renders the button the cursor is at.
+	discoveryStatus lipgloss.Style // discoveryStatus renders the live discovery progress line below the button.
+	dash            lipgloss.Style // dash renders the placeholder dashes for empty values.
 }
 
 func newStyle(resolvedTheme theme.Theme) Style {
@@ -65,7 +65,7 @@ func newStyle(resolvedTheme theme.Theme) Style {
 		// dash renders as dashes for values that are either empty or nil.
 		dash: lipgloss.NewStyle().Foreground(resolvedTheme.TextFaint),
 
-		// scanStatus shows scan progress below the button while a scan is running.
-		scanStatus: lipgloss.NewStyle().Foreground(resolvedTheme.TextMuted).Italic(true),
+		// discoveryStatus shows discovery progress below the button while a discovery routine is running.
+		discoveryStatus: lipgloss.NewStyle().Foreground(resolvedTheme.TextMuted).Italic(true),
 	}
 }

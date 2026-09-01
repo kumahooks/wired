@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"testing"
 
+	"wired/internal/core/audio"
 	"wired/internal/core/config"
 	"wired/internal/core/keymap"
 	"wired/internal/core/theme"
@@ -58,4 +59,16 @@ func CustomTheme() theme.Theme {
 		AccentError:       "#112233",
 		Track:             "#4a4a4a",
 	})
+}
+
+// NewDiscoveryProgress builds a DiscoveryProgress snapshot with the given counts for SetProgress-based tests.
+func NewDiscoveryProgress(discovered int, parsed int, discoveryDone bool) *audio.DiscoveryProgress {
+	progress := audio.NewDiscoveryProgress()
+	progress.AddDiscovered(discovered)
+	progress.AddParsed(parsed)
+	if discoveryDone {
+		progress.SetDiscoveryDone()
+	}
+
+	return progress
 }

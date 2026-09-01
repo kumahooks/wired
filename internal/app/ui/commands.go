@@ -40,74 +40,86 @@ func initializationLoadLibraryCacheCommand() tea.Cmd {
 	}
 }
 
-// fetchFilesStartCommand launches the fetch goroutine and returns a StartMessage with the channels. The scan context
-// is derived from the orchestrator context so an orchestrator shutdown cancels the scan. The channel is buffered so
-// the walk does not stall on the tea message round-trip.
-func fetchFilesStartCommand(
+// discoverFilesStartCommand launches the discovery goroutine and returns a StartMessage carrying the discovery's
+// DiscoveryProgress reporter and cancel func.
+func discoverFilesStartCommand(
 	orchestratorContext context.Context,
 	generation uint64,
 	rootPaths []string,
 	library *audio.Library,
 ) tea.Cmd {
 	return func() tea.Msg {
-		progressChannel := make(chan int, fetchFilesProgressChannelBuffer)
-		resultChannel := make(chan fetchFilesResultMessage, 1)
+		progress := audio.NewDiscoveryProgress()
+		discoveryContext, discoveryCancel := context.WithCancel(orchestratorContext)
 
-		scanContext, scanCancel := context.WithCancel(orchestratorContext)
-
+		resultChannel := make(chan discoverFilesResultMessage, 1)
 		go func() {
-			_, err := audio.FetchFiles(scanContext, rootPaths, library, progressChannel)
-			close(progressChannel)
+			_, err := audio.DiscoverFiles(discoveryContext, rootPaths, library, progress)
 
-			resultChannel <- fetchFilesResultMessage{
+			resultChannel <- discoverFilesResultMessage{
 				library:    library,
+				progress:   progress,
 				err:        err,
 				generation: generation,
 			}
 		}()
 
-		return fetchFilesStartMessage{
-			progressChannel: progressChannel,
-			resultChannel:   resultChannel,
-			scanCancel:      scanCancel,
+		return discoverFilesStartMessage{
+			progress:        progress,
+			result:          resultChannel,
+			discoveryCancel: discoveryCancel,
 			generation:      generation,
 		}
 	}
 }
 
-// fetchFilesWaitProgressCommand drains the progress channel, returning a progress message per tick and the final result
-// message once the channel closes.
-func fetchFilesWaitProgressCommand(
-	progressChannel <-chan int,
-	resultChannel <-chan fetchFilesResultMessage,
+// waitForDiscoverResultCommand blocks on the discovery goroutine's result and forwards it into Update once received.
+func waitForDiscoverResultCommand(result <-chan discoverFilesResultMessage) tea.Cmd {
+	return func() tea.Msg {
+		return <-result
+	}
+}
+
+// waitForMetatagResultCommand blocks on the metatag parse goroutine's result and forwards it into Update once received.
+func waitForMetatagResultCommand(result <-chan metatagParseResultMessage) tea.Cmd {
+	return func() tea.Msg {
+		return <-result
+	}
+}
+
+// discoveryProgressTickCommand ticks the discovery progress reporter every discoveryProgressTickInterval while the discovery phase runs.
+func discoveryProgressTickCommand(progress *audio.DiscoveryProgress, generation uint64) tea.Cmd {
+	return tea.Tick(discoveryProgressTickInterval, func(time.Time) tea.Msg {
+		return discoveryProgressTickMessage{
+			progress:   progress,
+			generation: generation,
+		}
+	})
+}
+
+// parseFilesMetatagStartCommand launches the metatag parse over the given file snapshot.
+func parseFilesMetatagStartCommand(
+	parseContext context.Context,
 	generation uint64,
+	files []*audio.AudioFile,
+	progress *audio.DiscoveryProgress,
 ) tea.Cmd {
 	return func() tea.Msg {
-		filesCount, ok := <-progressChannel
-		if !ok {
-			result := <-resultChannel
+		resultChannel := make(chan metatagParseResultMessage, 1)
+		go func() {
+			_, err := audio.ParseFiles(parseContext, files, progress)
 
-			return fetchFilesResultMessage{
-				library:    result.library,
-				err:        result.err,
-				generation: result.generation,
+			resultChannel <- metatagParseResultMessage{
+				err:        err,
+				generation: generation,
 			}
-		}
+		}()
 
-		return fetchFilesWaitProgressMessage{
-			filesCount:      filesCount,
-			progressChannel: progressChannel,
-			resultChannel:   resultChannel,
-			generation:      generation,
+		return metatagParseStartMessage{
+			progress:   progress,
+			result:     resultChannel,
+			generation: generation,
 		}
-	}
-}
-
-// scanFilesMetatagStartCommand runs the metatag scan over the already-fetched files.
-// TODO: finish this
-func scanFilesMetatagStartCommand(library *audio.Library) tea.Cmd {
-	return func() tea.Msg {
-		return nil
 	}
 }
 

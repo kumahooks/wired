@@ -9,15 +9,17 @@ import (
 type Model struct {
 	// library points at the orchestrator's library.
 	library *audio.Library
-
 	// libraryPaths are the configured library directories read from the config.
 	libraryPaths []string
 
-	// isScanning reports whether a library scan is currently running.
-	isScanning bool
-
-	// scannedFilesCount is the running total of audio files found by the active scan.
-	scannedFilesCount int
+	// isDiscovering reports whether a library discovery is currently happening.
+	isDiscovering bool
+	// discoveredFilesCount is the running total of audio files discovered.
+	discoveredFilesCount int
+	// isDiscoveryDone reports whether the discovery moved past file discovery into metatag parsing.
+	isDiscoveryDone bool
+	// parsedMetatagCount is the running total of files whose metatags were parsed by the active discovery.
+	parsedMetatagCount int
 
 	// keymap is used to properly map actions.
 	keyMap keymap.KeyMap

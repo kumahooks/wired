@@ -15,7 +15,7 @@ func TestRenderSnapshot(t *testing.T) {
 
 	model := New()
 	model.PushNotification("config reloaded")
-	model.PushNotification("scan finished: 42 files")
+	model.PushNotification("discovery finished: 42 files")
 
 	testutil.AssertSnapshot(t, "render_default", model.Render(80, 24))
 }

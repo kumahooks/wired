@@ -24,7 +24,7 @@ func TestRenderWithNormalAndErrorLogs(t *testing.T) {
 	model := New(testutil.DefaultKeyMap(t))
 	model.AppendLog("config loaded successfully", LogNormal)
 	model.AppendLog("theme.surface must be a hex color", LogError)
-	model.AppendLog("library scan starting", LogNormal)
+	model.AppendLog("library discovery starting", LogNormal)
 	model.SetConfigError()
 
 	testutil.AssertSnapshot(t, "render_logs_normal_and_error", model.Render(80, 24))

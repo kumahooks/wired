@@ -40,8 +40,8 @@ type OpenPlaylistAction struct{}
 // OpenLibraryStatsAction goes to the library stats screen.
 type OpenLibraryStatsAction struct{}
 
-// ScanLibraryFullAction requests a full re-scan of the known library paths.
-type ScanLibraryFullAction struct{}
+// DiscoverLibraryFullAction requests a full re-discovery of the known library paths.
+type DiscoverLibraryFullAction struct{}
 
 // ProceedFromInitAction requests to proceed to the next state, from init state.
 type ProceedFromInitAction struct{}

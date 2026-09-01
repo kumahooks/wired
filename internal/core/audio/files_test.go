@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,10 +58,7 @@ func buildAudioTree(t *testing.T, root string) int {
 	return audioCount
 }
 
-// testFetchChannelBuffer is large enough that the walk never blocks on the drainer during tests.
-const testFetchChannelBuffer = 64
-
-// plantManyAudioFiles creates count audio files under root/sub/ so the walk crosses progressInterval at least once.
+// plantManyAudioFiles creates count audio files under root/sub/.
 func plantManyAudioFiles(t *testing.T, root string, count int) {
 	t.Helper()
 
@@ -75,7 +71,7 @@ func plantManyAudioFiles(t *testing.T, root string, count int) {
 	}
 }
 
-func TestFetchFilesTotal(t *testing.T) {
+func TestDiscoverFilesTotal(t *testing.T) {
 	t.Parallel()
 
 	rootOne := t.TempDir()
@@ -84,19 +80,19 @@ func TestFetchFilesTotal(t *testing.T) {
 	wantOne := buildAudioTree(t, rootOne)
 	wantTwo := buildAudioTree(t, rootTwo)
 
-	got, err := FetchFiles(context.Background(), []string{rootOne, rootTwo}, nil, nil)
+	got, err := DiscoverFiles(context.Background(), []string{rootOne, rootTwo}, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, wantOne+wantTwo, got)
 }
 
-func TestFetchFilesPopulatesLibrary(t *testing.T) {
+func TestDiscoverFilesPopulatesLibrary(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
 	want := buildAudioTree(t, root)
 
 	library := NewLibrary()
-	got, err := FetchFiles(context.Background(), []string{root}, library, nil)
+	got, err := DiscoverFiles(context.Background(), []string{root}, library, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, want, got)
@@ -109,66 +105,31 @@ func TestFetchFilesPopulatesLibrary(t *testing.T) {
 	}
 }
 
-func TestFetchChannelEmissions(t *testing.T) {
+func TestDiscoverFilesReportsProgress(t *testing.T) {
 	t.Parallel()
 
-	rootOne := t.TempDir()
-	rootTwo := t.TempDir()
+	root := t.TempDir()
+	plantManyAudioFiles(t, root, 10)
 
-	plantManyAudioFiles(t, rootOne, 40)
-	plantManyAudioFiles(t, rootTwo, 10)
+	progress := NewDiscoveryProgress()
 
-	fetchChannel := make(chan int, testFetchChannelBuffer)
-
-	_, err := FetchFiles(context.Background(), []string{rootOne, rootTwo}, nil, fetchChannel)
+	_, err := DiscoverFiles(context.Background(), []string{root}, nil, progress)
 	require.NoError(t, err)
 
-	// FetchFiles does not close the channel.
-	close(fetchChannel)
-
-	// Drain the channel with a timeout.
-	var values []int
-	for {
-		select {
-		case value, ok := <-fetchChannel:
-			if !ok {
-				goto done
-			}
-
-			values = append(values, value)
-		case <-time.After(2 * time.Second):
-			t.Fatalf("timed out waiting for fetchChannel, got %d values", len(values))
-		}
-	}
-
-done:
-	require.GreaterOrEqual(t, len(values), 3, "expected at least 3 emissions, got %d: %v", len(values), values)
-
-	// The last value should be the grand total.
-	assert.Equal(t, 50, values[len(values)-1])
+	assert.Equal(t, 10, progress.DiscoveredCount())
+	assert.True(t, progress.DiscoveryDone(), "discoveryDone should flip once the walk completes")
 }
 
-func TestFetchFilesCancelMidWalk(t *testing.T) {
+func TestDiscoverFilesCancelMidWalk(t *testing.T) {
 	root := t.TempDir()
 	plantManyAudioFiles(t, root, 40)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	fetchChannel := make(chan int, testFetchChannelBuffer)
-
-	_, err := FetchFiles(ctx, []string{root}, nil, fetchChannel)
+	_, err := DiscoverFiles(ctx, []string{root}, nil, NewDiscoveryProgress())
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ctx.Err())
-
-	// Drain any stray progress values so the sender is not blocked.
-	for {
-		select {
-		case <-fetchChannel:
-		default:
-			return
-		}
-	}
 }
 
 func TestIsAudio(t *testing.T) {
@@ -202,17 +163,164 @@ func TestIsAudio(t *testing.T) {
 	}
 }
 
-func TestFetchFilesNonExistentRoot(t *testing.T) {
+func TestDiscoverFilesNonExistentRoot(t *testing.T) {
 	t.Parallel()
 
-	_, err := FetchFiles(context.Background(), []string{"/this/path/does/not/exist"}, nil, nil)
+	_, err := DiscoverFiles(context.Background(), []string{"/this/path/does/not/exist"}, nil, nil)
 	require.Error(t, err)
 }
 
-func TestFetchFilesEmptyRoots(t *testing.T) {
+func TestDiscoverFilesEmptyRoots(t *testing.T) {
 	t.Parallel()
 
-	got, err := FetchFiles(context.Background(), []string{}, nil, nil)
+	got, err := DiscoverFiles(context.Background(), []string{}, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 0, got)
+}
+
+func TestParseFilesParsesMetatags(t *testing.T) {
+	t.Parallel()
+
+	validDir := t.TempDir()
+	validPath := filepath.Join(validDir, "boa.flac")
+	testData, err := os.ReadFile(filepath.Join("testdata", "complete_boa_fool.flac"))
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(validPath, testData, 0o644))
+
+	invalidPath := filepath.Join(validDir, "missing.mp3")
+
+	library := NewLibrary()
+	library.Add(validPath, int64(len(testData)))
+	library.Add(invalidPath, 1)
+
+	files := librarySnapshot(library)
+
+	parsedCount, err := ParseFiles(context.Background(), files, NewDiscoveryProgress())
+	require.NoError(t, err)
+	assert.Equal(t, 2, parsedCount)
+
+	parsedFile := library.File[validPath]
+	require.NotNil(t, parsedFile)
+	assert.Equal(t, "Fool", parsedFile.Title)
+	assert.Equal(t, "bôa", parsedFile.Artist)
+	assert.NotEmpty(t, parsedFile.Album)
+
+	BuildLibraryIndexes(library)
+
+	assert.Equal(
+		t,
+		"bôa:"+parsedFile.Album,
+		firstAlbumKey(library.ByAlbum),
+		"expected album index entry for the parsed file",
+	)
+	assert.Len(t, library.ByArtist["bôa"], 1, "expected artist index entry for the parsed file")
+
+	// The invalid file stays unmetatagged.
+	brokenFile := library.File[invalidPath]
+	require.NotNil(t, brokenFile)
+	assert.Empty(t, brokenFile.Title)
+}
+
+func TestParseFilesReportsProgress(t *testing.T) {
+	t.Parallel()
+
+	library := NewLibrary()
+	validDir := t.TempDir()
+	validPath := filepath.Join(validDir, "boa.flac")
+	testData, err := os.ReadFile(filepath.Join("testdata", "complete_boa_fool.flac"))
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(validPath, testData, 0o644))
+
+	for index := range 4 {
+		copyPath := filepath.Join(validDir, "copy"+strconv.Itoa(index)+".flac")
+		require.NoError(t, os.WriteFile(copyPath, testData, 0o644))
+		library.Add(copyPath, int64(len(testData)))
+	}
+
+	discoveryProgress := NewDiscoveryProgress()
+
+	_, err = ParseFiles(context.Background(), librarySnapshot(library), discoveryProgress)
+	require.NoError(t, err)
+
+	assert.Equal(t, 4, discoveryProgress.ParsedCount(), "all attempts should be reported")
+}
+
+func TestParseFilesProgressCountsFailures(t *testing.T) {
+	t.Parallel()
+
+	library := NewLibrary()
+	validDir := t.TempDir()
+	testData, err := os.ReadFile(filepath.Join("testdata", "complete_boa_fool.flac"))
+	require.NoError(t, err)
+
+	// 20 files: 16 parseable, 4 nonexistent paths that fail to parse. Every attempt must count towards progress.
+	for index := range 20 {
+		path := filepath.Join(validDir, "file"+strconv.Itoa(index)+".flac")
+		if index%6 == 0 {
+			path = filepath.Join(validDir, "missing"+strconv.Itoa(index)+".mp3")
+		}
+
+		library.Add(path, int64(len(testData)))
+	}
+
+	discoveryProgress := NewDiscoveryProgress()
+
+	_, err = ParseFiles(context.Background(), librarySnapshot(library), discoveryProgress)
+	require.NoError(t, err)
+
+	assert.Equal(t, 20, discoveryProgress.ParsedCount(), "all attempts (including failed parses) should count")
+}
+
+func TestParseFilesCancel(t *testing.T) {
+	t.Parallel()
+
+	library := NewLibrary()
+	testData, err := os.ReadFile(filepath.Join("testdata", "complete_boa_fool.flac"))
+	require.NoError(t, err)
+
+	for range 4 {
+		library.Add(filepath.Join(t.TempDir(), "boa.flac"), int64(len(testData)))
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err = ParseFiles(ctx, librarySnapshot(library), NewDiscoveryProgress())
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.Canceled)
+}
+
+func TestLibraryResetWipesState(t *testing.T) {
+	t.Parallel()
+
+	library := NewLibrary()
+	library.Add("/some/path.flac", 1)
+	BuildLibraryIndexes(library)
+
+	require.Len(t, library.File, 1)
+
+	library.Reset()
+
+	assert.Empty(t, library.File)
+	assert.Empty(t, library.ByAlbum)
+	assert.Empty(t, library.ByArtist)
+}
+
+// librarySnapshot returns the file slice the UI's discovery result handler would hand to ParseFiles.
+func librarySnapshot(library *Library) []*AudioFile {
+	files := make([]*AudioFile, 0, len(library.File))
+	for _, audioFile := range library.File {
+		files = append(files, audioFile)
+	}
+
+	return files
+}
+
+// firstAlbumKey returns the first album index key, for assertions.
+func firstAlbumKey(byAlbum map[string][]*AudioFile) string {
+	for key := range byAlbum {
+		return key
+	}
+
+	return ""
 }

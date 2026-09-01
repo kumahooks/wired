@@ -22,27 +22,14 @@ func (model *Model) Render(windowWidth int, windowHeight int) string {
 		model.renderTopCard(stats),
 		model.renderBottomCards(stats),
 		model.renderButton(),
-		model.renderScanStatus(),
+		model.renderDiscoveryStatus(),
 	)
 
 	return lipgloss.Place(windowWidth, windowHeight, lipgloss.Center, lipgloss.Center, content)
 }
 
-// renderButton draws the focused rescan button.
-func (model *Model) renderButton() string {
-	return model.style.buttonFocused.Render(rescanButtonLabel)
-}
-
-// renderScanStatus draws the live scan progress line below the button, only while a scan is running.
-func (model *Model) renderScanStatus() string {
-	if !model.isScanning {
-		return ""
-	}
-
-	return model.style.scanStatus.Render(fmt.Sprintf(scanStatusText, model.scannedFilesCount))
-}
-
 // computeStats computes the current library stats.
+// TODO: need to finish this after discovery is done.
 func (model *Model) computeStats() audio.Stats {
 	if model.library == nil {
 		return audio.Stats{FormatCounts: map[string]int{}}
@@ -68,6 +55,41 @@ func (model *Model) renderTopCard(stats audio.Stats) string {
 		librarySizeCardHeight,
 		bigCardWidth,
 	)
+}
+
+// renderBottomCards joins the "files by format" and "library paths" cards horizontally.
+func (model *Model) renderBottomCards(stats audio.Stats) string {
+	return lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		model.renderCard(model.drawFilesByFormatContent(stats), formatsCardTitle, smallCardHeight, smallCardWidth),
+		model.renderCard(model.drawLibraryPathsContent(), pathsCardTitle, smallCardHeight, smallCardWidth),
+	)
+}
+
+// renderButton draws the focused rediscover button.
+func (model *Model) renderButton() string {
+	return model.style.buttonFocused.Render(rediscoverButtonLabel)
+}
+
+// renderDiscoveryStatus draws the live discovery progress lines below the button, only while a discovery is running. The first phase
+// shows a single found-count line, while the second phase shows a found + parsing counter pair.
+func (model *Model) renderDiscoveryStatus() string {
+	if !model.isDiscovering {
+		return ""
+	}
+
+	if !model.isDiscoveryDone {
+		return model.style.discoveryStatus.Render(fmt.Sprintf(discoveryStatusText, model.discoveredFilesCount))
+	}
+
+	lines := []string{
+		model.style.discoveryStatus.Render(fmt.Sprintf(discoveryFoundText, model.discoveredFilesCount)),
+		model.style.discoveryStatus.Render(
+			fmt.Sprintf(discoveryParsingText, model.parsedMetatagCount, model.discoveredFilesCount),
+		),
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 // drawLibrarySizeContent draws the files count, total size, and avg/track value.
@@ -105,15 +127,6 @@ func (model *Model) renderStatRow(rowLabel string, rowValue string) string {
 		lipgloss.Top,
 		model.style.label.Render(fmt.Sprintf("%-*s", labelWidth, rowLabel)), // we align every label up to labelWidth.
 		model.style.value.Render(rowValue),
-	)
-}
-
-// renderBottomCards joins the "files by format" and "library paths" cards horizontally.
-func (model *Model) renderBottomCards(stats audio.Stats) string {
-	return lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		model.renderCard(model.drawFilesByFormatContent(stats), formatsCardTitle, smallCardHeight, smallCardWidth),
-		model.renderCard(model.drawLibraryPathsContent(), pathsCardTitle, smallCardHeight, smallCardWidth),
 	)
 }
 

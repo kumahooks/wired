@@ -40,10 +40,10 @@ type UIModel struct {
 
 	// library is a pointer to the orchestrator's owned library data structure.
 	library *audio.Library
-	// libraryScanGeneration tags the in-flight scan, incremented each time a new scan starts.
-	libraryScanGeneration uint64
-	// libraryScanCancel aborts the current scan, if any.
-	libraryScanCancel context.CancelFunc
+	// libraryDiscoveryGeneration tags the in-flight library discovery phase, incremented each time a phase starts.
+	libraryDiscoveryGeneration uint64
+	// libraryDiscoveryCancel aborts the current discovery, if any.
+	libraryDiscoveryCancel context.CancelFunc
 
 	// expireNotificationCmds holds expire commands queued by PushNotification. Update drains it into the batch before returning.
 	expireNotificationCmds []tea.Cmd

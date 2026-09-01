@@ -79,7 +79,7 @@ func TestApplyThemeAndSetLibraryPaths(t *testing.T) {
 	assert.True(t, strings.Contains(rendered, "/new/path"), "render output:\n%s", rendered)
 }
 
-func TestRenderHidesScanStatusWhenNotScanning(t *testing.T) {
+func TestRenderHidesScanStatusWhenNotDiscovering(t *testing.T) {
 	t.Parallel()
 
 	model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
@@ -88,17 +88,17 @@ func TestRenderHidesScanStatusWhenNotScanning(t *testing.T) {
 	assert.False(t, strings.Contains(rendered, "audio files"), "render output:\n%s", rendered)
 }
 
-func TestRenderShowsScanProgressWhileScanning(t *testing.T) {
+func TestRenderShowsDiscoveryProgressWhileDiscovering(t *testing.T) {
 	t.Parallel()
 
 	model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
-	model.StartScan()
-	model.SetScanProgress(42)
+	model.StartDiscovery()
+	model.SetProgress(testutil.NewDiscoveryProgress(42, 0, false))
 
 	rendered := testutil.StripANSI(model.Render(80, 24))
 	assert.True(
 		t,
-		strings.Contains(rendered, "found 42 audio files at library paths..."),
+		strings.Contains(rendered, "found 42 audio files..."),
 		"render output:\n%s",
 		rendered,
 	)
@@ -108,10 +108,47 @@ func TestRenderHidesScanStatusAfterFinish(t *testing.T) {
 	t.Parallel()
 
 	model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
-	model.StartScan()
-	model.SetScanProgress(7)
-	model.FinishScan()
+	model.StartDiscovery()
+	model.SetProgress(testutil.NewDiscoveryProgress(7, 0, false))
+	model.FinishDiscovery()
 
 	rendered := testutil.StripANSI(model.Render(80, 24))
 	assert.False(t, strings.Contains(rendered, "audio files"), "render output:\n%s", rendered)
+}
+
+func TestRenderMetatagPhaseLabels(t *testing.T) {
+	t.Parallel()
+
+	model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
+	model.StartDiscovery()
+	model.SetProgress(testutil.NewDiscoveryProgress(12, 5, true))
+
+	rendered := testutil.StripANSI(model.Render(80, 24))
+	assert.Contains(t, rendered, "12 audio files have been found", "render output:\n%s", rendered)
+	assert.Contains(t, rendered, "parsing 5/12 files", "render output:\n%s", rendered)
+	assert.False(
+		t,
+		strings.Contains(rendered, "at library paths"),
+		"discovery label should not render during metatag phase:\n%s",
+		rendered,
+	)
+}
+
+func TestFinishDiscoveryClearsMetatagState(t *testing.T) {
+	t.Parallel()
+
+	model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
+	model.StartDiscovery()
+	model.SetProgress(testutil.NewDiscoveryProgress(4, 4, true))
+	model.FinishDiscovery()
+	model.StartDiscovery()
+
+	rendered := testutil.StripANSI(model.Render(80, 24))
+	assert.Contains(
+		t,
+		rendered,
+		"found 0 audio files...",
+		"fresh discovery should show the discovery label at zero:\n%s",
+		rendered,
+	)
 }

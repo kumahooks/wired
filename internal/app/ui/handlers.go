@@ -1,12 +1,14 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
 	"wired/internal/app/ui/components/initializing"
+	"wired/internal/core/audio"
 	"wired/internal/core/keymap"
 	"wired/internal/core/theme"
 )
@@ -90,8 +92,8 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 
 // handleInitializationLoadLibraryCacheResult routes the user depending on whether a library cache exists. A cache hit
 // moves straight to idle. A cache miss, when tere are valid libraries path, warns the user about there not being any,
-// cache'd file, so they can scan later on. If no valid library path exists, it is treated as a config error since there
-// is nothing to scan.
+// cache'd file, so they can discover them later on. If no valid library path exists, it is treated as a config error
+// since there is nothing to discover.
 func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 	message initializationLoadLibraryCacheResultMessage,
 ) tea.Cmd {
@@ -102,7 +104,7 @@ func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 
 	if len(model.config.LibrariesPaths) > 0 {
 		model.initializationModel.AppendLog(
-			"no scanned songs found, you might want to scan them later~",
+			"no songs found, you might want to discover them later~",
 			initializing.LogWarning,
 		)
 
@@ -115,50 +117,100 @@ func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 	return nil
 }
 
-// handleFetchFilesStartMessage stores the scan's cancel func so reload/quit can abort the current scan, seeds the live
-// counter at zero, and launches the first drainer command.
-func (model *UIModel) handleFetchFilesStartMessage(message fetchFilesStartMessage) tea.Cmd {
-	model.libraryScanCancel = message.scanCancel
-	model.libraryScanGeneration = message.generation
-	model.libraryStatsModel.StartScan()
+// handleDiscoverFilesStartMessage stores the discovery's cancel func so reload/quit can abort the current discovery,
+// seeds the live counter at zero, and starts both the progress tick chain and the result waiter.
+func (model *UIModel) handleDiscoverFilesStartMessage(message discoverFilesStartMessage) tea.Cmd {
+	model.libraryDiscoveryCancel = message.discoveryCancel
+	model.libraryDiscoveryGeneration = message.generation
+	model.libraryStatsModel.StartDiscovery()
 
-	return fetchFilesWaitProgressCommand(
-		message.progressChannel,
-		message.resultChannel,
-		message.generation,
+	return tea.Batch(
+		discoveryProgressTickCommand(message.progress, message.generation),
+		waitForDiscoverResultCommand(message.result),
 	)
 }
 
-// handleFetchFilesWaitProgressMessage forwards the running file count to the library stats view and keeps draining the
-// scan's progress channel.
-func (model *UIModel) handleFetchFilesWaitProgressMessage(message fetchFilesWaitProgressMessage) tea.Cmd {
-	if message.generation == model.libraryScanGeneration {
-		model.libraryStatsModel.SetScanProgress(message.filesCount)
+// handleDiscoveryProgressTickMessage pulls the discovery progress reporter into the library stats view and schedules
+// the next tick. Ticks from old tick chains or a finished discovery are dropped, ending that chain.
+func (model *UIModel) handleDiscoveryProgressTickMessage(message discoveryProgressTickMessage) tea.Cmd {
+	if message.generation != model.libraryDiscoveryGeneration || model.libraryDiscoveryCancel == nil {
+		return nil
 	}
 
-	return fetchFilesWaitProgressCommand(
-		message.progressChannel,
-		message.resultChannel,
-		message.generation,
-	)
+	model.libraryStatsModel.SetProgress(message.progress)
+
+	return discoveryProgressTickCommand(message.progress, message.generation)
 }
 
-// handleFetchFilesResultMessage finalizes the file fetching routine.
-func (model *UIModel) handleFetchFilesResultMessage(message fetchFilesResultMessage) tea.Cmd {
-	if message.generation == model.libraryScanGeneration {
-		model.libraryScanCancel = nil
-		model.libraryStatsModel.FinishScan()
+// handleDiscoverFilesResultMessage finalizes the file discovery routine and hands the discovered library over to the
+// metatag parsing.
+func (model *UIModel) handleDiscoverFilesResultMessage(message discoverFilesResultMessage) tea.Cmd {
+	if message.generation != model.libraryDiscoveryGeneration {
+		return nil
 	}
 
 	if message.err != nil {
-		model.initializationModel.AppendLog(message.err.Error(), initializing.LogError)
+		model.libraryDiscoveryCancel = nil
+		model.libraryStatsModel.FinishDiscovery()
+
 		return nil
 	}
 
-	// Only the current scan updates the UI.
-	if message.generation != model.libraryScanGeneration {
+	parseContext, parseCancel := context.WithCancel(model.orchestratorContext)
+	model.libraryDiscoveryCancel = parseCancel
+
+	// The parse goroutine works on a snapshot of the discovered snapshotFiles and never touches the library's maps.
+	snapshotFiles := make([]*audio.AudioFile, 0, len(message.library.File))
+	for _, audioFile := range message.library.File {
+		snapshotFiles = append(snapshotFiles, audioFile)
+	}
+
+	message.progress.SetDiscoveryDone()
+
+	return parseFilesMetatagStartCommand(
+		parseContext,
+		model.libraryDiscoveryGeneration,
+		snapshotFiles,
+		message.progress,
+	)
+}
+
+// handleMetatagParseStartMessage arms the progress tick chain and the result waiter under the parse's generation,
+// which the discovery result handler already registered alongside the parse's cancel func.
+func (model *UIModel) handleMetatagParseStartMessage(message metatagParseStartMessage) tea.Cmd {
+	if message.generation != model.libraryDiscoveryGeneration {
 		return nil
 	}
 
-	return scanFilesMetatagStartCommand(message.library)
+	model.libraryStatsModel.SetProgress(message.progress)
+
+	return tea.Batch(
+		discoveryProgressTickCommand(message.progress, message.generation),
+		waitForMetatagResultCommand(message.result),
+	)
+}
+
+// handleMetatagParseResultMessage finalizes the metatag parse and hands the library over to the index rebuild.
+func (model *UIModel) handleMetatagParseResultMessage(message metatagParseResultMessage) tea.Cmd {
+	if message.generation != model.libraryDiscoveryGeneration {
+		return nil
+	}
+
+	if message.err != nil {
+		model.libraryDiscoveryCancel = nil
+		model.libraryStatsModel.FinishDiscovery()
+
+		return nil
+	}
+
+	audio.BuildLibraryIndexes(model.library)
+
+	model.libraryDiscoveryCancel = nil
+	model.libraryStatsModel.FinishDiscovery()
+
+	model.PushNotification(
+		fmt.Sprintf("%d files have been discovered and parsed successfully", model.library.FilesCount()),
+	)
+
+	return nil
 }

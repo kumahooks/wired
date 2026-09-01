@@ -26,7 +26,7 @@ func (model *Model) ApplyTheme(resolvedTheme theme.Theme) {
 	model.style = newStyle(resolvedTheme)
 }
 
-// ApplyKeyMap stores the keymap used for the rescan button's activation.
+// ApplyKeyMap stores the keymap used for the buttons actions on the view.
 func (model *Model) ApplyKeyMap(resolvedKeyMap keymap.KeyMap) {
 	model.keyMap = resolvedKeyMap
 }
@@ -36,20 +36,41 @@ func (model *Model) SetLibraryPaths(libraryPaths []string) {
 	model.libraryPaths = libraryPaths
 }
 
-// StartScan marks a library scan as running and resets the progress counter.
-func (model *Model) StartScan() {
-	model.isScanning = true
-	model.scannedFilesCount = 0
+// StartDiscovery marks a library discovery as running and resets all discovery progress state.
+func (model *Model) StartDiscovery() {
+	model.isDiscovering = true
+	model.discoveredFilesCount = 0
+	model.isDiscoveryDone = false
+	model.parsedMetatagCount = 0
 }
 
-// SetScanProgress updates the running count of found audio files for the active scan.
-func (model *Model) SetScanProgress(filesCount int) {
-	model.scannedFilesCount = filesCount
+// SetProgress reads the discovery progress reporter into the component's render state. The phase shown is decided by
+// the reporter's discoveryDone flag.
+func (model *Model) SetProgress(progress *audio.DiscoveryProgress) {
+	if progress == nil {
+		return
+	}
+
+	model.discoveredFilesCount = progress.DiscoveredCount()
+
+	if !progress.DiscoveryDone() {
+		return
+	}
+
+	model.isDiscoveryDone = true
+	model.parsedMetatagCount = progress.ParsedCount()
 }
 
-// FinishScan marks the library scan as no longer running.
-func (model *Model) FinishScan() {
-	model.isScanning = false
+// DiscoveredFilesCount returns the last ticked count of discovered audio files.
+func (model *Model) DiscoveredFilesCount() int {
+	return model.discoveredFilesCount
+}
+
+// FinishDiscovery marks the library discovery as no longer running and clears all discovery progress state.
+func (model *Model) FinishDiscovery() {
+	model.isDiscovering = false
+	model.isDiscoveryDone = false
+	model.parsedMetatagCount = 0
 }
 
 // HandleMessage handles keyboard navigation and actions for the button row.
@@ -60,7 +81,7 @@ func (model *Model) HandleMessage(message tea.Msg) action.Action {
 	}
 
 	if key.Matches(keyPress, model.keyMap.Select) {
-		return action.ScanLibraryFullAction{}
+		return action.DiscoverLibraryFullAction{}
 	}
 
 	return action.NoAction{}

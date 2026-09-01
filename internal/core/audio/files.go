@@ -5,23 +5,15 @@ import (
 	"context"
 	"io/fs"
 	"path/filepath"
+	"strconv"
 	"strings"
+
+	"github.com/kumahooks/wiretag"
 )
-
-// progressInterval is how many files we count between two progress emissions.
-const progressInterval = 32
-
-// TODO: can't I retrieve through taglib whether a file is an audiofile without having to map like this...?
-var audioExtensions = map[string]struct{}{
-	".mp3":  {},
-	".flac": {},
-	".ogg":  {},
-	".m4a":  {},
-	".wav":  {},
-}
 
 // AudioFile is a single audio file within a library.
 type AudioFile struct {
+	Path       string
 	Title      string
 	Artist     string
 	Album      string
@@ -53,7 +45,14 @@ func NewLibrary() *Library {
 
 // Add inserts a file under the given path as an unmetatagged AudioFile.
 func (library *Library) Add(path string, sizeBytes int64) {
-	library.File[path] = &AudioFile{SizeBytes: sizeBytes}
+	library.File[path] = &AudioFile{Path: path, SizeBytes: sizeBytes}
+}
+
+// Reset wipes the library's in-memory state.
+func (library *Library) Reset() {
+	library.File = make(map[string]*AudioFile)
+	library.ByAlbum = make(map[string][]*AudioFile)
+	library.ByArtist = make(map[string][]*AudioFile)
 }
 
 // FilesCount returns the number of audio files currently held.
@@ -61,14 +60,14 @@ func (library *Library) FilesCount() int {
 	return len(library.File)
 }
 
-// FetchFiles goes through every file in the sub-trees at rootPaths and inserts every found audio file into the library.
-// When library is non-nil, each discovered file is added to it. When progressChannel is non-nil, the running total is
-// emitted every progressInterval files and once at the end of each root walk.
-func FetchFiles(
+// DiscoverFiles goes through every file in the sub-trees at rootPaths and inserts every found audio file into the library.
+// When library is non-nil, each discovered file is added to it. When progress is non-nil, the running total is reported
+// through it for the UI's progress reads.
+func DiscoverFiles(
 	ctx context.Context,
 	rootPaths []string,
 	library *Library,
-	progressChannel chan<- int,
+	progress *DiscoveryProgress,
 ) (int, error) {
 	filesCount := 0
 
@@ -110,12 +109,8 @@ func FetchFiles(
 				library.Add(path, fileSizeBytes)
 			}
 
-			if progressChannel != nil && filesCount%progressInterval == 0 {
-				select {
-				case progressChannel <- filesCount:
-				case <-ctx.Done():
-					return ctx.Err()
-				}
+			if progress != nil {
+				progress.AddDiscovered(1)
 			}
 
 			return nil
@@ -125,23 +120,101 @@ func FetchFiles(
 		if err != nil {
 			return filesCount, err
 		}
+	}
 
-		// Emit a final progress value for this root so the live counter is accurate at the moment of completion.
-		if progressChannel != nil {
-			select {
-			case progressChannel <- filesCount:
-			case <-ctx.Done():
-				return filesCount, ctx.Err()
-			}
-		}
+	if progress != nil {
+		progress.SetDiscoveryDone()
 	}
 
 	return filesCount, nil
 }
 
-// ScanFiles goes through every fetched path, retrieving and updating each audio file's metatag information.
-// TODO: finish this
-func ScanFiles(library *Library) {
+// ParseFiles goes through the already-discovered files and parses each one's metatags sequentially.
+func ParseFiles(ctx context.Context, files []*AudioFile, progress *DiscoveryProgress) (int, error) {
+	var parsedCount int
+
+	for _, audioFile := range files {
+		if err := ctx.Err(); err != nil {
+			return parsedCount, err
+		}
+
+		parseAudioFileMetaTag(audioFile)
+		parsedCount++
+
+		if progress != nil {
+			progress.AddParsed(1)
+		}
+	}
+
+	return parsedCount, nil
+}
+
+// parseAudioFileMetaTag opens the file at audioFile's path and fills it with its metatag and audio properties.
+func parseAudioFileMetaTag(audioFile *AudioFile) {
+	if audioFile == nil {
+		return
+	}
+
+	file, err := wiretag.Open(audioFile.Path)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	// TODO: we made wiretag return idiomatic Go errors, but honestly this is kinda bad... can we improve there?
+	title, _ := file.Title()
+	artist, _ := file.Artist()
+	album, _ := file.Album()
+	comment, _ := file.Comment()
+	genre, _ := file.Genre()
+	year, _ := file.Year()
+	track, _ := file.Track()
+	length, _ := file.AudioLength()
+	bitrate, _ := file.AudioBitrate()
+	samplerate, _ := file.AudioSampleRate()
+	channels, _ := file.AudioChannels()
+
+	audioFile.Title = title
+	audioFile.Artist = artist
+	audioFile.Album = album
+	audioFile.Comment = comment
+	audioFile.Genre = genre
+	audioFile.Year = strconv.Itoa(year)
+	audioFile.Track = strconv.Itoa(track)
+	audioFile.Length = length
+	audioFile.Bitrate = bitrate
+	audioFile.Samplerate = samplerate
+	audioFile.Channels = channels
+}
+
+// BuildLibraryIndexes creates the ByAlbum and ByArtist indexes from the parsed files.
+func BuildLibraryIndexes(library *Library) {
+	library.ByAlbum = make(map[string][]*AudioFile)
+	library.ByArtist = make(map[string][]*AudioFile)
+
+	for _, audioFile := range library.File {
+		if audioFile == nil || audioFile.Artist == "" {
+			continue
+		}
+
+		library.ByArtist[audioFile.Artist] = append(library.ByArtist[audioFile.Artist], audioFile)
+
+		if audioFile.Album == "" {
+			continue
+		}
+
+		albumKey := audioFile.Artist + ":" + audioFile.Album
+		library.ByAlbum[albumKey] = append(library.ByAlbum[albumKey], audioFile)
+	}
+}
+
+// TODO: can't I retrieve through taglib whether a file is an audiofile without having to map like this...?
+var audioExtensions = map[string]struct{}{
+	".mp3":  {},
+	".flac": {},
+	".ogg":  {},
+	".m4a":  {},
+	".wav":  {},
 }
 
 func isAudio(path string) bool {

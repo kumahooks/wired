@@ -1,5 +1,7 @@
 package ui
 
+import "time"
+
 // The view is drawn based on these states below.
 type uiState uint8
 
@@ -15,5 +17,5 @@ const (
 	minWindowWidth  = 20
 )
 
-// fetchFilesProgressChannelBuffer is the size of the fetch progress channel.
-const fetchFilesProgressChannelBuffer = 64
+// discoveryProgressTickInterval is how often the UI ticks the discovery progress reporter while a discovery is running.
+const discoveryProgressTickInterval = 100 * time.Millisecond

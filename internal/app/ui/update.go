@@ -19,20 +19,28 @@ func (model *UIModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case initializationLoadLibraryCacheResultMessage:
 		commands = append(commands, model.handleInitializationLoadLibraryCacheResult(message))
 
-	// User Action - Scan files Step 1: starting with fetching them.
-	case fetchFilesStartMessage:
-		model.PushNotification("starting file scan...")
-		commands = append(commands, model.handleFetchFilesStartMessage(message))
-	// User Action - Scan files Step 2: waiting fetching to finish.
-	case fetchFilesWaitProgressMessage:
-		commands = append(commands, model.handleFetchFilesWaitProgressMessage(message))
-	// User Action - Scan files Step 3: start scanning the fetched files metatag.
-	case fetchFilesResultMessage:
-		commands = append(commands, model.handleFetchFilesResultMessage(message))
+	// User Action - Library discovery Step 1.1: discovering audio files at the library paths.
+	case discoverFilesStartMessage:
+		model.PushNotification("starting library discovery...")
+		commands = append(commands, model.handleDiscoverFilesStartMessage(message))
+	// User Action - Library discovery Step: ticking discovery progress.
+	case discoveryProgressTickMessage:
+		commands = append(commands, model.handleDiscoveryProgressTickMessage(message))
+	// User Action - Library discovery Step 2.1: start parsing the discovered files' metatags.
+	case discoverFilesResultMessage:
+		commands = append(commands, model.handleDiscoverFilesResultMessage(message))
+	// User Action - Library discovery Step 2.2: metatag parsing running.
+	case metatagParseStartMessage:
+		commands = append(commands, model.handleMetatagParseStartMessage(message))
+	// User Action - Library discovery Step 2.3: file discovery, parsing and indexing is finished.
+	case metatagParseResultMessage:
+		commands = append(commands, model.handleMetatagParseResultMessage(message))
 
 	// Notification expiration routine: each push schedules its own expiry.
 	case notificationExpireMessage:
 		model.notificationModel.PruneExpired()
+
+	// Tea commands are below.
 	case tea.WindowSizeMsg:
 		if command := model.handleWindowResize(message); command != nil {
 			commands = append(commands, command)
@@ -48,11 +56,11 @@ func (model *UIModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	return model, tea.Batch(commands...)
 }
 
-// cancelCurrentFileScan aborts the current scan, if any, so its goroutine exits and stops feeding the drainer.
-func (model *UIModel) cancelCurrentFileScan() {
-	if model.libraryScanCancel != nil {
-		model.libraryScanCancel()
-		model.libraryScanCancel = nil
+// cancelCurrentLibraryDiscovery aborts the current library discovery, if any, so its goroutine exits and stops feeding the waiter.
+func (model *UIModel) cancelCurrentLibraryDiscovery() {
+	if model.libraryDiscoveryCancel != nil {
+		model.libraryDiscoveryCancel()
+		model.libraryDiscoveryCancel = nil
 	}
 }
 
@@ -66,7 +74,7 @@ func (model *UIModel) handleWindowResize(message tea.WindowSizeMsg) tea.Cmd {
 // handleKeyPressMsg is responsible for managing every keyboard action in the program. Quit is a global keybind.
 func (model *UIModel) handleKeyPressMsg(message tea.KeyPressMsg) tea.Cmd {
 	if key.Matches(message, model.keyMap.Quit) {
-		model.cancelCurrentFileScan()
+		model.cancelCurrentLibraryDiscovery()
 		return tea.Quit
 	}
 
@@ -91,26 +99,28 @@ func (model *UIModel) handleComponentAction(act action.Action) tea.Cmd {
 	case nil, action.NoAction:
 		return nil
 	case action.QuitAction:
-		model.cancelCurrentFileScan()
+		model.cancelCurrentLibraryDiscovery()
 		return tea.Quit
-	case action.ScanLibraryFullAction:
-		model.cancelCurrentFileScan()
+	case action.DiscoverLibraryFullAction:
+		model.cancelCurrentLibraryDiscovery()
 
-		model.libraryScanGeneration++
-		return fetchFilesStartCommand(
+		// A full rediscovery starts from scratch, so the in-memory library is wiped before the walk.
+		model.library.Reset()
+		model.libraryDiscoveryGeneration++
+		return discoverFilesStartCommand(
 			model.orchestratorContext,
-			model.libraryScanGeneration,
+			model.libraryDiscoveryGeneration,
 			model.config.LibrariesPaths,
 			model.library,
 		)
 	case action.ReloadConfigAction:
-		model.cancelCurrentFileScan()
+		model.cancelCurrentLibraryDiscovery()
 		model.initializationModel.AppendLog("reloading config...", initializing.LogNormal)
 
 		return initializationLoadConfigCommand()
 	case action.ProceedFromInitAction:
 		model.initializationModel.AppendLog("proceeding without libraries", initializing.LogNormal)
-		model.cancelCurrentFileScan()
+		model.cancelCurrentLibraryDiscovery()
 		model.setState(uiPlaylist)
 
 		return nil

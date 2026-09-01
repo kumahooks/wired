@@ -43,11 +43,14 @@ const (
 	// pathsCardTitle is the title for the "library paths" card.
 	pathsCardTitle = "LIBRARY PATHS"
 
-	// rescanButtonLabel is the "rescan library paths" button's label.
-	rescanButtonLabel = "rescan library paths"
-
-	// scanStatusText is the format of the scan status line below the button, shown while a scan is running.
-	scanStatusText = "found %d audio files at library paths..."
+	// rediscoverButtonLabel is the "discover library files" button's label.
+	rediscoverButtonLabel = "discover library files"
+	// discoveryStatusText is the format of the discovery status line below the button, shown while file discovery runs.
+	discoveryStatusText = "found %d audio files..."
+	// discoveryFoundText is the first status line shown while the metatag parsing phase runs.
+	discoveryFoundText = "%d audio files have been found"
+	// discoveryParsingText is the second status line shown while the metatag parsing phase runs.
+	discoveryParsingText = "parsing %d/%d files"
 
 	// noPathsText is shown in the paths card when no library paths are found.
 	noPathsText = "no library paths in config"

@@ -22,29 +22,43 @@ type initializationLoadLibraryCacheResultMessage struct {
 	err     error
 }
 
-// fetchFilesStartMessage is produced on demand by the user. It carries the channels and cancel func that the drainer
-// and the cancel path share.
-type fetchFilesStartMessage struct {
-	progressChannel <-chan int
-	resultChannel   <-chan fetchFilesResultMessage
-	scanCancel      context.CancelFunc
+// discoverFilesStartMessage is produced on demand by the user. It carries the cancel func that the cancel path shares,
+// the DiscoveryProgress the discovery reports through, and the result channel a waiter command blocks on.
+type discoverFilesStartMessage struct {
+	progress        *audio.DiscoveryProgress
+	result          <-chan discoverFilesResultMessage
+	discoveryCancel context.CancelFunc
 	generation      uint64
 }
 
-// fetchFilesResultMessage is produced when the fetch finishes, carrying the discovered files.
-type fetchFilesResultMessage struct {
+// discoverFilesResultMessage is produced when the discovery finishes, carrying the discovered files and the shared
+// progress reporter the metatag parse continues on.
+type discoverFilesResultMessage struct {
 	library    *audio.Library
+	progress   *audio.DiscoveryProgress
 	err        error
 	generation uint64
 }
 
-// fetchFilesWaitProgressMessage is produced by fetchFilesWaitProgressCommand for each progress tick, carrying the running
-// total and the channels to keep draining.
-type fetchFilesWaitProgressMessage struct {
-	filesCount      int
-	progressChannel <-chan int
-	resultChannel   <-chan fetchFilesResultMessage
-	generation      uint64
+// metatagParseStartMessage is produced on demand by the user. It carries the DiscoveryProgress the parse reports
+// through and the result channel a waiter command blocks on.
+type metatagParseStartMessage struct {
+	progress   *audio.DiscoveryProgress
+	result     <-chan metatagParseResultMessage
+	generation uint64
+}
+
+// discoveryProgressTickMessage is produced by discoveryProgressTickCommand on each tick while a discovery phase runs,
+// carrying the progress reporter to read, and the generation of the discovery phase it belongs to.
+type discoveryProgressTickMessage struct {
+	progress   *audio.DiscoveryProgress
+	generation uint64
+}
+
+// metatagParseResultMessage is produced when the metatag parse finishes, carrying the parsed counts.
+type metatagParseResultMessage struct {
+	err        error
+	generation uint64
 }
 
 // notificationExpireMessage is produced by notificationExpireCommand after a notification's lifetime ends.

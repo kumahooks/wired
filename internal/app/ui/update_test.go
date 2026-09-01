@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -19,6 +20,7 @@ import (
 	"wired/internal/core/audio"
 	"wired/internal/core/config"
 	"wired/internal/core/keymap"
+	"wired/internal/core/testutil"
 	"wired/internal/core/theme"
 )
 
@@ -50,35 +52,6 @@ func executeCmd(t *testing.T, command tea.Cmd) tea.Msg {
 		t.Fatal("timed out waiting for command to produce a message")
 		return nil
 	}
-}
-
-// runCmds drives the fetch drainer to completion. It executes the drainer command, feeds WaitProgress messages back
-// into model.Update to get the next drainer, and returns the first fetchFilesResultMessage.
-func runCmds(t *testing.T, model *UIModel, command tea.Cmd) tea.Msg {
-	t.Helper()
-
-	timeout := time.After(3 * time.Second)
-
-	for command != nil {
-		result := make(chan tea.Msg, 1)
-		go func() { result <- command() }()
-
-		select {
-		case message := <-result:
-			switch message := message.(type) {
-			case fetchFilesResultMessage:
-				return message
-			case fetchFilesWaitProgressMessage:
-				_, command = model.Update(message)
-			default:
-				t.Fatalf("unexpected message from drainer: %T", message)
-			}
-		case <-timeout:
-			t.Fatal("timed out waiting for fetch result")
-		}
-	}
-
-	return nil
 }
 
 func plantAudioFiles(t *testing.T, dir string, count int) {
@@ -307,7 +280,7 @@ func TestHandleEmptyLibraryCacheWarnsUser(t *testing.T) {
 	_, command = model.Update(message)
 
 	assert.Nil(t, command, "returned cmd should be nil on empty cache")
-	assert.True(t, initLogContains(model, "no scanned songs found, you might want to scan them later"))
+	assert.True(t, initLogContains(model, "no songs found, you might want to discover them later~"))
 	assert.False(
 		t,
 		model.initializationModel.IsConfigError(),
@@ -315,123 +288,134 @@ func TestHandleEmptyLibraryCacheWarnsUser(t *testing.T) {
 	)
 }
 
-func TestHandleFetchFilesStartMessage(t *testing.T) {
+func TestHandleDiscoverFilesStartMessage(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
-	model.libraryScanGeneration = 5
+	model.libraryDiscoveryGeneration = 5
 
 	_, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	progressChannel := make(chan int, 1)
-	resultChannel := make(chan fetchFilesResultMessage, 1)
-
-	message := fetchFilesStartMessage{
-		progressChannel: progressChannel,
-		resultChannel:   resultChannel,
-		scanCancel:      cancel,
+	message := discoverFilesStartMessage{
+		progress:        audio.NewDiscoveryProgress(),
+		discoveryCancel: cancel,
 		generation:      7,
 	}
 
 	_, command := model.Update(message)
 
-	require.NotNil(t, model.libraryScanCancel, "scanCancel = nil, want the cancel func")
-
-	assert.Equal(t, uint64(7), model.libraryScanGeneration)
-
-	require.NotNil(t, command, "returned cmd = nil, want the drainer cmd")
+	require.NotNil(t, model.libraryDiscoveryCancel, "discoveryCancel = nil, want the cancel func")
+	assert.Equal(t, uint64(7), model.libraryDiscoveryGeneration)
+	require.NotNil(t, command, "returned cmd = nil, want the progress tick cmd")
 }
 
-func TestHandleFetchFilesWaitProgressMessage(t *testing.T) {
+func TestHandleDiscoveryProgressTickMessage(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
+	model.libraryDiscoveryGeneration = 3
+	model.libraryStatsModel.StartDiscovery()
+	model.libraryDiscoveryCancel = func() {}
 
-	progressChannel := make(chan int, 1)
-	resultChannel := make(chan fetchFilesResultMessage, 1)
+	progress := audio.NewDiscoveryProgress()
+	progress.AddDiscovered(42)
 
-	_, command := model.Update(fetchFilesWaitProgressMessage{
-		filesCount:      42,
-		progressChannel: progressChannel,
-		resultChannel:   resultChannel,
-		generation:      3,
+	_, command := model.Update(discoveryProgressTickMessage{
+		progress:   progress,
+		generation: 3,
 	})
 
-	assert.NotNil(t, command, "returned cmd = nil, want the next drainer cmd")
+	assert.NotNil(t, command, "returned cmd = nil, want the next tick cmd")
+	assert.Equal(
+		t,
+		42,
+		model.libraryStatsModel.DiscoveredFilesCount(),
+		"ticked discovered count should reach the component",
+	)
+
+	// A stale generation must not update the display nor re-arm the tick chain.
+	progressStale := audio.NewDiscoveryProgress()
+	progressStale.AddDiscovered(99)
+	_, command = model.Update(discoveryProgressTickMessage{
+		progress:   progressStale,
+		generation: 2,
+	})
+	assert.Nil(t, command, "stale tick should not re-arm the tick chain")
 }
 
-func TestHandleFetchFilesResultMessageStaleGeneration(t *testing.T) {
+func TestHandleDiscoverFilesResultMessageStaleGeneration(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
-	model.libraryScanGeneration = 10
+	model.libraryDiscoveryGeneration = 10
 
 	sentinelCanceled := false
-	model.libraryScanCancel = func() { sentinelCanceled = true }
+	model.libraryDiscoveryCancel = func() { sentinelCanceled = true }
 
 	initialLogCount := len(model.initializationModel.LogLines())
 
-	_, command := model.Update(fetchFilesResultMessage{
+	_, command := model.Update(discoverFilesResultMessage{
 		library:    nil,
 		err:        nil,
 		generation: 5,
 	})
 
 	assert.Nil(t, command, "returned cmd should be nil on stale generation")
-	assert.False(t, sentinelCanceled, "stale result cleared scanCancel")
+	assert.False(t, sentinelCanceled, "stale result cleared discoveryCancel")
 
 	assert.NotNil(
 		t,
-		model.libraryScanCancel,
-		"scanCancel = nil, want unchanged sentinel on stale generation",
+		model.libraryDiscoveryCancel,
+		"discoveryCancel = nil, want unchanged sentinel on stale generation",
 	)
 
 	assert.Len(t, model.initializationModel.LogLines(), initialLogCount, "logCount changed on stale")
 }
 
-func TestHandleFetchFilesResultMessageCurrentGeneration(t *testing.T) {
+func TestHandleDiscoverFilesResultMessageCurrentGeneration(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
-	model.libraryScanGeneration = 10
+	model.libraryDiscoveryGeneration = 10
 
 	sentinelCanceled := false
-	model.libraryScanCancel = func() { sentinelCanceled = true }
+	model.libraryDiscoveryCancel = func() { sentinelCanceled = true }
 
-	_, command := model.Update(fetchFilesResultMessage{
+	_, command := model.Update(discoverFilesResultMessage{
 		library:    audio.NewLibrary(),
+		progress:   audio.NewDiscoveryProgress(),
 		err:        nil,
 		generation: 10,
 	})
 
-	assert.NotNil(t, command, "returned cmd should be the next-step scan cmd on current generation result")
-	assert.False(t, sentinelCanceled, "current result should set scanCancel to nil, not call it")
-	assert.Nil(
+	assert.NotNil(t, command, "returned cmd should be the next-step parse cmd on current generation result")
+	assert.False(t, sentinelCanceled, "current result should replace discoveryCancel, not call it")
+	require.NotNil(
 		t,
-		model.libraryScanCancel,
-		"scanCancel = non-nil, want nil after current generation result",
+		model.libraryDiscoveryCancel,
+		"discoveryCancel = nil, want the parse cancel func registered before dispatch",
 	)
+
+	// The parse phase continues under the pipeline's generation.
+	assert.Equal(t, uint64(10), model.libraryDiscoveryGeneration)
 }
 
-func TestHandleFetchFilesResultMessageError(t *testing.T) {
+func TestHandleDiscoverFilesResultMessageError(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
-	model.libraryScanGeneration = 10
+	model.libraryDiscoveryGeneration = 10
 
-	fetchError := errors.New("[audio:FetchFiles] walk failed")
-	_, command := model.Update(fetchFilesResultMessage{
+	discoveryError := errors.New("[audio:DiscoverFiles] walk failed")
+	_, command := model.Update(discoverFilesResultMessage{
 		library:    nil,
-		err:        fetchError,
+		err:        discoveryError,
 		generation: 10,
 	})
 
 	assert.Nil(t, command, "returned cmd should be nil on error result")
-
-	text, logType := initLastLog(model)
-	assert.Equal(t, initializing.LogError, logType, "last log type = %v, want LogError (text: %q)", logType, text)
-	assert.True(t, strings.Contains(text, fetchError.Error()))
+	assert.Empty(t, model.initializationModel.LogLines(), "discovery errors should not log")
 }
 
 func TestHandleWindowResize(t *testing.T) {
@@ -452,13 +436,13 @@ func TestHandleKeyPressMsgQuit(t *testing.T) {
 	model := newTestUI(t)
 
 	sentinelCanceled := false
-	model.libraryScanCancel = func() { sentinelCanceled = true }
+	model.libraryDiscoveryCancel = func() { sentinelCanceled = true }
 
 	_, command := model.Update(tea.KeyPressMsg{Mod: tea.ModCtrl, Code: 'd'})
 
 	require.True(t, isTeaQuit(command), "returned cmd is not tea.Quit")
-	assert.True(t, sentinelCanceled, "cancelCurrentFileScan was not called on quit")
-	assert.Nil(t, model.libraryScanCancel, "scanCancel = non-nil, want nil after quit")
+	assert.True(t, sentinelCanceled, "cancelCurrentLibraryDiscovery was not called on quit")
+	assert.Nil(t, model.libraryDiscoveryCancel, "discoveryCancel = non-nil, want nil after quit")
 }
 
 func TestHandleKeyPressMsgQuitDoesNotMatchNonQuitKey(t *testing.T) {
@@ -478,13 +462,13 @@ func TestHandleKeyPressMsgForwardsToComponentReload(t *testing.T) {
 	model.initializationModel.SetConfigError()
 
 	sentinelCanceled := false
-	model.libraryScanCancel = func() { sentinelCanceled = true }
+	model.libraryDiscoveryCancel = func() { sentinelCanceled = true }
 
 	_, command := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	require.NotNil(t, command, "returned cmd = nil, want non-nil for reload action")
 
-	assert.True(t, sentinelCanceled, "cancelCurrentFileScan was not called on reload")
+	assert.True(t, sentinelCanceled, "cancelCurrentLibraryDiscovery was not called on reload")
 	assert.Equal(t, uiInitializing, model.state)
 	assert.True(t, initLogContains(model, "reloading config..."))
 }
@@ -497,13 +481,13 @@ func TestHandleKeyPressMsgForwardsToComponentProceed(t *testing.T) {
 	model.Update(tea.KeyPressMsg{Code: 'l', Text: "l"})
 
 	sentinelCanceled := false
-	model.libraryScanCancel = func() { sentinelCanceled = true }
+	model.libraryDiscoveryCancel = func() { sentinelCanceled = true }
 
 	_, command := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	assert.Nil(t, command, "returned cmd should be nil for proceed action")
 
-	assert.True(t, sentinelCanceled, "cancelCurrentFileScan was not called on proceed")
+	assert.True(t, sentinelCanceled, "cancelCurrentLibraryDiscovery was not called on proceed")
 	assert.Equal(t, uiPlaylist, model.state)
 	assert.True(t, initLogContains(model, "proceeding without libraries"))
 }
@@ -638,8 +622,8 @@ func TestHandleComponentAction(t *testing.T) {
 			wantCleared:   true,
 		},
 		{
-			name:          "ScanLibraryFullAction returns fetch start cmd and stays initializing",
-			action:        action.ScanLibraryFullAction{},
+			name:          "DiscoverLibraryFullAction returns discovery start cmd and stays initializing",
+			action:        action.DiscoverLibraryFullAction{},
 			wantCmdNonNil: true,
 			wantState:     uiInitializing,
 			wantStateSet:  true,
@@ -690,7 +674,7 @@ func TestHandleComponentAction(t *testing.T) {
 			model := newTestUI(t)
 
 			sentinelCanceled := false
-			model.libraryScanCancel = func() { sentinelCanceled = true }
+			model.libraryDiscoveryCancel = func() { sentinelCanceled = true }
 
 			command := model.handleComponentAction(test.action)
 
@@ -703,14 +687,14 @@ func TestHandleComponentAction(t *testing.T) {
 			}
 
 			if test.wantCanceled {
-				assert.True(t, sentinelCanceled, "cancelCurrentFileScan was not called")
+				assert.True(t, sentinelCanceled, "cancelCurrentLibraryDiscovery was not called")
 			}
 
 			if test.wantCleared {
 				assert.Nil(
 					t,
-					model.libraryScanCancel,
-					"scanCancel = non-nil, want nil after action",
+					model.libraryDiscoveryCancel,
+					"discoveryCancel = non-nil, want nil after action",
 				)
 			}
 
@@ -730,27 +714,247 @@ func TestHandleComponentAction(t *testing.T) {
 	}
 }
 
-func TestFetchFilesStartCommandAsync(t *testing.T) {
+func TestDiscoverFilesStartCommandAsync(t *testing.T) {
 	t.Parallel()
 
 	libraryDir := t.TempDir()
 	plantAudioFiles(t, libraryDir, 5)
 
-	model := newTestUI(t)
-
-	contextForFetch, cancel := context.WithCancel(context.Background())
+	contextForDiscovery, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	startCommand := fetchFilesStartCommand(contextForFetch, 1, []string{libraryDir}, audio.NewLibrary())
-	startMessage := executeCmd(t, startCommand).(fetchFilesStartMessage)
+	startCommand := discoverFilesStartCommand(contextForDiscovery, 1, []string{libraryDir}, audio.NewLibrary())
+	startMessage := executeCmd(t, startCommand).(discoverFilesStartMessage)
 
-	// Bypass Update so we get the drainer directly instead of the notification batch around it.
-	drainerCommand := model.handleFetchFilesStartMessage(startMessage)
+	// The start message carries its own progress reporter, and the discovery goroutine reports into it.
+	progress := startMessage.progress
+	deadline := time.After(3 * time.Second)
+	for {
+		if progress.DiscoveryDone() && progress.DiscoveredCount() == 5 {
+			break
+		}
 
-	resultMessage := runCmds(t, model, drainerCommand)
-	result, ok := resultMessage.(fetchFilesResultMessage)
-	require.True(t, ok, "runCmds returned %T, want fetchFilesResultMessage", resultMessage)
+		select {
+		case <-deadline:
+			t.Fatalf(
+				"timed out waiting for discovery: discovered=%d done=%v",
+				progress.DiscoveredCount(),
+				progress.DiscoveryDone(),
+			)
+		default:
+			runtime.Gosched()
+		}
+	}
 
-	require.NoError(t, result.err)
-	assert.Equal(t, 5, result.library.FilesCount(), "result should carry the discovered audio files")
+	tickedModel := newTestUI(t)
+	tickedModel.libraryDiscoveryGeneration = 1
+	tickedModel.libraryStatsModel.StartDiscovery()
+	tickedModel.libraryDiscoveryCancel = func() {}
+
+	_, command := tickedModel.Update(discoveryProgressTickMessage{progress: progress, generation: 1})
+
+	require.NotNil(t, command, "tick should re-arm while the discovery is current")
+	assert.Equal(t, 5, tickedModel.libraryStatsModel.DiscoveredFilesCount(), "tick should surface the discovered count")
+}
+
+func TestParseFilesMetatagStartCommandAsync(t *testing.T) {
+	t.Parallel()
+
+	files := []*audio.AudioFile{{Path: "/this/path/does/not/exist.flac"}}
+
+	parseContext, parseCancel := context.WithCancel(context.Background())
+	t.Cleanup(parseCancel)
+
+	startCommand := parseFilesMetatagStartCommand(parseContext, 1, files, audio.NewDiscoveryProgress())
+
+	message := executeCmd(t, startCommand)
+	startMessage, ok := message.(metatagParseStartMessage)
+	require.True(t, ok, "cmd produced %T, want metatagParseStartMessage", message)
+
+	require.NotNil(t, startMessage.progress)
+	assert.Equal(t, uint64(1), startMessage.generation)
+
+	// The parse goroutine reports into the start message's progress reporter.
+	deadline := time.After(3 * time.Second)
+	for {
+		if startMessage.progress.ParsedCount() == 1 {
+			break
+		}
+
+		select {
+		case <-deadline:
+			t.Fatalf("timed out waiting for parse: parsed=%d", startMessage.progress.ParsedCount())
+		default:
+			runtime.Gosched()
+		}
+	}
+
+	assert.Equal(t, 1, startMessage.progress.ParsedCount(), "failed parses should still count as attempted")
+}
+
+func TestHandleMetatagParseStartMessage(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+	model.libraryDiscoveryGeneration = 4
+	model.libraryStatsModel.StartDiscovery()
+
+	_, command := model.Update(metatagParseStartMessage{
+		progress:   audio.NewDiscoveryProgress(),
+		generation: 4,
+	})
+
+	require.NotNil(t, command, "returned cmd = nil, want the progress tick cmd")
+}
+
+func TestHandleMetatagParseStartMessageStaleGeneration(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+	model.libraryDiscoveryGeneration = 10
+	model.libraryStatsModel.StartDiscovery()
+
+	_, command := model.Update(metatagParseStartMessage{
+		progress:   audio.NewDiscoveryProgress(),
+		generation: 5,
+	})
+
+	assert.Nil(t, command, "stale parse start should be rejected")
+	assert.Equal(t, uint64(10), model.libraryDiscoveryGeneration, "stale parse start moved the generation")
+}
+
+func TestHandleMetatagParseResultMessageSuccess(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+	model.libraryDiscoveryGeneration = 4
+	model.libraryStatsModel.StartDiscovery()
+	model.libraryStatsModel.SetProgress(testutil.NewDiscoveryProgress(7, 7, true))
+	model.libraryDiscoveryCancel = func() {}
+
+	command := model.handleMetatagParseResultMessage(metatagParseResultMessage{
+		generation: 4,
+	})
+
+	assert.Nil(t, command)
+	assert.Nil(t, model.libraryDiscoveryCancel, "discoveryCancel = non-nil, want nil after result")
+
+	// Success notification pushed.
+	assert.True(
+		t,
+		model.notificationModel.HasActiveNotifications(),
+		"expected an active notification after discovery success",
+	)
+
+	// The library indexes are built synchronously in the handler.
+	assert.Empty(t, model.library.ByArtist, "no files were parsed, indexes should stay empty")
+
+	populatedLibrary := audio.NewLibrary()
+	populatedLibrary.Add("/some/path.flac", 1)
+	populatedLibrary.File["/some/path.flac"].Artist = "bôa"
+	model.library = populatedLibrary
+	model.handleMetatagParseResultMessage(metatagParseResultMessage{
+		generation: 4,
+	})
+
+	assert.Len(t, populatedLibrary.ByArtist["bôa"], 1, "expected artist index entry after the rebuild")
+}
+
+func TestHandleMetatagParseResultMessageStaleGeneration(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+	model.libraryDiscoveryGeneration = 10
+	model.libraryStatsModel.StartDiscovery()
+	model.libraryStatsModel.SetProgress(testutil.NewDiscoveryProgress(7, 7, true))
+	model.libraryDiscoveryCancel = func() {}
+
+	command := model.handleMetatagParseResultMessage(metatagParseResultMessage{
+		generation: 5,
+	})
+
+	assert.Nil(t, command)
+	assert.NotNil(t, model.libraryDiscoveryCancel, "stale result cleared discoveryCancel")
+
+	rendered := testutil.StripANSI(model.libraryStatsModel.Render(80, 24))
+	assert.Contains(t, rendered, "audio files", "stale result should not clear discovery state")
+}
+
+func TestHandleMetatagParseResultMessageError(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+	model.libraryDiscoveryGeneration = 4
+	model.libraryStatsModel.StartDiscovery()
+	model.libraryDiscoveryCancel = func() {}
+
+	initialLogCount := len(model.initializationModel.LogLines())
+
+	command := model.handleMetatagParseResultMessage(metatagParseResultMessage{
+		err:        context.Canceled,
+		generation: 4,
+	})
+
+	assert.Nil(t, command)
+	assert.Len(t, model.initializationModel.LogLines(), initialLogCount, "cancellation should not log an error")
+}
+
+func TestHandleDiscoverFilesResultMessageKeepsParseActiveUntilDone(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+	model.libraryDiscoveryGeneration = 10
+	model.libraryStatsModel.StartDiscovery()
+	sharedProgress := testutil.NewDiscoveryProgress(3, 0, false)
+	model.libraryStatsModel.SetProgress(sharedProgress)
+
+	library := audio.NewLibrary()
+	library.Add("/this/path/does/not/exist.flac", 0)
+
+	_, command := model.Update(discoverFilesResultMessage{
+		library:    library,
+		progress:   sharedProgress,
+		err:        nil,
+		generation: 10,
+	})
+
+	require.NotNil(t, command, "returned cmd should be the metatag parse start cmd")
+
+	require.NotNil(t, model.libraryDiscoveryCancel, "discoveryCancel = nil, want the parse cancel func before dispatch")
+	assert.Equal(
+		t,
+		uint64(10),
+		model.libraryDiscoveryGeneration,
+		"the parse phase continues under the pipeline's generation",
+	)
+
+	// The parse start message re-arms the tick chain and flips the status to the found+parsing pair.
+	_, command = model.Update(metatagParseStartMessage{
+		progress:   sharedProgress,
+		generation: 10,
+	})
+	require.NotNil(t, command, "returned cmd = nil, want the progress tick cmd")
+
+	rendered := testutil.StripANSI(model.libraryStatsModel.Render(80, 24))
+
+	assert.Contains(t, rendered, "3 audio files have been found", "render output:\n%s", rendered)
+	assert.Contains(t, rendered, "parsing 0/3 files", "render output:\n%s", rendered)
+}
+
+func TestHandleDiscoverFilesResultMessageDoesNotLogErrors(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+	model.libraryDiscoveryGeneration = 10
+	model.libraryStatsModel.StartDiscovery()
+
+	_, command := model.Update(discoverFilesResultMessage{
+		library:    nil,
+		progress:   audio.NewDiscoveryProgress(),
+		err:        context.Canceled,
+		generation: 10,
+	})
+
+	assert.Nil(t, command)
+	assert.Empty(t, model.initializationModel.LogLines(), "cancellation should not log an error")
 }
