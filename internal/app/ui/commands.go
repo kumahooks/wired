@@ -28,14 +28,22 @@ func initializationLoadConfigCommand() tea.Cmd {
 // initializationLoadLibraryCacheCommand returns a tea.Cmd that attempts to load a local database of cache'd files.
 func initializationLoadLibraryCacheCommand() tea.Cmd {
 	return func() tea.Msg {
-		var libraryCacheExists bool = false
-		if libraryCacheExists {
-			panic("TODO: implement caching storage and retrieval")
-		} else {
+		cache, err := audio.LoadCache()
+		if err != nil {
 			return initializationLoadLibraryCacheResultMessage{
 				library: audio.NewLibrary(),
-				err:     nil,
+				err:     err,
 			}
+		}
+
+		library := audio.NewLibrary()
+		if len(cache) > 0 {
+			library.File = cache
+		}
+
+		return initializationLoadLibraryCacheResultMessage{
+			library: library,
+			err:     nil,
 		}
 	}
 }

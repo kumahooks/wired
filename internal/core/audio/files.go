@@ -130,6 +130,12 @@ func DiscoverFiles(
 }
 
 // ParseFiles goes through the already-discovered files and parses each one's metatags sequentially.
+// TODO: this is currently sequentially parsing files. for HDD this is fine and preferable, but it's very sub-optimal
+// for SSDs...
+// For HDDS (experiments to see if improves speed):
+// - It could first fetch each file's inode number (in bulk!) and walk sequentially through it;
+// - Separate file reading and taglib parsing in two different threads, sending the file to taglib through RAM;
+// - Potentially check if POSIX_FADV_SEQUENTIAL helps;
 func ParseFiles(ctx context.Context, files []*AudioFile, progress *DiscoveryProgress) (int, error) {
 	var parsedCount int
 

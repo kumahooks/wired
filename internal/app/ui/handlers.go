@@ -97,7 +97,14 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 	message initializationLoadLibraryCacheResultMessage,
 ) tea.Cmd {
+	if message.err != nil {
+		model.PushNotification("there was an error when trying to load the library cache... q_q")
+	}
+
 	if message.library.FilesCount() > 0 {
+		model.library.File = message.library.File
+		audio.BuildLibraryIndexes(model.library)
+
 		model.setState(uiPlaylist)
 		return nil
 	}
@@ -204,6 +211,10 @@ func (model *UIModel) handleMetatagParseResultMessage(message metatagParseResult
 	}
 
 	audio.BuildLibraryIndexes(model.library)
+	err := audio.WriteCache(model.library.File)
+	if err != nil {
+		model.PushNotification("there was an error when trying to save the library to cache x_x")
+	}
 
 	model.libraryDiscoveryCancel = nil
 	model.libraryStatsModel.FinishDiscovery()

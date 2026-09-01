@@ -4,7 +4,8 @@ Completely unorganized and without a deep thought behind.
 - [ ] Initialization screen supports j/k to move up/down the log lines.
 - [X] Metatag parsing of audio files.
 - [X] Organization and definitions of albums and music, based on the retrieved metatag.
-- [ ] Cache of previously scanned files.
+- [X] Cache of previously scanned files.
+- [ ] "Scan new files" action: appends any newly found files to the existing cache instead of a full rescan.
 - [ ] Dialog on the screen which *can* trigger actions depending on user's response.
 - [x] Refactor `assertSnapshot` and the `-update` golden flag into shared `testutil`.
 - [x] Notification system to send messages to the user. (especially useful for debugging)

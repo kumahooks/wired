@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -262,7 +263,8 @@ func TestHandleInitializationLoadConfigResultLibrariesEmitsCacheLoad(t *testing.
 }
 
 func TestHandleEmptyLibraryCacheWarnsUser(t *testing.T) {
-	t.Parallel()
+	// The cache load command reads the real user config dir, so we set it like this.
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	model := newTestUI(t)
 
@@ -286,6 +288,53 @@ func TestHandleEmptyLibraryCacheWarnsUser(t *testing.T) {
 		model.initializationModel.IsConfigError(),
 		"empty cache with library paths should not be a config error",
 	)
+}
+
+func TestHandleLoadedLibraryCachePopulatesLibrary(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+
+	cache := map[string]*audio.AudioFile{
+		"/music/boa/fool.flac": {Path: "/music/boa/fool.flac", Title: "Fool", Artist: "bôa", Album: "Twilight"},
+		"/music/other.mp3":     {Path: "/music/other.mp3", Title: "Other"},
+	}
+	library := audio.NewLibrary()
+	library.File = cache
+
+	_, command := model.Update(initializationLoadLibraryCacheResultMessage{
+		library: library,
+		err:     nil,
+	})
+
+	assert.Nil(t, command, "no follow-up cmd is expected after loading the cache")
+	assert.Equal(t, uiPlaylist, model.state, "a non-empty cache should skip discovery and land on the playlist")
+	assert.False(
+		t,
+		model.notificationModel.HasActiveNotifications(),
+		"a successful cache load should not notify the user",
+	)
+	assert.Equal(t, cache, model.library.File, "library files should come straight from the cache")
+	assert.NotEmpty(t, model.library.ByArtist, "artist index should be built after a cache load")
+	assert.NotEmpty(t, model.library.ByAlbum, "album index should be built after a cache load")
+}
+
+func TestHandleErroredLibraryCacheWarnsUserAndFallsThrough(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+	model.config.LibrariesPaths = []string{t.TempDir()}
+
+	_, command := model.Update(initializationLoadLibraryCacheResultMessage{
+		library: audio.NewLibrary(),
+		err:     fmt.Errorf("[audio:LoadCache] read cache file: boom"),
+	})
+
+	// PushNotification queues a notification expiry cmd, which is batched into the returned command.
+	assert.NotNil(t, command)
+	assert.True(t, model.notificationModel.HasActiveNotifications(), "a failed cache read should notify the user")
+	assert.Equal(t, uiInitializing, model.state, "a failed cache read should stay on initialization")
+	assert.False(t, model.initializationModel.IsConfigError(), "a failed cache read is not a config error")
 }
 
 func TestHandleDiscoverFilesStartMessage(t *testing.T) {
