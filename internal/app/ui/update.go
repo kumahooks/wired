@@ -78,6 +78,10 @@ func (model *UIModel) handleKeyPressMsg(message tea.KeyPressMsg) tea.Cmd {
 		return tea.Quit
 	}
 
+	if model.state == uiBootstrapping {
+		return nil
+	}
+
 	if model.state == uiInitializing {
 		return model.handleComponentAction(model.initializationModel.HandleMessage(message))
 	}

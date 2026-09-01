@@ -33,6 +33,8 @@ func (model *UIModel) viewContent() string {
 // baseView renders the active state's view, without any overlay on top of it.
 func (model *UIModel) baseView() string {
 	switch model.state {
+	case uiBootstrapping:
+		return ""
 	case uiInitializing:
 		return model.initializationModel.Render(model.windowWidth, model.windowHeight)
 	case uiPlaylist:

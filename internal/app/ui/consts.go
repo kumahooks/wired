@@ -6,7 +6,8 @@ import "time"
 type uiState uint8
 
 const (
-	uiInitializing uiState = iota
+	uiBootstrapping uiState = iota
+	uiInitializing
 	uiPlaylist
 	uiLibraryStats
 )

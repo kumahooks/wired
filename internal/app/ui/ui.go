@@ -55,8 +55,9 @@ type UIModel struct {
 	notificationModel   *notification.Model
 }
 
-// New initializes the UIModel, which is basically the UI orchestrator of the application. It starts with the state `uiInitializing`.
-// To avoid locking the user out of actions, default configs, keymaps, and styles are loaded at first.
+// New initializes the UIModel, which is basically the UI orchestrator of the application. It starts with the state
+// `uiBootstrapping`, rendering nothing while the pipeline decides between the initialization screen (on error) and
+// the idle UI. To avoid locking the user out of actions, default configs, keymaps, and styles are loaded at first.
 func New(
 	orchestratorCtx context.Context,
 	defaultKeyMap keymap.KeyMap,
@@ -64,7 +65,7 @@ func New(
 	audioLibrary *audio.Library,
 ) (*UIModel, error) {
 	model := &UIModel{
-		state:               uiInitializing,
+		state:               uiBootstrapping,
 		keyMap:              defaultKeyMap,
 		theme:               theme.Default(),
 		config:              config,

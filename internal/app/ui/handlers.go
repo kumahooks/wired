@@ -13,9 +13,17 @@ import (
 	"wired/internal/core/theme"
 )
 
+// showInitializationScreen flips the UI from the silent bootstrapping state to the initialization screen.
+func (model *UIModel) showInitializationScreen() {
+	if model.state == uiBootstrapping {
+		model.setState(uiInitializing)
+	}
+}
+
 // handleInitializationLoadConfigResult processes a initializationLoadConfigResultMessage.
 func (model *UIModel) handleInitializationLoadConfigResult(message initializationLoadConfigResultMessage) tea.Cmd {
 	if message.err != nil {
+		model.showInitializationScreen()
 		model.initializationModel.AppendLog(message.err.Error(), initializing.LogError)
 		model.initializationModel.SetConfigError()
 
@@ -46,6 +54,8 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 	model.initializationModel.AppendLog("resolving keybindings...", initializing.LogNormal)
 	resolvedKeyMap, err := keymap.New(model.config.Keybinds)
 	if err != nil {
+		model.showInitializationScreen()
+
 		model.initializationModel.AppendLog(err.Error(), initializing.LogError)
 		model.initializationModel.AppendLog("falling back to default keybindings...", initializing.LogError)
 
@@ -91,9 +101,9 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 }
 
 // handleInitializationLoadLibraryCacheResult routes the user depending on whether a library cache exists. A cache hit
-// moves straight to idle. A cache miss, when tere are valid libraries path, warns the user about there not being any,
-// cache'd file, so they can discover them later on. If no valid library path exists, it is treated as a config error
-// since there is nothing to discover.
+// moves straight to idle. A cache miss, when there are valid library paths, resolves the startup silently so the user
+// is taken to the idle UI (they can discover files later on). If no valid library path exists, it is treated as a
+// config error since there is nothing to discover, so the initialization screen is shown.
 func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 	message initializationLoadLibraryCacheResultMessage,
 ) tea.Cmd {
@@ -114,11 +124,11 @@ func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 			"no songs found, you might want to discover them later~",
 			initializing.LogWarning,
 		)
-
-		return nil
+	} else {
+		model.initializationModel.AppendLog("no library paths found ;_;", initializing.LogError)
 	}
 
-	model.initializationModel.AppendLog("no library paths found ;_;", initializing.LogError)
+	model.showInitializationScreen()
 	model.initializationModel.SetConfigError()
 
 	return nil

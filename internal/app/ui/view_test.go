@@ -38,10 +38,19 @@ func TestViewContentTerminalTooSmallBoth(t *testing.T) {
 	assert.Equal(t, "terminal size is too small", model.viewContent())
 }
 
+func TestViewContentBootstrappingRendersNothing(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+	assert.Equal(t, uiBootstrapping, model.state)
+	assert.Empty(t, model.viewContent())
+}
+
 func TestViewContentInitializing(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
+	model.setState(uiInitializing)
 	assert.Equal(t, uiInitializing, model.state)
 
 	rendered := model.viewContent()

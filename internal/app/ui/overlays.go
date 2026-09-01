@@ -16,7 +16,7 @@ func (model *UIModel) composeOverlays(base string) string {
 	baseLayer := lipgloss.NewLayer(base)
 
 	// whichkey is the "command palette" overlay. it basically maps all the currently available commands.
-	if model.state != uiInitializing && model.whichkeyModel.IsVisible() {
+	if model.state != uiBootstrapping && model.state != uiInitializing && model.whichkeyModel.IsVisible() {
 		baseLayer.AddLayers(whichkey.Anchor(
 			model.whichkeyModel.Render(model.windowWidth, model.windowHeight),
 			model.windowWidth,

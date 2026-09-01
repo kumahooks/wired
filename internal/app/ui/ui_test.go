@@ -43,7 +43,7 @@ func TestNewSeedsDefaults(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, model)
 
-	assert.Equal(t, uiInitializing, model.state)
+	assert.Equal(t, uiBootstrapping, model.state)
 	assert.Equal(t, testutil.DefaultTheme(), model.theme)
 	require.NotNil(t, model.initializationModel, "initializationModel is nil, want a non-nil *initializing.Model")
 	assert.Equal(t, &configValue, model.config, "config pointer mismatch")
@@ -70,7 +70,7 @@ func TestNewTestUIAppliesWindowSize(t *testing.T) {
 
 	assert.Equal(t, 80, model.windowWidth)
 	assert.Equal(t, 24, model.windowHeight)
-	assert.Equal(t, uiInitializing, model.state)
+	assert.Equal(t, uiBootstrapping, model.state)
 	require.NotNil(t, model.initializationModel, "initializationModel is nil after newTestUI")
 }
 
@@ -84,6 +84,12 @@ func TestBindingsForOmitsCurrentStateAction(t *testing.T) {
 		wantPlaylist bool
 		wantLibStats bool
 	}{
+		{
+			name:         "bootstrapping has no bindings",
+			state:        uiBootstrapping,
+			wantPlaylist: false,
+			wantLibStats: false,
+		},
 		{
 			name:         "initializing has no bindings",
 			state:        uiInitializing,

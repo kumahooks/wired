@@ -283,11 +283,12 @@ func TestHandleEmptyLibraryCacheWarnsUser(t *testing.T) {
 
 	assert.Nil(t, command, "returned cmd should be nil on empty cache")
 	assert.True(t, initLogContains(model, "no songs found, you might want to discover them later~"))
-	assert.False(
+	assert.True(
 		t,
 		model.initializationModel.IsConfigError(),
-		"empty cache with library paths should not be a config error",
+		"empty cache with library paths should show the initialization screen",
 	)
+	assert.Equal(t, uiInitializing, model.state, "empty cache with library paths should land on initialization")
 }
 
 func TestHandleLoadedLibraryCachePopulatesLibrary(t *testing.T) {
@@ -333,8 +334,13 @@ func TestHandleErroredLibraryCacheWarnsUserAndFallsThrough(t *testing.T) {
 	// PushNotification queues a notification expiry cmd, which is batched into the returned command.
 	assert.NotNil(t, command)
 	assert.True(t, model.notificationModel.HasActiveNotifications(), "a failed cache read should notify the user")
-	assert.Equal(t, uiInitializing, model.state, "a failed cache read should stay on initialization")
-	assert.False(t, model.initializationModel.IsConfigError(), "a failed cache read is not a config error")
+	assert.Equal(
+		t,
+		uiInitializing,
+		model.state,
+		"a failed cache read should land on the initialization screen",
+	)
+	assert.True(t, model.initializationModel.IsConfigError(), "a failed cache read should show a config error")
 }
 
 func TestHandleDiscoverFilesStartMessage(t *testing.T) {
@@ -509,6 +515,7 @@ func TestHandleKeyPressMsgForwardsToComponentReload(t *testing.T) {
 
 	model := newTestUI(t)
 	model.initializationModel.SetConfigError()
+	model.setState(uiInitializing)
 
 	sentinelCanceled := false
 	model.libraryDiscoveryCancel = func() { sentinelCanceled = true }
@@ -518,7 +525,7 @@ func TestHandleKeyPressMsgForwardsToComponentReload(t *testing.T) {
 	require.NotNil(t, command, "returned cmd = nil, want non-nil for reload action")
 
 	assert.True(t, sentinelCanceled, "cancelCurrentLibraryDiscovery was not called on reload")
-	assert.Equal(t, uiInitializing, model.state)
+	assert.Equal(t, uiInitializing, model.state, "reload should stay on the initialization screen")
 	assert.True(t, initLogContains(model, "reloading config..."))
 }
 
@@ -526,6 +533,7 @@ func TestHandleKeyPressMsgForwardsToComponentProceed(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
+	model.setState(uiInitializing)
 
 	model.Update(tea.KeyPressMsg{Code: 'l', Text: "l"})
 
@@ -618,10 +626,19 @@ func TestHandleKeyPressMsgWhichKeyRouting(t *testing.T) {
 func TestHandleKeyPressMsgWhichKeyDoesNotSinkIntoInitializing(t *testing.T) {
 	t.Parallel()
 
+	// During bootstrapping (pre-initialization) keys are swallowed entirely.
 	model := newTestUI(t)
-	require.Equal(t, uiInitializing, model.state)
+	require.Equal(t, uiBootstrapping, model.state)
 
 	_, command := model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
+
+	assert.Nil(t, command, "returned cmd should be nil while bootstrapping")
+	assert.False(t, model.whichkeyModel.IsVisible(), "whichkey must not capture keys while bootstrapping")
+
+	// Once the initialization screen is confirmed, whichkey stays out of it too.
+	model.setState(uiInitializing)
+
+	_, command = model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
 
 	assert.Nil(t, command, "returned cmd should be nil while initializing")
 	assert.False(t, model.whichkeyModel.IsVisible(), "whichkey must not capture keys during initialization")
@@ -661,21 +678,17 @@ func TestHandleComponentAction(t *testing.T) {
 			skipLogCheck: true,
 		},
 		{
-			name:          "ReloadConfigAction returns load cmd and stays initializing",
+			name:          "ReloadConfigAction returns load cmd and keeps the current state",
 			action:        action.ReloadConfigAction{},
 			wantCmdNonNil: true,
-			wantState:     uiInitializing,
-			wantStateSet:  true,
 			wantLogSubstr: "reloading config...",
 			wantCanceled:  true,
 			wantCleared:   true,
 		},
 		{
-			name:          "DiscoverLibraryFullAction returns discovery start cmd and stays initializing",
+			name:          "DiscoverLibraryFullAction returns discovery start cmd",
 			action:        action.DiscoverLibraryFullAction{},
 			wantCmdNonNil: true,
-			wantState:     uiInitializing,
-			wantStateSet:  true,
 			wantCanceled:  true,
 			wantCleared:   true,
 			skipLogCheck:  true,
