@@ -886,7 +886,7 @@ func TestHandleMetatagParseStartMessageStaleGeneration(t *testing.T) {
 }
 
 func TestHandleMetatagParseResultMessageSuccess(t *testing.T) {
-	t.Parallel()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	model := newTestUI(t)
 	model.libraryDiscoveryGeneration = 4
