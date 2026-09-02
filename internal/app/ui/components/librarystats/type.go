@@ -11,6 +11,8 @@ type Model struct {
 	library *audio.Library
 	// libraryPaths are the configured library directories read from the config.
 	libraryPaths []string
+	// libraryStats is the computed stats for the current library.
+	libraryStats audio.Stats
 
 	// isDiscovering reports whether a library discovery is currently happening.
 	isDiscovering bool

@@ -114,6 +114,7 @@ func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 	if message.library.FilesCount() > 0 {
 		model.library.File = message.library.File
 		audio.BuildLibraryIndexes(model.library)
+		model.libraryStatsModel.ComputeStats()
 
 		model.setState(uiPlaylist)
 		return nil
@@ -221,6 +222,8 @@ func (model *UIModel) handleMetatagParseResultMessage(message metatagParseResult
 	}
 
 	audio.BuildLibraryIndexes(model.library)
+	model.libraryStatsModel.ComputeStats()
+
 	err := audio.WriteCache(model.library.File)
 	if err != nil {
 		model.PushNotification("there was an error when trying to save the library to cache x_x")

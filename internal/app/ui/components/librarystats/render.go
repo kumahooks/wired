@@ -13,29 +13,16 @@ import (
 
 // Render draws the full-screen library stats view with the card grid centered in it.
 func (model *Model) Render(windowWidth int, windowHeight int) string {
-	// TODO: we will need to save this isntead of recomputing everytime. this can then be updated when we change the library.
-	stats := model.computeStats()
-
 	content := lipgloss.JoinVertical(
 		lipgloss.Center,
 		model.renderHeader(),
-		model.renderTopCard(stats),
-		model.renderBottomCards(stats),
+		model.renderTopCard(model.libraryStats),
+		model.renderBottomCards(model.libraryStats),
 		model.renderButton(),
 		model.renderDiscoveryStatus(),
 	)
 
 	return lipgloss.Place(windowWidth, windowHeight, lipgloss.Center, lipgloss.Center, content)
-}
-
-// computeStats computes the current library stats.
-// TODO: need to finish this after discovery is done.
-func (model *Model) computeStats() audio.Stats {
-	if model.library == nil {
-		return audio.Stats{FormatCounts: map[string]int{}}
-	}
-
-	return audio.Stats{FormatCounts: map[string]int{}}
 }
 
 // renderHeader draws the screen title, separator, and subtitle.

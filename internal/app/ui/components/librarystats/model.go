@@ -16,6 +16,7 @@ func New(defaultKeyMap keymap.KeyMap, library *audio.Library) *Model {
 	return &Model{
 		library:      library,
 		libraryPaths: []string{},
+		libraryStats: audio.Stats{},
 		keyMap:       defaultKeyMap,
 		style:        newStyle(theme.Default()),
 	}
@@ -34,6 +35,11 @@ func (model *Model) ApplyKeyMap(resolvedKeyMap keymap.KeyMap) {
 // SetLibraryPaths sets the library paths.
 func (model *Model) SetLibraryPaths(libraryPaths []string) {
 	model.libraryPaths = libraryPaths
+}
+
+// ComputeStats recomputes the current library stats from the library pointer.
+func (model *Model) ComputeStats() {
+	model.libraryStats = audio.ComputeStats(model.library)
 }
 
 // StartDiscovery marks a library discovery as running and resets all discovery progress state.
