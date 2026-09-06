@@ -283,10 +283,10 @@ func TestHandleEmptyLibraryCacheWarnsUser(t *testing.T) {
 
 	assert.Nil(t, command, "returned cmd should be nil on empty cache")
 	assert.True(t, initLogContains(model, "no songs found, you might want to discover them later~"))
-	assert.True(
+	assert.False(
 		t,
 		model.initializationModel.IsConfigError(),
-		"empty cache with library paths should show the initialization screen",
+		"empty cache with library paths is not a config error",
 	)
 	assert.Equal(t, uiInitializing, model.state, "empty cache with library paths should land on initialization")
 }
@@ -340,7 +340,7 @@ func TestHandleErroredLibraryCacheWarnsUserAndFallsThrough(t *testing.T) {
 		model.state,
 		"a failed cache read should land on the initialization screen",
 	)
-	assert.True(t, model.initializationModel.IsConfigError(), "a failed cache read should show a config error")
+	assert.False(t, model.initializationModel.IsConfigError(), "a failed cache read with library paths is not a config error")
 }
 
 func TestHandleDiscoverFilesStartMessage(t *testing.T) {
@@ -571,14 +571,14 @@ func TestHandleKeyPressMsgWhichKeyRouting(t *testing.T) {
 	}{
 		{
 			name:         "open actions opens the card and maps playlist key to playlist state",
-			sequence:     []tea.KeyPressMsg{{Code: ' '}, {Code: 'P'}},
+			sequence:     []tea.KeyPressMsg{{Code: ' '}, {Code: 'p'}},
 			wantHidden:   true,
 			wantState:    uiPlaylist,
 			wantStateSet: true,
 		},
 		{
 			name:         "open actions opens the card and maps library stats key to library stats state",
-			sequence:     []tea.KeyPressMsg{{Code: ' '}, {Code: 'L'}},
+			sequence:     []tea.KeyPressMsg{{Code: ' '}, {Code: 'l'}},
 			wantHidden:   true,
 			wantState:    uiLibraryStats,
 			wantStateSet: true,

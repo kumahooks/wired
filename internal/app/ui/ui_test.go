@@ -144,15 +144,15 @@ func TestSetStateRefreshesWhichKeyBindings(t *testing.T) {
 	require.NoError(t, err)
 	model.setState(uiLibraryStats)
 
-	// Leader then 'P' from the stats state navigates to the playlist.
+	// Leader then 'p' from the stats state navigates to the playlist.
 	model.Update(tea.KeyPressMsg{Code: ' '})
-	updatedModel, _ := model.Update(tea.KeyPressMsg{Code: 'P'})
+	updatedModel, _ := model.Update(tea.KeyPressMsg{Code: 'p'})
 	model = updatedModel.(*UIModel)
-	assert.Equal(t, uiPlaylist, model.state, "'P' through the whichkey card must navigate to the playlist")
+	assert.Equal(t, uiPlaylist, model.state, "'p' through the whichkey card must navigate to the playlist")
 
-	// Without leaving the playlist, leader then 'P' again must be a no-op.
+	// Without leaving the playlist, leader then 'p' again must be a no-op.
 	model.Update(tea.KeyPressMsg{Code: ' '})
-	updatedModel, _ = model.Update(tea.KeyPressMsg{Code: 'P'})
+	updatedModel, _ = model.Update(tea.KeyPressMsg{Code: 'p'})
 	model = updatedModel.(*UIModel)
 	assert.Equal(t, uiPlaylist, model.state, "'P' in the playlist state must not toggle away from the playlist")
 }

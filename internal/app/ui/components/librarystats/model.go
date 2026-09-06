@@ -17,8 +17,13 @@ func New(defaultKeyMap keymap.KeyMap, library *audio.Library) *Model {
 		library:      library,
 		libraryPaths: []string{},
 		libraryStats: audio.Stats{},
-		keyMap:       defaultKeyMap,
-		style:        newStyle(theme.Default()),
+		buttons: []button{
+			{label: scanFullButtonLabel, action: scanFullLibraryAction},
+			{label: scanNewButtonLabel, action: scanNewLibraryAction},
+			{label: reloadConfigButtonLabel, action: reloadConfigAction},
+		},
+		keyMap: defaultKeyMap,
+		style:  newStyle(theme.Default()),
 	}
 }
 
@@ -86,8 +91,24 @@ func (model *Model) HandleMessage(message tea.Msg) action.Action {
 		return action.NoAction{}
 	}
 
-	if key.Matches(keyPress, model.keyMap.Select) {
-		return action.DiscoverLibraryFullAction{}
+	switch {
+	case key.Matches(keyPress, model.keyMap.MoveLeft):
+		model.moveCursor(-1)
+	case key.Matches(keyPress, model.keyMap.MoveRight):
+		model.moveCursor(1)
+	case key.Matches(keyPress, model.keyMap.Select):
+		if len(model.buttons) == 0 {
+			return action.NoAction{}
+		}
+
+		switch model.buttons[model.cursorPosition].action {
+		case scanFullLibraryAction:
+			return action.DiscoverLibraryFullAction{}
+		case scanNewLibraryAction:
+			return action.NoAction{} // TODO
+		case reloadConfigAction:
+			return action.NoAction{} // TODO
+		}
 	}
 
 	return action.NoAction{}

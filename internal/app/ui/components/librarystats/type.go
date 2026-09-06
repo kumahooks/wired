@@ -5,6 +5,21 @@ import (
 	"wired/internal/core/keymap"
 )
 
+// actionButton maps a button to the action it produces on select.
+type actionButton int
+
+const (
+	scanFullLibraryAction actionButton = iota
+	scanNewLibraryAction
+	reloadConfigAction
+)
+
+// button is a selectable action rendered in the button row.
+type button struct {
+	label  string
+	action actionButton
+}
+
 // Model holds the library stats view state and data.
 type Model struct {
 	library      *audio.Library // points at the orchestrator's library.
@@ -15,6 +30,10 @@ type Model struct {
 	discoveredFilesCount int  // the running total of audio files discovered.
 	isDiscoveryDone      bool // reports whether the discovery moved past file discovery into metatag parsing.
 	parsedMetatagCount   int  // the running total of files whose metatags were parsed by the active discovery.
+
+	// buttons is the full set of selectable button actions.
+	buttons        []button
+	cursorPosition int
 
 	// keymap is used to properly map actions.
 	keyMap keymap.KeyMap

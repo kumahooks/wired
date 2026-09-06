@@ -104,12 +104,12 @@ func TestHandleMessage(t *testing.T) {
 	}{
 		{
 			name:       "playlist key flips visibility and returns open playlist",
-			message:    tea.KeyPressMsg{Code: 'P'},
+			message:    tea.KeyPressMsg{Code: 'p'},
 			wantAction: action.OpenPlaylistAction{},
 		},
 		{
 			name:       "library stats key flips visibility and returns open library stats",
-			message:    tea.KeyPressMsg{Code: 'L'},
+			message:    tea.KeyPressMsg{Code: 'l'},
 			wantAction: action.OpenLibraryStatsAction{},
 		},
 		{
@@ -167,7 +167,7 @@ func TestHandleMessageWithoutBindingsNeverDispatches(t *testing.T) {
 	model.flipIsVisible()
 	require.True(t, model.IsVisible())
 
-	returnedAction := model.HandleMessage(tea.KeyPressMsg{Code: 'P'})
+	returnedAction := model.HandleMessage(tea.KeyPressMsg{Code: 'p'})
 
 	assert.Equal(t, action.NoAction{}, returnedAction)
 }

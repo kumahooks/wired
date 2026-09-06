@@ -29,7 +29,7 @@
            │shortest 1m 01s                           (one)││shortest 3m 03s                       (album x)│           
            │average  3m 03s                    (all tracks)││average  5m 05s                    (all albums)│           
            ╰───────────────────────────────────────────────╯╰───────────────────────────────────────────────╯           
-              scan library (full)                                                                                       
+              scan library (full)     scan library (new only)     reload config                                         
                                                                                                                         
                                                                                                                         
                                                                                                                         

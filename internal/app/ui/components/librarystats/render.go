@@ -120,7 +120,7 @@ func (model *Model) renderGrid(windowWidth int) string {
 		lipgloss.Left,
 		columnsRow,
 		lengthsRow,
-		lipgloss.NewStyle().PaddingLeft(buttonRowLeftPadding).Render(model.renderButton()),
+		lipgloss.NewStyle().PaddingLeft(buttonRowLeftPadding).Render(model.renderButtonsRow()),
 	)
 }
 
@@ -146,9 +146,23 @@ func (model *Model) renderCard(gridCard card) string {
 	return model.style.card.Width(gridCard.fixedWidth).Render(inner)
 }
 
-// renderButton draws the focused rediscover button, pinned to the bottom-left of the grid.
-func (model *Model) renderButton() string {
-	return model.style.buttonFocused.Render(rediscoverButtonLabel)
+// renderButtonsRow draws the action buttons.
+func (model *Model) renderButtonsRow() string {
+	buttonsRendering := make([]string, 0, len(model.buttons)*2)
+
+	for position, button := range model.buttons {
+		if position > 0 {
+			buttonsRendering = append(buttonsRendering, buttonSpacing)
+		}
+
+		if position == model.cursorPosition {
+			buttonsRendering = append(buttonsRendering, model.style.buttonFocused.Render(button.label))
+		} else {
+			buttonsRendering = append(buttonsRendering, model.style.buttonBlurred.Render(button.label))
+		}
+	}
+
+	return lipgloss.JoinHorizontal(lipgloss.Left, buttonsRendering...)
 }
 
 // renderDiscoveryStatusLines draws the discovery progress lines, centered horizontally in the window.
@@ -158,10 +172,10 @@ func (model *Model) renderDiscoveryStatusLines(windowWidth int) string {
 	switch {
 	case !model.isDiscovering:
 	case !model.isDiscoveryDone:
-		lines[0] = fmt.Sprintf(rediscoverStatusText, model.discoveredFilesCount)
+		lines[0] = fmt.Sprintf(scanStatusText, model.discoveredFilesCount)
 	default:
-		lines[0] = fmt.Sprintf(rediscoverFoundText, model.discoveredFilesCount)
-		lines[1] = fmt.Sprintf(rediscoverParsingText, model.parsedMetatagCount, model.discoveredFilesCount)
+		lines[0] = fmt.Sprintf(scanFoundText, model.discoveredFilesCount)
+		lines[1] = fmt.Sprintf(scanParsingText, model.parsedMetatagCount, model.discoveredFilesCount)
 	}
 
 	centeredStyle := model.style.discoveryStatus.Width(max(windowWidth, 0)).Align(lipgloss.Center)

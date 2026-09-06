@@ -26,6 +26,7 @@ type Style struct {
 	libraryPath      lipgloss.Style // renders the path of a row in "library paths" card.
 
 	buttonFocused   lipgloss.Style // renders the button the cursor is at.
+	buttonBlurred   lipgloss.Style // renders the button the cursor is NOT at.
 	discoveryStatus lipgloss.Style // renders the live discovery progress line below the button.
 	empty           lipgloss.Style // renders the placeholder dashes for empty values.
 }
@@ -59,11 +60,15 @@ func newStyle(resolvedTheme theme.Theme) Style {
 		libraryPathIndex: lipgloss.NewStyle().Foreground(resolvedTheme.AccentDeep),
 		libraryPath:      lipgloss.NewStyle().Foreground(resolvedTheme.TextDim),
 
-		// TODO: create more actions (reload config maybe?). The button has two states: either the cursor is selecting it, or not.
+		// the buttons in this component have two states: either the cursor is selecting them, or not.
 		buttonFocused: lipgloss.NewStyle().
 			Foreground(resolvedTheme.TextStrong).
 			Background(resolvedTheme.AccentInteractive).
 			Bold(true).
+			Padding(0, 2),
+		buttonBlurred: lipgloss.NewStyle().
+			Foreground(resolvedTheme.TextMuted).
+			Background(resolvedTheme.SurfaceAlt).
 			Padding(0, 2),
 
 		// empty renders as dashes for values that are either empty or nil.

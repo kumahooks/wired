@@ -31,8 +31,8 @@ func TestRenderContainsCommandEntry(t *testing.T) {
 	model := newTestModel(t)
 	rendered := testutil.StripANSI(model.Render(40, 10))
 
-	assert.Contains(t, rendered, "P -> playlist")
-	assert.Contains(t, rendered, "L -> library stats")
+	assert.Contains(t, rendered, "p -> playlist")
+	assert.Contains(t, rendered, "l -> library stats")
 }
 
 func TestMappedActions(t *testing.T) {

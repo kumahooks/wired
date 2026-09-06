@@ -86,8 +86,12 @@ const (
 	pathsCardTitle     = "LIBRARY PATHS" // the title for the "library paths" card.
 	pathsCardEmptyText = "no library paths"
 
-	rediscoverButtonLabel = "scan library (full)"            // the "scan library (full)" button's label.
-	rediscoverStatusText  = "found %d audio files..."        // the discovery status line below the button, while file discovery runs.
-	rediscoverFoundText   = "%d audio files have been found" // the first status line shown while the metatag parsing phase runs.
-	rediscoverParsingText = "parsing %d/%d files"            // the second status line shown while the metatag parsing phase runs.
+	buttonSpacing           = " "                       // the spacing string between every action button.
+	scanFullButtonLabel     = "scan library (full)"     // the "scan library (full)" button's label.
+	scanNewButtonLabel      = "scan library (new only)" // the "scan library (new only)" button's label.
+	reloadConfigButtonLabel = "reload config"           // the "reload config" button's label.
+
+	scanStatusText  = "found %d audio files..."        // the discovery status line below the button, while file discovery runs.
+	scanFoundText   = "%d audio files have been found" // the first status line shown while the metatag parsing phase runs.
+	scanParsingText = "parsing %d/%d files"            // the second status line shown while the metatag parsing phase runs.
 )
