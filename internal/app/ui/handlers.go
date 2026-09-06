@@ -127,10 +127,10 @@ func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 		)
 	} else {
 		model.initializationModel.AppendLog("no library paths found ;_;", initializing.LogError)
+		model.initializationModel.SetConfigError()
 	}
 
 	model.showInitializationScreen()
-	model.initializationModel.SetConfigError()
 
 	return nil
 }
