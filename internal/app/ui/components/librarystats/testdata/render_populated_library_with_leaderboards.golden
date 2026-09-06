@@ -1,0 +1,40 @@
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                       library stats · present day // present time                                      
+           ╭─────────────────────────╮╭──────────────────────────────────╮╭─────────────────────────────────╮           
+           │LIBRARY SIZE             ││METADATA HEALTH                   ││TOP ARTISTS                      │           
+           │files total             5││no title                        --││by files                         │           
+           │bytes total      31.0 KiB││no artist                       --││artist a                        2│           
+           │avg bytes         6.2 KiB││no album                        --││artist b                        2│           
+           │heaviest         16.0 KiB││duplicates                      --││artist c                        1│           
+           ╰─────────────────────────╯╰──────────────────────────────────╯│by albums                        │           
+           ╭─────────────────────────╮╭──────────────────────────────────╮│artist a                        1│           
+           │LIBRARY PATHS            ││FILES BY FORMAT                   ││artist b                        1│           
+           │00 /music                ││.flac   ████████     5    31.0 KiB││artist c                        1│           
+           │                         ││                                  ││by playtime                      │           
+           │                         ││                                  ││artist b                   7m 07s│           
+           │                         ││                                  ││artist c                   5m 05s│           
+           │                         ││                                  ││artist a                   3m 03s│           
+           │                         ││                                  │╰─────────────────────────────────╯           
+           │                         ││                                  │╭─────────────────────────────────╮           
+           │                         ││                                  ││PLACEHOLDER                      │           
+           │                         ││                                  ││                                 │           
+           ╰─────────────────────────╯╰──────────────────────────────────╯╰─────────────────────────────────╯           
+           ╭───────────────────────────────────────────────╮╭───────────────────────────────────────────────╮           
+           │TRACK LENGTHS                                  ││ALBUM LENGTHS                                  │           
+           │longest  5m 05s                          (five)││longest  7m 07s                       (album y)│           
+           │shortest 1m 01s                           (one)││shortest 3m 03s                       (album x)│           
+           │average  3m 03s                    (all tracks)││average  5m 05s                    (all albums)│           
+           ╰───────────────────────────────────────────────╯╰───────────────────────────────────────────────╯           
+              discover library files                                                                                    
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        

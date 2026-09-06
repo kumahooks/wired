@@ -2,64 +2,92 @@ package librarystats
 
 // Layout constants for the librarystats view.
 const (
-	// borderWidth is the horizontal space a card's left+right border consumes.
-	borderWidth = 2
+	borderWidth    = 2  // the horizontal space a card's left+right border consumes.
+	smallCardWidth = 34 // the smallest width a card can render at.
+	labelWidth     = 12 // the fixed width reserved for the row labels/keys.
 
-	// smallCardWidth is the width of the smaller cards, taking half the width space.
-	smallCardWidth = 34
-	// smallCardHeight is the inner height of the smaller cards.
-	smallCardHeight = 9
+	// the terminal width from which the grid splits into three columns.
+	threeColumnsMinWidth = 3*smallCardWidth + 2*borderWidth + 4
 
-	// bigCardWidth is the width of the bigger cards, taking the whole width space.
-	bigCardWidth = 2 * smallCardWidth
-	// librarySizeCardHeight is the inner height of the "library size" card.
-	librarySizeCardHeight = 3
+	buttonRowLeftPadding = 1 // column of whitespaces kept at the left of the actions buttons.
+	discoveryStatusLines = 2 // the fixed line count of the discovery status lines below the grid.
 
-	// labelWidth is the fixed width reserved for stat row labels.
-	labelWidth = 11
-	// barWidth is the glyph width of the share bars.
-	barWidth = 10
+	formatCardVisibleRows = 8                         // how many rows "files by format" renders before it collapses into the hint.
+	formatCardLines       = formatCardVisibleRows + 1 // the "files by format"'s full inner content: format lines + hint.
+
+	librarySizeCardWidth = 27 // the pinned width of the "library size" and "library paths" cards.
+	librarySizeCardLines = 4  // the inner content height of the "library size" card.
+
+	pathsCardVisibleRows = 8                        // how many rows "library paths" render before it collapses into the hint.
+	pathsCardLines       = pathsCardVisibleRows + 1 // the "library paths"'s full inner content: paths + hint.
+	pathsCardHintText    = "...and %d more paths"   // the remainder line of the "library paths" card.
+
+	metadataFormatGroupWidth   = smallCardWidth + 2 // the pinned width of the "metadata health" and "files by format" cards.
+	metadataCardLines          = 4                  // the "metadata health" fixed inner content height.
+	formatCardKeyWidth         = 8                  // the width reserved for the format/year name in "files by format" rows.
+	formatCardCountWidth       = 5                  // the width reserved for the count column in "files by format" rows.
+	formatCardBytesColumnWidth = 11                 // the width of the right-aligned bytes column in the "files by format" card.
+	formatCardBarWidth         = 8                  // the glyph width of the format bars.
+
+	lengthsGroupWidth      = smallCardWidth + 15 // the pinned width of the "track lengths" and "album lengths" cards.
+	lengthsGroupLines      = 3                   // lengthsGroupLines is the fixed inner content height of the length cards.
+	lengthsGroupLabelWidth = 9                   // the narrower label/key width the length cards use.
+
+	topArtistsCardSections       = 3                  // how many sub-sections the top artists card hold.
+	topArtistsCardSectionEntries = 3                  // how many entries each section shows at most.
+	topArtistsCardWidth          = smallCardWidth + 1 // the pinned width of the top artists card.
+	topArtistsCardLines          = topArtistsCardSections * (1 + topArtistsCardSectionEntries)
 )
-
-// MinWidth is the smallest terminal width the card grid can render.
-const MinWidth = 4 + bigCardWidth
 
 // Decorative constants for the librarystats view.
 const (
-	// headerTitle is the screen's title line.
-	headerTitle = "library stats"
-	// headerTitle is the screen's title separator, sitting between the title and he subtitle.
-	headerSeparator = " · "
-	// headerSubtitle is a subtitle next to the header title.
-	headerSubtitle = "present day // present time"
+	headerTitle     = "library stats"               // the screen's title line.
+	headerSeparator = " · "                         // the screen's title separator, between the title and the subtitle.
+	headerSubtitle  = "present day // present time" // the subtitle next to the header title.
 
-	// dashPlaceholder is a placeholder value for when the result is empty/zero.
-	dashPlaceholder = "--"
+	// emptyPlaceholder is a placeholder value for when the result is empty/zero.
+	emptyPlaceholder = "--"
 
-	// librarySizeCardTitle is the title for the "library size" card.
-	librarySizeCardTitle = "LIBRARY SIZE"
-	// formatsCardTitle is the title for the "files by format" card.
-	formatsCardTitle = "FILES BY FORMAT"
-	// pathsCardTitle is the title for the "library paths" card.
-	pathsCardTitle = "LIBRARY PATHS"
+	sizeCardTitle           = "LIBRARY SIZE" // the title for the "library size" card.
+	sizeCardFilesTotalLabel = "files total"
+	sizeCardBytesTotalLabel = "bytes total"
+	sizeCardAvgBytesLabel   = "avg bytes"
+	sizeCardHeaviestLabel   = "heaviest"
 
-	// rediscoverButtonLabel is the "discover library files" button's label.
-	rediscoverButtonLabel = "discover library files"
-	// discoveryStatusText is the format of the discovery status line below the button, shown while file discovery runs.
-	discoveryStatusText = "found %d audio files..."
-	// discoveryFoundText is the first status line shown while the metatag parsing phase runs.
-	discoveryFoundText = "%d audio files have been found"
-	// discoveryParsingText is the second status line shown while the metatag parsing phase runs.
-	discoveryParsingText = "parsing %d/%d files"
+	metadataCardTitle       = "METADATA HEALTH" // the title for the "metadata health" card.
+	metadataCardTitleLabel  = "no title"
+	metadataCardArtistLabel = "no artist"
+	metadataCardAlbumLabel  = "no album"
+	metadataCardDupesLabel  = "duplicates"
 
-	// noPathsText is shown in the paths card when no library paths are found.
-	noPathsText = "no library paths in config"
+	formatCardTitle        = "FILES BY FORMAT"         // the title for the "files by format" card.
+	formatCardUnknownValue = "(unknown)"               // labels files without a file extension.
+	formatCardMoreText     = "...and %d more formats~" // the remainder line of the formats card.
 
-	// unknownFormatText labels files without a file extension.
-	unknownFormatText = "(unknown)"
+	topArtistsCardTitle       = "TOP ARTISTS" // the title for the "top artists" card.
+	topArtistsByFilesTitle    = "by files"
+	topArtistsByAlbumsTitle   = "by albums"
+	topArtistsByDurationTitle = "by playtime"
 
-	// maxVisiblePathRows caps how many library path rows can be rendered before the remainder line.
-	maxVisiblePathRows = smallCardHeight - 3
-	// maxVisibleFormatRows caps how many format bars can be rendered.
-	maxVisibleFormatRows = smallCardHeight - 2
+	// the title of the reserved card slot below the "top artists" card.
+	placeholderCardTitle = "PLACEHOLDER"
+
+	trackLengthsCardTitle    = "TRACK LENGTHS" // the title for the "track lengths" card.
+	albumLengthsCardTitle    = "ALBUM LENGTHS" // the title for the "album lengths" card.
+	lengthsCardLongestLabel  = "longest"
+	lengthsCardShortestLabel = "shortest"
+	lengthsCardAverageLabel  = "average"
+	trackLengthsAverageValue = "all tracks"
+	albumLengthsAverageValue = "all albums"
+
+	annotatedValueText     = " (%s)"            // wraps the annotation appended to length card values.
+	noTracksWithLengthText = "no duration data" // shown in length cards when no track carries a length tag.
+
+	pathsCardTitle     = "LIBRARY PATHS" // the title for the "library paths" card.
+	pathsCardEmptyText = "no library paths"
+
+	rediscoverButtonLabel = "discover library files"         // the "discover library files" button's label.
+	rediscoverStatusText  = "found %d audio files..."        // the discovery status line below the button, while file discovery runs.
+	rediscoverFoundText   = "%d audio files have been found" // the first status line shown while the metatag parsing phase runs.
+	rediscoverParsingText = "parsing %d/%d files"            // the second status line shown while the metatag parsing phase runs.
 )

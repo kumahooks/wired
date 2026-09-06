@@ -8,25 +8,26 @@ import (
 
 // Style holds the component-specific lipgloss styles for the library stats screen.
 type Style struct {
-	header          lipgloss.Style // header renders the screen title line.
-	headerSeparator lipgloss.Style // headerSeparator renders the dot separator between the header and its subtitle.
-	headerSubtitle  lipgloss.Style // headerSubtitle renders the subtitle next to the screen's title.
+	header          lipgloss.Style // renders the screen title line.
+	headerSeparator lipgloss.Style // renders the dot separator between the header and its subtitle.
+	headerSubtitle  lipgloss.Style // renders the subtitle next to the screen's title.
 
-	card      lipgloss.Style // card is the base bordered box every stat card wraps its content with.
-	cardTitle lipgloss.Style // cardTitle renders the title written into the card's top border.
+	card      lipgloss.Style // the base bordered box every stat card wraps its content with.
+	cardTitle lipgloss.Style // renders the title written into the card's top border.
 
-	label lipgloss.Style // label renders stat row labels.
-	value lipgloss.Style // value renders their values.
+	rowLabel lipgloss.Style // renders the label of a "label value" row.
+	rowValue lipgloss.Style // renders the value of a "label value" row.
+	muted    lipgloss.Style // renders secondary text: hints, annotations, remainder lines.
 
-	formatShareBar      lipgloss.Style // formatShareBar renders the bar characters in the "files by format" card.
-	formatShareEmptyBar lipgloss.Style // formatShareEmptyBar renders the unfilled remainder in the "files by format" card.
+	formatShareBar      lipgloss.Style // renders the bar characters in the "files by format" card.
+	formatShareEmptyBar lipgloss.Style // renders the unfilled remainder in the "files by format" card.
 
-	libraryPathIndex lipgloss.Style // libraryPathIndex renders the number prefix of a row in "library paths" card.
-	libraryPath      lipgloss.Style // libraryPath renders the path of a row in "library paths" card.
+	libraryPathIndex lipgloss.Style // renders the number prefix of a row in "library paths" card.
+	libraryPath      lipgloss.Style // renders the path of a row in "library paths" card.
 
-	buttonFocused   lipgloss.Style // buttonFocused renders the button the cursor is at.
-	discoveryStatus lipgloss.Style // discoveryStatus renders the live discovery progress line below the button.
-	dash            lipgloss.Style // dash renders the placeholder dashes for empty values.
+	buttonFocused   lipgloss.Style // renders the button the cursor is at.
+	discoveryStatus lipgloss.Style // renders the live discovery progress line below the button.
+	empty           lipgloss.Style // renders the placeholder dashes for empty values.
 }
 
 func newStyle(resolvedTheme theme.Theme) Style {
@@ -43,9 +44,12 @@ func newStyle(resolvedTheme theme.Theme) Style {
 		// cardTitle renders card names.
 		cardTitle: lipgloss.NewStyle().Foreground(resolvedTheme.AccentInteractive).Bold(true),
 
-		// used in "library size" card, we show this as "{label}		{value}".
-		label: lipgloss.NewStyle().Foreground(resolvedTheme.TextMuted),
-		value: lipgloss.NewStyle().Foreground(resolvedTheme.AccentBright).Bold(true),
+		// used in "{label} {value}" cards.
+		rowLabel: lipgloss.NewStyle().Foreground(resolvedTheme.TextMuted),
+		rowValue: lipgloss.NewStyle().Foreground(resolvedTheme.AccentBright).Bold(true),
+
+		// muted renders hints, annotations, and remainder lines ("...and N more").
+		muted: lipgloss.NewStyle().Foreground(resolvedTheme.TextMuted),
 
 		// "files by format" card renders the formats of each track.
 		formatShareBar:      lipgloss.NewStyle().Foreground(resolvedTheme.AccentPrompt),
@@ -62,8 +66,8 @@ func newStyle(resolvedTheme theme.Theme) Style {
 			Bold(true).
 			Padding(0, 2),
 
-		// dash renders as dashes for values that are either empty or nil.
-		dash: lipgloss.NewStyle().Foreground(resolvedTheme.TextFaint),
+		// empty renders as dashes for values that are either empty or nil.
+		empty: lipgloss.NewStyle().Foreground(resolvedTheme.TextFaint),
 
 		// discoveryStatus shows discovery progress below the button while a discovery routine is running.
 		discoveryStatus: lipgloss.NewStyle().Foreground(resolvedTheme.TextMuted).Italic(true),

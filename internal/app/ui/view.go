@@ -3,8 +3,6 @@ package ui
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-
-	"wired/internal/app/ui/components/librarystats"
 )
 
 func (model *UIModel) View() tea.View {
@@ -18,11 +16,7 @@ func (model *UIModel) View() tea.View {
 
 func (model *UIModel) viewContent() string {
 	// TODO: eventually every component must express their minimum sizes, I think... I wonder what is the best architecture here.
-	if model.state == uiLibraryStats {
-		if model.windowWidth < librarystats.MinWidth || model.windowHeight < minWindowHeight {
-			return "terminal size is too small"
-		}
-	} else if model.windowWidth < minWindowWidth || model.windowHeight < minWindowHeight {
+	if model.windowWidth < minWindowWidth || model.windowHeight < minWindowHeight {
 		return "terminal size is too small"
 	}
 

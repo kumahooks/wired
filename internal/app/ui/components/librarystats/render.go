@@ -1,6 +1,7 @@
 package librarystats
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"strings"
@@ -11,15 +12,65 @@ import (
 	"wired/internal/core/audio"
 )
 
-// Render draws the full-screen library stats view with the card grid centered in it.
+// screenCards is the fixed card set of the stats screen.
+var screenCards = renderedCards{
+	librarySize: card{
+		title:      sizeCardTitle,
+		draw:       (*Model).drawLibrarySizeContent,
+		fixedLines: librarySizeCardLines,
+		fixedWidth: librarySizeCardWidth,
+	},
+	libraryPaths: card{
+		title:      pathsCardTitle,
+		draw:       (*Model).drawLibraryPathsContent,
+		fixedLines: pathsCardLines,
+		fixedWidth: librarySizeCardWidth,
+	},
+	metadataHealth: card{
+		title:      metadataCardTitle,
+		draw:       (*Model).drawMetadataContent,
+		fixedLines: metadataCardLines,
+		fixedWidth: metadataFormatGroupWidth,
+	},
+	filesByFormat: card{
+		title:      formatCardTitle,
+		draw:       (*Model).drawFilesByFormatContent,
+		fixedLines: formatCardLines,
+		fixedWidth: metadataFormatGroupWidth,
+	},
+	topArtists: card{
+		title:      topArtistsCardTitle,
+		draw:       (*Model).drawTopArtistsContent,
+		fixedLines: topArtistsCardLines,
+		fixedWidth: topArtistsCardWidth,
+	},
+	placeholder: card{
+		title:      placeholderCardTitle,
+		draw:       (*Model).drawPlaceholderContent,
+		fixedLines: 1,
+		fixedWidth: topArtistsCardWidth,
+	},
+	trackLengths: card{
+		title:      trackLengthsCardTitle,
+		draw:       (*Model).drawTrackLengthsContent,
+		fixedLines: lengthsGroupLines,
+		fixedWidth: lengthsGroupWidth,
+	},
+	albumLengths: card{
+		title:      albumLengthsCardTitle,
+		draw:       (*Model).drawAlbumLengthsContent,
+		fixedLines: lengthsGroupLines,
+		fixedWidth: lengthsGroupWidth,
+	},
+}
+
+// Render draws the library stats view centered in the terminal.
 func (model *Model) Render(windowWidth int, windowHeight int) string {
 	content := lipgloss.JoinVertical(
 		lipgloss.Center,
 		model.renderHeader(),
-		model.renderTopCard(model.libraryStats),
-		model.renderBottomCards(model.libraryStats),
-		model.renderButton(),
-		model.renderDiscoveryStatus(),
+		model.renderGrid(max(windowWidth, 0)),
+		model.renderDiscoveryStatusLines(max(windowWidth, 0)),
 	)
 
 	return lipgloss.Place(windowWidth, windowHeight, lipgloss.Center, lipgloss.Center, content)
@@ -34,125 +85,218 @@ func (model *Model) renderHeader() string {
 	return headerTitle + headerSeparator + headerSubtitle
 }
 
-// renderTopCard draws the "library size" stats card.
-func (model *Model) renderTopCard(stats audio.Stats) string {
-	return model.renderCard(
-		model.drawLibrarySizeContent(stats),
-		librarySizeCardTitle,
-		librarySizeCardHeight,
-		bigCardWidth,
-	)
-}
+// renderGrid composes four card groups, and the button line. In order: "Library Size"+"Library Paths" as libraryColumnGroup,
+// "Metadata Health"+"Files by Format" as metadataFormatColumnGroup, "Top Artists" as topArtistsColumn, and lengthsRow,
+// which horizontally renders "Track Lengths"+"Album Lengths". Finally below these two rows, we render the action buttons.
+func (model *Model) renderGrid(windowWidth int) string {
+	cards := screenCards
 
-// renderBottomCards joins the "files by format" and "library paths" cards horizontally.
-func (model *Model) renderBottomCards(stats audio.Stats) string {
-	return lipgloss.JoinHorizontal(
+	libraryColumnGroup := lipgloss.JoinVertical(
+		lipgloss.Left,
+		model.renderCard(cards.librarySize),
+		model.renderCard(cards.libraryPaths),
+	)
+
+	metadataFormatColumnGroup := lipgloss.JoinVertical(
+		lipgloss.Left,
+		model.renderCard(cards.metadataHealth),
+		model.renderCard(cards.filesByFormat),
+	)
+
+	topArtistsColumn := lipgloss.JoinVertical(
+		lipgloss.Left,
+		model.renderCard(cards.topArtists),
+		model.renderCard(cards.placeholder),
+	)
+
+	columnsRow := lipgloss.JoinHorizontal(lipgloss.Top, libraryColumnGroup, metadataFormatColumnGroup, topArtistsColumn)
+	lengthsRow := lipgloss.JoinHorizontal(
 		lipgloss.Top,
-		model.renderCard(model.drawFilesByFormatContent(stats), formatsCardTitle, smallCardHeight, smallCardWidth),
-		model.renderCard(model.drawLibraryPathsContent(), pathsCardTitle, smallCardHeight, smallCardWidth),
+		model.renderCard(cards.trackLengths),
+		model.renderCard(cards.albumLengths),
+	)
+
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		columnsRow,
+		lengthsRow,
+		lipgloss.NewStyle().PaddingLeft(buttonRowLeftPadding).Render(model.renderButton()),
 	)
 }
 
-// renderButton draws the focused rediscover button.
+// renderCard wraps drawn content in the bordered box with the title set as the first line.
+func (model *Model) renderCard(gridCard card) string {
+	layout := cardLayout{
+		innerWidth:  gridCard.fixedWidth - borderWidth,
+		innerHeight: gridCard.fixedLines,
+	}
+
+	content := lipgloss.NewStyle().
+		Width(layout.innerWidth).
+		Height(layout.innerHeight).
+		AlignVertical(lipgloss.Top).
+		Render(gridCard.draw(model, layout))
+
+	inner := lipgloss.JoinVertical(
+		lipgloss.Left,
+		model.style.cardTitle.Render(gridCard.title),
+		content,
+	)
+
+	return model.style.card.Width(gridCard.fixedWidth).Render(inner)
+}
+
+// renderButton draws the focused rediscover button, pinned to the bottom-left of the grid.
 func (model *Model) renderButton() string {
 	return model.style.buttonFocused.Render(rediscoverButtonLabel)
 }
 
-// renderDiscoveryStatus draws the live discovery progress lines below the button, only while a discovery is running. The first phase
-// shows a single found-count line, while the second phase shows a found + parsing counter pair.
-func (model *Model) renderDiscoveryStatus() string {
-	if !model.isDiscovering {
-		return ""
+// renderDiscoveryStatusLines draws the discovery progress lines, centered horizontally in the window.
+func (model *Model) renderDiscoveryStatusLines(windowWidth int) string {
+	lines := make([]string, discoveryStatusLines)
+
+	switch {
+	case !model.isDiscovering:
+	case !model.isDiscoveryDone:
+		lines[0] = fmt.Sprintf(rediscoverStatusText, model.discoveredFilesCount)
+	default:
+		lines[0] = fmt.Sprintf(rediscoverFoundText, model.discoveredFilesCount)
+		lines[1] = fmt.Sprintf(rediscoverParsingText, model.parsedMetatagCount, model.discoveredFilesCount)
 	}
 
-	if !model.isDiscoveryDone {
-		return model.style.discoveryStatus.Render(fmt.Sprintf(discoveryStatusText, model.discoveredFilesCount))
+	centeredStyle := model.style.discoveryStatus.Width(max(windowWidth, 0)).Align(lipgloss.Center)
+	renderedLines := make([]string, 0, len(lines))
+	for _, line := range lines {
+		renderedLines = append(renderedLines, centeredStyle.Render(line))
 	}
 
-	lines := []string{
-		model.style.discoveryStatus.Render(fmt.Sprintf(discoveryFoundText, model.discoveredFilesCount)),
-		model.style.discoveryStatus.Render(
-			fmt.Sprintf(discoveryParsingText, model.parsedMetatagCount, model.discoveredFilesCount),
-		),
-	}
-
-	return strings.Join(lines, "\n")
+	return strings.Join(renderedLines, "\n")
 }
 
-// drawLibrarySizeContent draws the files count, total size, and avg/track value.
-func (model *Model) drawLibrarySizeContent(stats audio.Stats) string {
+// renderLabelValueRow draws a "{label} {value}" pair with the value right-aligned to the card's inner border.
+func (model *Model) renderLabelValueRow(label string, value string, innerWidth int) string {
+	valueColumn := model.style.rowValue.Width(max(innerWidth-labelWidth, 0)).Align(lipgloss.Right)
+
+	return lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		model.style.rowLabel.Render(fmt.Sprintf("%-*s", labelWidth, label)),
+		valueColumn.Render(model.renderStatValue(value)),
+	)
+}
+
+// renderStatValue styles a formatted value with faint dashes when absent (empty string), and a bright style otherwise.
+func (model *Model) renderStatValue(value string) string {
+	if value == "" {
+		return model.style.empty.Render(emptyPlaceholder)
+	}
+
+	return model.style.rowValue.Render(value)
+}
+
+// drawLibrarySizeContent draws the "Library Size" card's stat rows.
+func (model *Model) drawLibrarySizeContent(layout cardLayout) string {
+	stats := model.libraryStats
 	averageBytes := int64(0)
 	if stats.FilesCount > 0 {
 		averageBytes = stats.TotalBytes / int64(stats.FilesCount)
 	}
 
-	filesCountString := fmt.Sprintf("%d", stats.FilesCount)
-	averageBytesString := audio.GetReadableByteSize(averageBytes)
-	totalBytesString := audio.GetReadableByteSize(stats.TotalBytes)
-
 	rows := []string{
-		model.renderStatRow("files", model.formatValue(filesCountString)),
-		model.renderStatRow("total", model.formatValue(totalBytesString)),
-		model.renderStatRow("avg/track", model.formatValue(averageBytesString)),
+		model.renderLabelValueRow(sizeCardFilesTotalLabel, formatCountValue(stats.FilesCount), layout.innerWidth),
+		model.renderLabelValueRow(sizeCardBytesTotalLabel, formatBytesValue(stats.TotalBytes), layout.innerWidth),
+		model.renderLabelValueRow(sizeCardAvgBytesLabel, formatBytesValue(averageBytes), layout.innerWidth),
+		model.renderLabelValueRow(sizeCardHeaviestLabel, formatBytesValue(stats.BiggestFileBytes), layout.innerWidth),
 	}
 
 	return strings.Join(rows, "\n")
 }
 
-// formatValue renders a row value.
-func (model *Model) formatValue(value string) string {
-	if value == "0" {
-		return model.style.dash.Render(dashPlaceholder)
+// drawLibraryPathsContent draws one indexed row per configured library path, up to pathsCardVisibleRows.
+func (model *Model) drawLibraryPathsContent(layout cardLayout) string {
+	if len(model.libraryPaths) == 0 {
+		return model.style.empty.Render(pathsCardEmptyText)
 	}
 
-	return model.style.value.Render(value)
+	visibleCount := min(len(model.libraryPaths), pathsCardVisibleRows)
+	libraryPathRows := make([]string, 0, visibleCount+1)
+
+	for index, path := range model.libraryPaths[:visibleCount] {
+		libraryPathRows = append(libraryPathRows, model.renderLibraryPathRow(index, path, layout.innerWidth))
+	}
+
+	remainder := len(model.libraryPaths) - visibleCount
+	if remainder > 0 {
+		libraryPathRows = append(
+			libraryPathRows,
+			model.style.muted.Render(fmt.Sprintf(pathsCardHintText, remainder)),
+		)
+	}
+
+	return strings.Join(libraryPathRows, "\n")
 }
 
-// renderStatRow draws a "label value" pair.
-func (model *Model) renderStatRow(rowLabel string, rowValue string) string {
-	return lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		model.style.label.Render(fmt.Sprintf("%-*s", labelWidth, rowLabel)), // we align every label up to labelWidth.
-		model.style.value.Render(rowValue),
-	)
+// renderLibraryPathRow draws an index prefixed ("{index} {libraryPath}") row, truncating long paths.
+func (model *Model) renderLibraryPathRow(index int, libraryPath string, innerWidth int) string {
+	indexLabel := model.style.libraryPathIndex.Render(fmt.Sprintf("%02d ", index))
+	availableInnerSpace := max(innerWidth-lipgloss.Width(indexLabel), 0)
+
+	if lipgloss.Width(libraryPath) > availableInnerSpace && availableInnerSpace > 3 {
+		libraryPath = fmt.Sprintf("%s...", ansi.Truncate(libraryPath, availableInnerSpace-3, ""))
+	}
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, indexLabel, model.style.libraryPath.Render(libraryPath))
 }
 
-// renderCard wraps drawn content in the bordered box with the title set as the first line.
-func (model *Model) renderCard(content string, title string, height int, width int) string {
-	innerWidth := width - borderWidth
-	content = lipgloss.NewStyle().
-		Width(innerWidth).
-		Height(height).
-		AlignVertical(lipgloss.Top).
-		Render(content)
+// drawMetadataContent draws rows regarding the metadata health of the files (missing titles, artist, album, or duplicates).
+func (model *Model) drawMetadataContent(layout cardLayout) string {
+	stats := model.libraryStats
 
-	inner := lipgloss.JoinVertical(
-		lipgloss.Left,
-		model.style.cardTitle.Render(title),
-		content,
-	)
+	rows := []string{
+		model.renderLabelValueRow(
+			metadataCardTitleLabel,
+			formatTrackCountValue(stats.MissingTitleCount),
+			layout.innerWidth,
+		),
+		model.renderLabelValueRow(
+			metadataCardArtistLabel,
+			formatTrackCountValue(stats.MissingArtistCount),
+			layout.innerWidth,
+		),
+		model.renderLabelValueRow(
+			metadataCardAlbumLabel,
+			formatTrackCountValue(stats.MissingAlbumCount),
+			layout.innerWidth,
+		),
+		model.renderLabelValueRow(
+			metadataCardDupesLabel,
+			formatTrackCountValue(stats.DuplicatedTrackCount),
+			layout.innerWidth,
+		),
+	}
 
-	return model.style.card.Width(width).Render(inner)
+	return strings.Join(rows, "\n")
 }
 
-// drawFilesByFormatContent draws one share bar per format, capped at maxVisibleFormatRows.
-func (model *Model) drawFilesByFormatContent(stats audio.Stats) string {
+// drawFilesByFormatContent draws a list of files formats, drawing a share bar and the total size of files with that format.
+func (model *Model) drawFilesByFormatContent(layout cardLayout) string {
+	stats := model.libraryStats
+
 	if stats.FilesCount == 0 {
-		return model.style.dash.Render(dashPlaceholder)
+		return model.style.empty.Render(emptyPlaceholder)
 	}
 
 	formatBars := model.formatBars(stats)
-	visibleCount := min(len(formatBars), maxVisibleFormatRows)
+	visibleCount := min(len(formatBars), formatCardVisibleRows)
 
-	rows := make([]string, 0, visibleCount)
+	rows := make([]string, 0, visibleCount+1)
 	for _, bar := range formatBars[:visibleCount] {
-		rows = append(rows, model.renderFormatBar(bar))
+		rows = append(rows, model.renderFilesByFormatRow(bar))
 	}
 
 	if len(formatBars) > visibleCount {
 		rows = append(
 			rows,
-			model.style.label.Render(fmt.Sprintf("...and %d more formats~", len(formatBars)-visibleCount)),
+			model.style.muted.Render(fmt.Sprintf(formatCardMoreText, len(formatBars)-visibleCount)),
 		)
 	}
 
@@ -167,36 +311,40 @@ func (model *Model) formatBars(stats audio.Stats) []formatBar {
 
 	formatBars := make([]formatBar, 0, len(stats.FormatCounts))
 	for format, count := range stats.FormatCounts {
-		if format == "" {
-			format = unknownFormatText
+		rowFormat := format
+		if rowFormat == "" {
+			rowFormat = formatCardUnknownValue
 		}
 
 		formatBars = append(formatBars, formatBar{
-			format:   format,
+			format:   rowFormat,
 			count:    count,
+			bytes:    stats.BytesPerFormat[format],
 			fraction: float64(count) / float64(stats.FilesCount),
 		})
 	}
 
-	// Sort by count descending, then by format name.
-	slices.SortFunc(formatBars, func(left formatBar, right formatBar) int {
-		if left.count != right.count {
-			return right.count - left.count
-		}
-
-		return strings.Compare(left.format, right.format)
+	// sort by count descending, then by format name.
+	slices.SortStableFunc(formatBars, func(left formatBar, right formatBar) int {
+		return cmp.Or(
+			cmp.Compare(right.count, left.count),
+			strings.Compare(left.format, right.format),
+		)
 	})
 
 	return formatBars
 }
 
-// renderFormatBar draws a single format row with a name, count, and a share bar.
-func (model *Model) renderFormatBar(bar formatBar) string {
-	name := model.style.label.Render(fmt.Sprintf("%-6s", bar.format))
-	count := model.style.value.Render(fmt.Sprintf("%4d", bar.count))
-	share := model.renderShareBar(bar.fraction, barWidth)
+// renderFilesByFormatRow draws a single format row with a name, count, size, and a share bar.
+func (model *Model) renderFilesByFormatRow(bar formatBar) string {
+	name := model.style.rowLabel.Render(fmt.Sprintf("%-*s", formatCardKeyWidth, bar.format))
+	shareBar := model.renderShareBar(bar.fraction, formatCardBarWidth)
+	count := model.style.rowValue.Render(fmt.Sprintf("%*d", formatCardCountWidth, bar.count))
+	size := model.style.muted.Render(
+		fmt.Sprintf(" %*s", formatCardBytesColumnWidth, audio.GetReadableByteSize(bar.bytes)),
+	)
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, name, share, count)
+	return lipgloss.JoinHorizontal(lipgloss.Top, name, shareBar+" ", count, size)
 }
 
 // renderShareBar builds a filled/empty glyph bar of the given width.
@@ -206,45 +354,203 @@ func (model *Model) renderShareBar(fraction float64, width int) string {
 
 	shareBarLine.WriteString(model.style.formatShareBar.Render(strings.Repeat("█", filledTotal)))
 	if width-filledTotal > 0 {
-		shareBarLine.WriteString(model.style.formatShareEmptyBar.Render(strings.Repeat("░", width-filledTotal)))
+		shareBarLine.WriteString(
+			model.style.formatShareEmptyBar.Render(strings.Repeat("░", width-filledTotal)),
+		)
 	}
 
 	return shareBarLine.String()
 }
 
-// drawLibraryPathsContent draws one indexed row per configured library path, capped at maxVisiblePathRows.
-func (model *Model) drawLibraryPathsContent() string {
-	if len(model.libraryPaths) == 0 {
-		return model.style.dash.Render(noPathsText)
-	}
+// drawTopArtistsContent draws the artists rankings: by files, by albums, and by playtime.
+func (model *Model) drawTopArtistsContent(layout cardLayout) string {
+	stats := model.libraryStats
 
-	visibleCount := min(len(model.libraryPaths), maxVisiblePathRows)
-	libraryPathRows := make([]string, 0, visibleCount)
-
-	for index, path := range model.libraryPaths[:visibleCount] {
-		libraryPathRows = append(libraryPathRows, model.renderLibraryPathRow(index, path))
-	}
-
-	remainder := len(model.libraryPaths) - visibleCount
-	if remainder > 0 {
-		libraryPathRows = append(
-			libraryPathRows,
-			model.style.label.Render(fmt.Sprintf("...and %d more", remainder)),
-		)
-	}
-
-	return strings.Join(libraryPathRows, "\n")
+	return model.renderTopArtistsCard([]topArtistsSection{
+		{title: topArtistsByFilesTitle, counts: stats.TopArtistsByFiles, formatValue: formatCountValue},
+		{title: topArtistsByAlbumsTitle, counts: stats.TopArtistsByAlbums, formatValue: formatCountValue},
+		{
+			title:       topArtistsByDurationTitle,
+			counts:      stats.TopArtistsByDuration,
+			formatValue: formatDurationValue,
+		},
+	}, layout)
 }
 
-// renderLibraryPathRow draws an index prefixed ("{index} {libraryPath}") row, truncating long paths.
-func (model *Model) renderLibraryPathRow(index int, libraryPath string) string {
-	innerWidth := smallCardWidth - borderWidth
-	indexLabel := model.style.libraryPathIndex.Render(fmt.Sprintf("%02d ", index))
-	availableInnerSpace := max(innerWidth-lipgloss.Width(indexLabel), 0)
+// renderTopArtistsCard draws named sub-sections of formatted "name value" rows.
+func (model *Model) renderTopArtistsCard(sections []topArtistsSection, layout cardLayout) string {
+	entryLinesCount := topArtistsCardSectionEntries
 
-	if lipgloss.Width(libraryPath) > availableInnerSpace && availableInnerSpace > 3 {
-		libraryPath = fmt.Sprintf("%s...", ansi.Truncate(libraryPath, availableInnerSpace-3, ""))
+	// find out what is gonna be the longest rendered value to allocate the proper width "budget"
+	valueColumnWidth := 0
+	for _, section := range sections {
+		for _, count := range section.counts {
+			valueColumnWidth = max(valueColumnWidth, lipgloss.Width(section.formatValue(count.Value)))
+		}
+	}
+	nameWidth := max(layout.innerWidth-valueColumnWidth, 0)
+
+	rows := make([]string, 0, len(sections)*(entryLinesCount+1)) // each section is lines + subtitle
+	for _, section := range sections {
+		rows = append(rows, model.style.cardTitle.Render(section.title))
+
+		if len(section.counts) == 0 {
+			rows = append(rows, model.style.empty.Render(emptyPlaceholder))
+			continue
+		}
+
+		visibleCounts := section.counts[:min(len(section.counts), entryLinesCount)]
+		for _, count := range visibleCounts {
+			rows = append(
+				rows,
+				model.renderTopArtistRow(count.Name, section.formatValue(count.Value), nameWidth, valueColumnWidth),
+			)
+		}
 	}
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, indexLabel, model.style.libraryPath.Render(libraryPath))
+	return strings.Join(rows, "\n")
+}
+
+// renderTopArtistRow draws a leaderboard-y "{name} {value}" row, truncating long names.
+func (model *Model) renderTopArtistRow(name string, value string, nameWidth int, valueWidth int) string {
+	truncatedName := ansi.Truncate(name, nameWidth, "...")
+
+	nameColumn := model.style.rowLabel.Width(nameWidth).Render(truncatedName)
+	valueColumn := model.style.rowValue.Width(valueWidth).Align(lipgloss.Right).Render(model.renderStatValue(value))
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, nameColumn, valueColumn)
+}
+
+// drawPlaceholderContent draws nothing: the placeholder card is an empty reserved slot.
+// TODO: maybe some glitch animation? or something else?
+func (model *Model) drawPlaceholderContent(_ cardLayout) string {
+	return ""
+}
+
+// drawTrackLengthsContent draws the track lengths card rows.
+func (model *Model) drawTrackLengthsContent(layout cardLayout) string {
+	stats := model.libraryStats
+
+	if !stats.HasTrackLengths {
+		return model.style.empty.Render(noTracksWithLengthText)
+	}
+
+	rows := model.renderAnnotatedLengthRows([]lengthsGroupEntry{
+		{
+			label:      lengthsCardLongestLabel,
+			value:      formatDurationValue(stats.LongestTrack.Value),
+			annotation: stats.LongestTrack.Name,
+		},
+		{
+			label:      lengthsCardShortestLabel,
+			value:      formatDurationValue(stats.ShortestTrack.Value),
+			annotation: stats.ShortestTrack.Name,
+		},
+		{
+			label:      lengthsCardAverageLabel,
+			value:      formatDurationValue(stats.AverageLengthTrack.Value),
+			annotation: trackLengthsAverageValue,
+		},
+	}, layout)
+
+	return strings.Join(rows, "\n")
+}
+
+// drawAlbumLengthsContent draws the album lengths card rows.
+func (model *Model) drawAlbumLengthsContent(layout cardLayout) string {
+	stats := model.libraryStats
+
+	if !stats.HasAlbumLengths {
+		return model.style.empty.Render(noTracksWithLengthText)
+	}
+
+	rows := model.renderAnnotatedLengthRows([]lengthsGroupEntry{
+		{
+			label:      lengthsCardLongestLabel,
+			value:      formatDurationValue(stats.LongestAlbum.Value),
+			annotation: stats.LongestAlbum.Name,
+		},
+		{
+			label:      lengthsCardShortestLabel,
+			value:      formatDurationValue(stats.ShortestAlbum.Value),
+			annotation: stats.ShortestAlbum.Name,
+		},
+		{
+			label:      lengthsCardAverageLabel,
+			value:      formatDurationValue(stats.AverageLengthAlbum.Value),
+			annotation: albumLengthsAverageValue,
+		},
+	}, layout)
+
+	return strings.Join(rows, "\n")
+}
+
+// renderAnnotatedLengthRows draws "label value (annotation)" rows for a length card.
+func (model *Model) renderAnnotatedLengthRows(rows []lengthsGroupEntry, layout cardLayout) []string {
+	// the duration column fits the widest value, while the the annotation column takes whatever is left.
+	durationColumnWidth := 0
+	for _, annotatedRow := range rows {
+		durationColumnWidth = max(durationColumnWidth, lipgloss.Width(annotatedRow.value))
+	}
+	annotationColumnWidth := max(layout.innerWidth-lengthsGroupLabelWidth-durationColumnWidth, 0)
+
+	durationColumn := model.style.rowValue.Width(durationColumnWidth).Align(lipgloss.Right)
+	annotationColumn := model.style.muted.Width(annotationColumnWidth).Align(lipgloss.Right)
+
+	renderedRows := make([]string, 0, len(rows))
+	for _, annotatedRow := range rows {
+		annotationText := ""
+		if annotatedRow.annotation != "" {
+			annotationText = ansi.Truncate(
+				fmt.Sprintf(annotatedValueText, annotatedRow.annotation),
+				annotationColumnWidth,
+				"...",
+			)
+		}
+
+		renderedRows = append(renderedRows, lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			model.style.rowLabel.Render(fmt.Sprintf("%-*s", lengthsGroupLabelWidth, annotatedRow.label)),
+			durationColumn.Render(model.renderStatValue(annotatedRow.value)),
+			annotationColumn.Render(annotationText),
+		))
+	}
+
+	return renderedRows
+}
+
+// formatTrackCountValue formats a track-count value (suffixing with " tracks"), empty on zero.
+func formatTrackCountValue(count int) string {
+	if count == 0 {
+		return ""
+	}
+
+	return fmt.Sprintf("%d tracks", count)
+}
+
+// formatCountValue formats a numeric value, empty on zero.
+func formatCountValue(count int) string {
+	if count == 0 {
+		return ""
+	}
+
+	return fmt.Sprintf("%d", count)
+}
+
+// formatBytesValue formats a readable byte size, empty on zero.
+func formatBytesValue(bytes int64) string {
+	if bytes == 0 {
+		return ""
+	}
+
+	return audio.GetReadableByteSize(bytes)
+}
+
+// formatDurationValue formats a readable duration, empty on zero.
+func formatDurationValue(seconds int) string {
+	if seconds == 0 {
+		return ""
+	}
+
+	return audio.GetReadableDuration(seconds)
 }

@@ -1,6 +1,7 @@
 package librarystats
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -19,11 +20,134 @@ func TestRenderEmptyLibrary(t *testing.T) {
 	testutil.AssertSnapshot(t, "render_empty_library", model.Render(80, 24))
 }
 
+func TestRenderEmptyLibraryWideWindow(t *testing.T) {
+	t.Parallel()
+
+	model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
+
+	testutil.AssertSnapshot(t, "render_empty_library_wide_window", model.Render(120, 24))
+}
+
+func TestRenderEmptyLibraryWithLeaderboards(t *testing.T) {
+	t.Parallel()
+
+	model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
+
+	testutil.AssertSnapshot(t, "render_empty_library_with_leaderboards", model.Render(120, 40))
+}
+
+func TestRenderPopulatedLibraryWithLeaderboards(t *testing.T) {
+	t.Parallel()
+
+	library := audio.NewLibrary()
+	files := map[string]*audio.AudioFile{
+		"/music/artist_a/album_x/01 long album name that goes on and on forever.flac": {
+			Path:      "/music/artist_a/album_x/01 long album name that goes on and on forever.flac",
+			Title:     "one",
+			Artist:    "artist a",
+			Album:     "album x",
+			Year:      "2001",
+			Length:    61,
+			SizeBytes: 1024,
+		},
+		"/music/artist_a/album_x/02 two.flac": {
+			Path:      "/music/artist_a/album_x/02 two.flac",
+			Title:     "two",
+			Artist:    "artist a",
+			Album:     "album x",
+			Year:      "2001",
+			Length:    122,
+			SizeBytes: 2048,
+		},
+		"/music/artist_b/album_y/01 three.flac": {
+			Path:      "/music/artist_b/album_y/01 three.flac",
+			Title:     "three",
+			Artist:    "artist b",
+			Album:     "album y",
+			Year:      "2002",
+			Length:    183,
+			SizeBytes: 4096,
+		},
+		"/music/artist_b/album_y/02 four.flac": {
+			Path:      "/music/artist_b/album_y/02 four.flac",
+			Title:     "four",
+			Artist:    "artist b",
+			Album:     "album y",
+			Year:      "2002",
+			Length:    244,
+			SizeBytes: 8192,
+		},
+		"/music/artist_c/album_z/01 five.flac": {
+			Path:      "/music/artist_c/album_z/01 five.flac",
+			Title:     "five",
+			Artist:    "artist c",
+			Album:     "album z",
+			Year:      "2003",
+			Length:    305,
+			SizeBytes: 16384,
+		},
+	}
+	for path, file := range files {
+		library.File[path] = file
+	}
+
+	model := New(testutil.DefaultKeyMap(t), library)
+	model.ComputeStats()
+	model.SetLibraryPaths([]string{"/music"})
+
+	testutil.AssertSnapshot(t, "render_populated_library_with_leaderboards", model.Render(120, 40))
+}
+
+func TestRenderCJKArtistNamesDoNotWrap(t *testing.T) {
+	t.Parallel()
+
+	library := audio.NewLibrary()
+	paths := []string{
+		"/music/天気予報/01 track one.flac",
+		"/music/天気予報/02 track two.flac",
+		"/music/air/album/01 track three.flac",
+	}
+	for index, path := range paths {
+		artist := "天気予報"
+		if index == 2 {
+			artist = "air"
+		}
+
+		library.File[path] = &audio.AudioFile{
+			Path:      path,
+			Title:     fmt.Sprintf("track %d", index+1),
+			Artist:    artist,
+			Album:     "album",
+			Length:    60 * (index + 1),
+			SizeBytes: 1024,
+		}
+	}
+
+	model := New(testutil.DefaultKeyMap(t), library)
+	model.ComputeStats()
+
+	rendered := testutil.StripANSI(model.Render(120, 60))
+	lines := strings.Split(rendered, "\n")
+
+	for _, line := range lines {
+		if !strings.Contains(line, "TOP ARTISTS") && !strings.Contains(line, "artist") {
+			continue
+		}
+
+		assert.True(
+			t,
+			strings.HasSuffix(strings.TrimRight(line, " "), "│"),
+			"leaderboard row overflowed its card: %q", line,
+		)
+	}
+	assert.Contains(t, rendered, "天気予報", "render output:\n%s", rendered)
+}
+
 func TestRenderManyPathsTruncatesAndCountsRemainder(t *testing.T) {
 	t.Parallel()
 
-	paths := make([]string, 0, maxVisiblePathRows+2)
-	for index := range maxVisiblePathRows + 2 {
+	paths := make([]string, 0, 12)
+	for index := range 12 {
 		paths = append(paths, strings.Repeat("/very/deep/library/path", 3)+"/dir"+string(rune('a'+index)))
 	}
 
@@ -31,7 +155,12 @@ func TestRenderManyPathsTruncatesAndCountsRemainder(t *testing.T) {
 	model.SetLibraryPaths(paths)
 
 	rendered := testutil.StripANSI(model.Render(80, 24))
-	assert.True(t, strings.Contains(rendered, "...and 2 more"), "render output missing remainder line:\n%s", rendered)
+	assert.True(
+		t,
+		strings.Contains(rendered, "...and 4 more paths"),
+		"render output missing remainder line:\n%s",
+		rendered,
+	)
 }
 
 func TestRenderTruncatesLongPaths(t *testing.T) {
@@ -64,8 +193,8 @@ func TestRenderNilLibraryPointer(t *testing.T) {
 	model := New(testutil.DefaultKeyMap(t), nil)
 
 	rendered := testutil.StripANSI(model.Render(80, 24))
-	assert.True(t, strings.Contains(rendered, "no library paths in config"), "render output:\n%s", rendered)
-	assert.True(t, strings.Contains(rendered, dashPlaceholder), "render output:\n%s", rendered)
+	assert.True(t, strings.Contains(rendered, "no library paths"), "render output:\n%s", rendered)
+	assert.True(t, strings.Contains(rendered, emptyPlaceholder), "render output:\n%s", rendered)
 }
 
 func TestApplyThemeAndSetLibraryPaths(t *testing.T) {
