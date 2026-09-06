@@ -68,7 +68,7 @@ func (model *Model) HandleMessage(message tea.Msg) action.Action {
 
 		switch model.buttons[model.cursorPosition].action {
 		case reloadConfigAction:
-			return action.ReloadConfigAction{}
+			return action.ReloadConfigFromInitAction{}
 		case proceedAction:
 			return action.ProceedFromInitAction{}
 		}

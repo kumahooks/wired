@@ -38,6 +38,7 @@ func Defaults() Config {
 			Actions: ActionsMapping{
 				Playlist:     []string{"p"},
 				LibraryStats: []string{"l"},
+				ReloadConfig: []string{"L"},
 			},
 		},
 	}

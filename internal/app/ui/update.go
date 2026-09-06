@@ -13,28 +13,30 @@ func (model *UIModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch message := message.(type) {
 	// Initialization Step 1: Config loaded.
-	case initializationLoadConfigResultMessage:
-		commands = append(commands, model.handleInitializationLoadConfigResult(message))
+	case configLoadedMessage:
+		model.isConfigLoading = false
+		commands = append(commands, model.handleConfigLoadedMessage(message))
 	// Initialization Step 2: Load library cache (if any).
 	case initializationLoadLibraryCacheResultMessage:
 		commands = append(commands, model.handleInitializationLoadLibraryCacheResult(message))
 
-	// User Action - Library discovery Step 1.1: discovering audio files at the library paths.
+	// Library discovery:
+	// Step 1: discovering audio files at the library paths.
 	case discoverFilesStartMessage:
 		model.PushNotification("starting library discovery...")
 		commands = append(commands, model.handleDiscoverFilesStartMessage(message))
-	// User Action - Library discovery Step: ticking discovery progress.
-	case discoveryProgressTickMessage:
-		commands = append(commands, model.handleDiscoveryProgressTickMessage(message))
-	// User Action - Library discovery Step 2.1: start parsing the discovered files' metatags.
+	// Step 2.1: start parsing the discovered files' metatags.
 	case discoverFilesResultMessage:
 		commands = append(commands, model.handleDiscoverFilesResultMessage(message))
-	// User Action - Library discovery Step 2.2: metatag parsing running.
+	// Step 2.2: metatag parsing running.
 	case metatagParseStartMessage:
 		commands = append(commands, model.handleMetatagParseStartMessage(message))
-	// User Action - Library discovery Step 2.3: file discovery, parsing and indexing is finished.
+	// Step 2.3: file discovery, parsing and indexing is finished.
 	case metatagParseResultMessage:
 		commands = append(commands, model.handleMetatagParseResultMessage(message))
+	// Step (generic): ticking discovery progress.
+	case discoveryProgressTickMessage:
+		commands = append(commands, model.handleDiscoveryProgressTickMessage(message))
 
 	// Notification expiration routine: each push schedules its own expiry.
 	case notificationExpireMessage:
@@ -105,6 +107,8 @@ func (model *UIModel) handleComponentAction(act action.Action) tea.Cmd {
 	case action.QuitAction:
 		model.cancelCurrentLibraryDiscovery()
 		return tea.Quit
+
+	// Librarystats screen actions
 	case action.DiscoverLibraryFullAction:
 		model.cancelCurrentLibraryDiscovery()
 
@@ -117,25 +121,44 @@ func (model *UIModel) handleComponentAction(act action.Action) tea.Cmd {
 			model.config.LibrariesPaths,
 			model.library,
 		)
-	case action.ReloadConfigAction:
+
+	// Initialization screen actions
+	case action.ReloadConfigFromInitAction:
 		model.cancelCurrentLibraryDiscovery()
+
+		if model.isConfigLoading {
+			return nil
+		}
+		model.isConfigLoading = true
+
 		model.initializationModel.AppendLog("reloading config...", initializing.LogNormal)
 
-		return initializationLoadConfigCommand()
+		return configLoadCommand(configLoadOriginInit)
 	case action.ProceedFromInitAction:
 		model.initializationModel.AppendLog("proceeding without libraries", initializing.LogNormal)
 		model.cancelCurrentLibraryDiscovery()
 		model.setState(uiPlaylist)
-
 		return nil
-	case action.ActionCommand:
-		return act.Command
+
+	// Whichkey actions
 	case action.OpenPlaylistAction:
 		model.setState(uiPlaylist)
 		return nil
 	case action.OpenLibraryStatsAction:
 		model.setState(uiLibraryStats)
 		return nil
+	case action.ReloadConfigAction:
+		model.cancelCurrentLibraryDiscovery()
+
+		if model.isConfigLoading {
+			return nil
+		}
+		model.isConfigLoading = true
+
+		return configLoadCommand(configLoadOriginUser)
+
+	case action.ActionCommand:
+		return act.Command
 	default:
 		return nil
 	}

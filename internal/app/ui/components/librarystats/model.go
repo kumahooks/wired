@@ -20,7 +20,6 @@ func New(defaultKeyMap keymap.KeyMap, library *audio.Library) *Model {
 		buttons: []button{
 			{label: scanFullButtonLabel, action: scanFullLibraryAction},
 			{label: scanNewButtonLabel, action: scanNewLibraryAction},
-			{label: reloadConfigButtonLabel, action: reloadConfigAction},
 		},
 		keyMap: defaultKeyMap,
 		style:  newStyle(theme.Default()),
@@ -105,8 +104,6 @@ func (model *Model) HandleMessage(message tea.Msg) action.Action {
 		case scanFullLibraryAction:
 			return action.DiscoverLibraryFullAction{}
 		case scanNewLibraryAction:
-			return action.NoAction{} // TODO
-		case reloadConfigAction:
 			return action.NoAction{} // TODO
 		}
 	}

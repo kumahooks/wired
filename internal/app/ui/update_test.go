@@ -84,15 +84,35 @@ func initLastLog(model *UIModel) (string, initializing.LogType) {
 	return texts[len(texts)-1], model.initializationModel.LastLogType()
 }
 
-func TestHandleInitializationLoadConfigResultError(t *testing.T) {
+func assertCmdDoesNotChainLibraryCache(t *testing.T, command tea.Cmd) {
+	t.Helper()
+
+	if command == nil {
+		return
+	}
+
+	result := make(chan tea.Msg, 1)
+	go func() { result <- command() }()
+
+	select {
+	case message := <-result:
+		_, isCacheLoad := message.(initializationLoadLibraryCacheResultMessage)
+		assert.False(t, isCacheLoad, "user origin chained the init library cache load")
+	case <-time.After(100 * time.Millisecond):
+		// Blocked on the expire tick: the expected behavior.
+	}
+}
+
+func TestConfigLoadedInitOriginError(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
 
 	loadError := errors.New("[config:Load] parse config file: boom")
-	_, command := model.Update(initializationLoadConfigResultMessage{
+	_, command := model.Update(configLoadedMessage{
 		config:           &config.Config{},
 		isConfigDefaults: false,
+		origin:           configLoadOriginInit,
 		err:              loadError,
 	})
 
@@ -103,7 +123,7 @@ func TestHandleInitializationLoadConfigResultError(t *testing.T) {
 	assert.Equal(t, initializing.LogError, logType, "last log type = %v, want LogError (text: %q)", logType, text)
 }
 
-func TestHandleInitializationLoadConfigResultDefaults(t *testing.T) {
+func TestConfigLoadedInitOriginDefaults(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
@@ -111,9 +131,10 @@ func TestHandleInitializationLoadConfigResultDefaults(t *testing.T) {
 	defaultsConfig := config.Defaults()
 	defaultsConfig.LibrariesPaths = []string{t.TempDir()}
 
-	_, command := model.Update(initializationLoadConfigResultMessage{
+	_, command := model.Update(configLoadedMessage{
 		config:           &defaultsConfig,
 		isConfigDefaults: true,
+		origin:           configLoadOriginInit,
 		err:              nil,
 	})
 
@@ -128,7 +149,7 @@ func TestHandleInitializationLoadConfigResultDefaults(t *testing.T) {
 	assert.NotNil(t, command, "returned cmd = nil, want non-nil (libraries present)")
 }
 
-func TestHandleInitializationLoadConfigResultInvalidLibraryPaths(t *testing.T) {
+func TestConfigLoadedInitOriginInvalidLibraryPaths(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
@@ -136,7 +157,7 @@ func TestHandleInitializationLoadConfigResultInvalidLibraryPaths(t *testing.T) {
 	customConfig := config.Defaults()
 	customConfig.LibrariesPaths = []string{t.TempDir()}
 
-	_, command := model.Update(initializationLoadConfigResultMessage{
+	_, command := model.Update(configLoadedMessage{
 		config:              &customConfig,
 		isConfigDefaults:    false,
 		invalidLibraryPaths: []string{"/this/path/does/not/exist"},
@@ -148,7 +169,7 @@ func TestHandleInitializationLoadConfigResultInvalidLibraryPaths(t *testing.T) {
 	assert.NotNil(t, command, "returned cmd = nil, want non-nil (libraries present)")
 }
 
-func TestHandleInitializationLoadConfigResultHappyPath(t *testing.T) {
+func TestConfigLoadedInitOriginHappyPath(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
@@ -158,13 +179,14 @@ func TestHandleInitializationLoadConfigResultHappyPath(t *testing.T) {
 	customConfig.Theme.Surface = "#ff0000"
 	customConfig.Keybinds.MoveLeft = []string{"j"}
 	customConfig.Keybinds.MoveRight = []string{"k"}
-	customConfig.Keybinds.Select = []string{"space"}
+	customConfig.Keybinds.Select = []string{"enter"}
 	customConfig.Keybinds.Quit = []string{"q"}
 	customConfig.LibrariesPaths = []string{t.TempDir()}
 
-	_, command := model.Update(initializationLoadConfigResultMessage{
+	_, command := model.Update(configLoadedMessage{
 		config:           &customConfig,
 		isConfigDefaults: false,
+		origin:           configLoadOriginInit,
 		err:              nil,
 	})
 
@@ -187,7 +209,7 @@ func TestHandleInitializationLoadConfigResultHappyPath(t *testing.T) {
 	assert.NotNil(t, command, "returned cmd = nil, want non-nil (libraries present)")
 }
 
-func TestHandleInitializationLoadConfigResultKeymapParseFailure(t *testing.T) {
+func TestConfigLoadedInitOriginKeymapParseFailure(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
@@ -197,14 +219,14 @@ func TestHandleInitializationLoadConfigResultKeymapParseFailure(t *testing.T) {
 	badConfig.Keybinds.Select = []string{}
 	badConfig.LibrariesPaths = []string{t.TempDir()}
 
-	_, command := model.Update(initializationLoadConfigResultMessage{
+	_, command := model.Update(configLoadedMessage{
 		config:           &badConfig,
 		isConfigDefaults: false,
+		origin:           configLoadOriginInit,
 		err:              nil,
 	})
 
 	assert.True(t, initLogContains(model, "[keymap:New]"))
-	assert.True(t, initLogContains(model, "falling back to default keybindings"))
 	assert.True(t, initLogContains(model, "keybindings failed to load, fallbacking to previous bindings"))
 
 	assert.Equal(t, initialKeyMap, model.keyMap, "model.keyMap changed on parse failure")
@@ -212,7 +234,7 @@ func TestHandleInitializationLoadConfigResultKeymapParseFailure(t *testing.T) {
 	assert.Nil(t, command, "returned cmd = nil, want nil on keymap parse failure")
 }
 
-func TestHandleInitializationLoadConfigResultNoLibrariesErrorsOut(t *testing.T) {
+func TestConfigLoadedInitOriginNoLibrariesErrorsOut(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
@@ -220,9 +242,10 @@ func TestHandleInitializationLoadConfigResultNoLibrariesErrorsOut(t *testing.T) 
 	emptyConfig := config.Defaults()
 	emptyConfig.LibrariesPaths = []string{}
 
-	_, command := model.Update(initializationLoadConfigResultMessage{
+	_, command := model.Update(configLoadedMessage{
 		config:           &emptyConfig,
 		isConfigDefaults: false,
+		origin:           configLoadOriginInit,
 		err:              nil,
 	})
 
@@ -241,7 +264,7 @@ func TestHandleInitializationLoadConfigResultNoLibrariesErrorsOut(t *testing.T) 
 	assert.Equal(t, initializing.LogError, logType, "last log type = %v, want LogError (text: %q)", logType, text)
 }
 
-func TestHandleInitializationLoadConfigResultLibrariesEmitsCacheLoad(t *testing.T) {
+func TestConfigLoadedInitOriginLibrariesEmitsCacheLoad(t *testing.T) {
 	t.Parallel()
 
 	model := newTestUI(t)
@@ -249,9 +272,10 @@ func TestHandleInitializationLoadConfigResultLibrariesEmitsCacheLoad(t *testing.
 	loadedConfig := config.Defaults()
 	loadedConfig.LibrariesPaths = []string{t.TempDir()}
 
-	_, command := model.Update(initializationLoadConfigResultMessage{
+	_, command := model.Update(configLoadedMessage{
 		config:           &loadedConfig,
 		isConfigDefaults: false,
+		origin:           configLoadOriginInit,
 		err:              nil,
 	})
 
@@ -262,7 +286,7 @@ func TestHandleInitializationLoadConfigResultLibrariesEmitsCacheLoad(t *testing.
 	require.True(t, ok, "cmd produced %T, want initializationLoadLibraryCacheResultMessage", message)
 }
 
-func TestHandleEmptyLibraryCacheWarnsUser(t *testing.T) {
+func TestConfigLoadedInitOriginEmptyLibraryCacheWarnsUser(t *testing.T) {
 	// The cache load command reads the real user config dir, so we set it like this.
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
@@ -271,9 +295,10 @@ func TestHandleEmptyLibraryCacheWarnsUser(t *testing.T) {
 	loadedConfig := config.Defaults()
 	loadedConfig.LibrariesPaths = []string{t.TempDir()}
 
-	_, command := model.Update(initializationLoadConfigResultMessage{
+	_, command := model.Update(configLoadedMessage{
 		config:           &loadedConfig,
 		isConfigDefaults: false,
+		origin:           configLoadOriginInit,
 		err:              nil,
 	})
 	require.NotNil(t, command)
@@ -289,6 +314,166 @@ func TestHandleEmptyLibraryCacheWarnsUser(t *testing.T) {
 		"empty cache with library paths is not a config error",
 	)
 	assert.Equal(t, uiInitializing, model.state, "empty cache with library paths should land on initialization")
+}
+
+func TestHandleUserConfigLoadedHappyPath(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	model := newTestUI(t)
+	initialKeyMap := model.keyMap
+
+	customConfig := config.Defaults()
+	customConfig.Theme.Surface = "#ff0000"
+	customConfig.Keybinds.MoveLeft = []string{"j"}
+	customConfig.Keybinds.MoveRight = []string{"k"}
+	customConfig.Keybinds.Select = []string{"enter"}
+	customConfig.Keybinds.Quit = []string{"q"}
+	customConfig.LibrariesPaths = []string{t.TempDir()}
+
+	_, command := model.Update(configLoadedMessage{
+		config:           &customConfig,
+		isConfigDefaults: false,
+		err:              nil,
+		origin:           configLoadOriginUser,
+	})
+
+	// The only cmd Update may return here is the notification expiry tick, not the init cache-load chaining.
+	assertCmdDoesNotChainLibraryCache(t, command)
+
+	assert.Equal(t, customConfig, *model.config)
+
+	wantTheme := theme.New(customConfig.Theme)
+	assert.Equal(t, wantTheme, model.theme)
+
+	wantKeyMap, err := keymap.New(customConfig.Keybinds)
+	require.NoError(t, err)
+	assert.Equal(t, wantKeyMap, model.keyMap)
+	assert.NotEqual(t, initialKeyMap, model.keyMap, "model.keyMap unchanged after loading custom keybinds")
+
+	// Feedback is push notifications only: no init log, no config error state.
+	assert.True(t, model.notificationModel.HasActiveNotifications(), "expected success notification for user reload")
+	assert.False(t, initLogContains(model, "config loaded successfully"), "user reload must not log to init screen")
+	assert.False(t, model.initializationModel.IsConfigError(), "user reload must not set config error")
+	assert.Equal(t, uiBootstrapping, model.state, "user reload must not change state")
+}
+
+func TestHandleUserConfigLoadedErrorKeepsPreviousState(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	model := newTestUI(t)
+	initialKeyMap := model.keyMap
+	previousConfig := *model.config
+
+	loadError := errors.New("[config:Load] parse config file: boom")
+	_, command := model.Update(configLoadedMessage{
+		config:           &config.Config{},
+		isConfigDefaults: false,
+		err:              loadError,
+		origin:           configLoadOriginUser,
+	})
+
+	// The error notification queues an expiry cmd, so assert it is not a cache load and check user-visible feedback.
+	assertCmdDoesNotChainLibraryCache(t, command)
+
+	assert.True(t, model.notificationModel.HasActiveNotifications(), "expected error notification for user reload")
+	assert.False(t, model.initializationModel.IsConfigError(), "user reload error must not set config error")
+	assert.Equal(t, previousConfig, *model.config, "config must stay unchanged on load error")
+	assert.Equal(t, initialKeyMap, model.keyMap, "keymap must stay unchanged on load error")
+}
+
+func TestHandleUserConfigLoadedKeymapFailureKeepsPreviousKeymap(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	model := newTestUI(t)
+	initialKeyMap := model.keyMap
+
+	badConfig := config.Defaults()
+	badConfig.Keybinds.Select = []string{}
+	badConfig.LibrariesPaths = []string{t.TempDir()}
+
+	_, command := model.Update(configLoadedMessage{
+		config:           &badConfig,
+		isConfigDefaults: false,
+		err:              nil,
+		origin:           configLoadOriginUser,
+	})
+
+	// The failure notification queues an expiry cmd, so assert it is not a cache load and check the kept keymap.
+	assertCmdDoesNotChainLibraryCache(t, command)
+
+	// Previous keymap is kept so the session stays usable; error is reported via notification only.
+	assert.Equal(t, initialKeyMap, model.keyMap, "keymap must stay unchanged on keymap failure")
+	assert.True(t, model.notificationModel.HasActiveNotifications(), "expected keymap failure notification")
+	assert.False(t, model.initializationModel.IsConfigError(), "user reload keymap failure must not set config error")
+
+	// The theme from the new config was already applied before the keymap failure.
+	wantTheme := theme.New(badConfig.Theme)
+	assert.Equal(t, wantTheme, model.theme)
+}
+
+func TestHandleUserConfigLoadedInvalidPathsNotifies(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	model := newTestUI(t)
+
+	customConfig := config.Defaults()
+	customConfig.LibrariesPaths = []string{t.TempDir()}
+
+	model.Update(configLoadedMessage{
+		config:              &customConfig,
+		isConfigDefaults:    false,
+		invalidLibraryPaths: []string{"/this/path/does/not/exist"},
+		err:                 nil,
+		origin:              configLoadOriginUser,
+	})
+
+	// The warning notification queues an expiry cmd, so only assert the user-visible feedback.
+	assert.True(
+		t,
+		model.notificationModel.HasActiveNotifications(),
+		"invalid paths must notify the user (config.Load prunes them silently)",
+	)
+}
+
+func TestConfigLoadDoubleTriggerGuard(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	model := newTestUI(t)
+	model.state = uiPlaylist
+
+	// The first reload starts a load and arms the guard, while the second must be rejected without touching anything.
+	firstCommand := model.handleComponentAction(action.ReloadConfigAction{})
+	assert.NotNil(t, firstCommand, "first reload should return a load cmd")
+	assert.True(t, model.isConfigLoading, "first reload must arm the in-flight guard")
+
+	command := model.handleComponentAction(action.ReloadConfigAction{})
+
+	assert.Nil(t, command, "reload while a config load is in flight must be ignored")
+	assert.True(t, model.isConfigLoading, "in-flight flag must stay set")
+}
+
+func TestConfigLoadGuardLifecycle(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	model := newTestUI(t)
+	model.state = uiPlaylist
+
+	// A successful user reload arms the flag.
+	reloadCommand := model.handleComponentAction(action.ReloadConfigAction{})
+	assert.NotNil(t, reloadCommand, "first reload should return a load cmd")
+	assert.True(t, model.isConfigLoading, "reload must arm the in-flight guard")
+
+	// The load cmd itself is not executed (it touches the real config dir).
+	loadedConfig := config.Defaults()
+	loadedConfig.LibrariesPaths = []string{t.TempDir()}
+
+	_, _ = model.Update(configLoadedMessage{
+		config:           &loadedConfig,
+		isConfigDefaults: false,
+		err:              nil,
+		origin:           configLoadOriginUser,
+	})
+	assert.False(t, model.isConfigLoading, "arriving configLoadedMessage must reset the guard")
 }
 
 func TestHandleLoadedLibraryCachePopulatesLibrary(t *testing.T) {
@@ -340,7 +525,11 @@ func TestHandleErroredLibraryCacheWarnsUserAndFallsThrough(t *testing.T) {
 		model.state,
 		"a failed cache read should land on the initialization screen",
 	)
-	assert.False(t, model.initializationModel.IsConfigError(), "a failed cache read with library paths is not a config error")
+	assert.False(
+		t,
+		model.initializationModel.IsConfigError(),
+		"a failed cache read with library paths is not a config error",
+	)
 }
 
 func TestHandleDiscoverFilesStartMessage(t *testing.T) {
@@ -681,9 +870,9 @@ func TestHandleComponentAction(t *testing.T) {
 			name:          "ReloadConfigAction returns load cmd and keeps the current state",
 			action:        action.ReloadConfigAction{},
 			wantCmdNonNil: true,
-			wantLogSubstr: "reloading config...",
 			wantCanceled:  true,
 			wantCleared:   true,
+			skipLogCheck:  true,
 		},
 		{
 			name:          "DiscoverLibraryFullAction returns discovery start cmd",

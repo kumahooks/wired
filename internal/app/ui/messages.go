@@ -7,12 +7,21 @@ import (
 	"wired/internal/core/config"
 )
 
-// initializationLoadConfigResultMessage is produced by initializationLoadConfigCommand when config.Load completes.
-type initializationLoadConfigResultMessage struct {
+// configLoadOrigin tags which surface triggered a config load, deciding the feedback strategy in handleConfigLoadedMessage.
+type configLoadOrigin int
+
+const (
+	configLoadOriginInit configLoadOrigin = iota
+	configLoadOriginUser
+)
+
+// configLoadedMessage is produced by configLoadCommand when config.Load completes, for any origin.
+type configLoadedMessage struct {
 	config              *config.Config
 	isConfigDefaults    bool
 	invalidLibraryPaths []string
 	err                 error
+	origin              configLoadOrigin
 }
 
 // initializationLoadLibraryCacheResultMessage is produced by initializationLoadLibraryCacheCommand when the library

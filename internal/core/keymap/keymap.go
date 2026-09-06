@@ -12,6 +12,7 @@ import (
 type ActionsKeyMap struct {
 	Playlist     key.Binding
 	LibraryStats key.Binding
+	ReloadConfig key.Binding
 }
 
 type KeyMap struct {
@@ -53,6 +54,30 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 	if len(bindings.Actions.LibraryStats) == 0 {
 		return KeyMap{}, fmt.Errorf("[keymap:New] library_stats must have at least one binding")
 	}
+	if len(bindings.Actions.ReloadConfig) == 0 {
+		return KeyMap{}, fmt.Errorf("[keymap:New] reload_config must have at least one binding")
+	}
+
+	generalKeys := [][]string{
+		bindings.MoveLeft,
+		bindings.MoveRight,
+		bindings.Select,
+		bindings.Quit,
+		bindings.GoBack,
+		bindings.OpenActions,
+	}
+	actionKeys := [][]string{
+		bindings.Actions.Playlist,
+		bindings.Actions.LibraryStats,
+		bindings.Actions.ReloadConfig,
+	}
+
+	if err := rejectDuplicateKeys(generalKeys); err != nil {
+		return KeyMap{}, err
+	}
+	if err := rejectDuplicateKeys(actionKeys); err != nil {
+		return KeyMap{}, err
+	}
 
 	return KeyMap{
 		MoveLeft:    newBinding(bindings.MoveLeft, "move left"),
@@ -65,6 +90,7 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 		Actions: ActionsKeyMap{
 			Playlist:     newBinding(bindings.Actions.Playlist, "playlist screen"),
 			LibraryStats: newBinding(bindings.Actions.LibraryStats, "library stats screen"),
+			ReloadConfig: newBinding(bindings.Actions.ReloadConfig, "reload config"),
 		},
 	}, nil
 }
@@ -76,4 +102,20 @@ func newBinding(keys []string, description string) key.Binding {
 		key.WithKeys(keys...),
 		key.WithHelp(primary, description),
 	)
+}
+
+// rejectDuplicateKeys rejects any key string appearing in more than one of the given binding lists, or twice in one list.
+func rejectDuplicateKeys(keyLists [][]string) error {
+	seenKeys := make(map[string]bool)
+	for _, keys := range keyLists {
+		for _, binding := range keys {
+			if seenKeys[binding] {
+				return fmt.Errorf("[keymap:New] duplicate keybinding %q", binding)
+			}
+
+			seenKeys[binding] = true
+		}
+	}
+
+	return nil
 }

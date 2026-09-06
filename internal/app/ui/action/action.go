@@ -34,6 +34,9 @@ type OpenWhichKeyAction struct{}
 // ReloadConfigAction requests a config reload.
 type ReloadConfigAction struct{}
 
+// ReloadConfigFromInitAction requests a config reload from the initialization screen.
+type ReloadConfigFromInitAction struct{}
+
 // OpenPlaylistAction goes to the playlist screen.
 type OpenPlaylistAction struct{}
 

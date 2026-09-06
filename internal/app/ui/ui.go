@@ -45,6 +45,9 @@ type UIModel struct {
 	// libraryDiscoveryCancel aborts the current discovery, if any.
 	libraryDiscoveryCancel context.CancelFunc
 
+	// isConfigLoading guards against double-triggering a config load while one is already in flight.
+	isConfigLoading bool
+
 	// expireNotificationCmds holds expire commands queued by PushNotification. Update drains it into the batch before returning.
 	expireNotificationCmds []tea.Cmd
 
@@ -85,7 +88,8 @@ func New(
 // Init is the first function that will be called. It returns an optional initial command. (bubbletea's own words)
 func (model *UIModel) Init() tea.Cmd {
 	// Init sends a tea.Cmd message to load the user's config. It's the very first thing we run, getting the app ready to use.
-	return initializationLoadConfigCommand()
+	model.isConfigLoading = true
+	return configLoadCommand(configLoadOriginInit)
 }
 
 // PushNotification queues a notification for display and schedules its expiry command.
@@ -117,11 +121,13 @@ func (model *UIModel) commandBindingsFor(state uiState) []action.Binding {
 		bindings = append(
 			bindings,
 			action.Binding{Keys: model.keyMap.Actions.LibraryStats, Action: action.OpenLibraryStatsAction{}},
+			action.Binding{Keys: model.keyMap.Actions.ReloadConfig, Action: action.ReloadConfigAction{}},
 		)
 	case uiLibraryStats:
 		bindings = append(
 			bindings,
 			action.Binding{Keys: model.keyMap.Actions.Playlist, Action: action.OpenPlaylistAction{}},
+			action.Binding{Keys: model.keyMap.Actions.ReloadConfig, Action: action.ReloadConfigAction{}},
 		)
 	}
 

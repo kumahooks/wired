@@ -11,16 +11,18 @@ import (
 	"wired/internal/core/config"
 )
 
-// initializationLoadConfigCommand returns a tea.Cmd after loading config from disk, into a fresh *Config in the Orchestrator.
-func initializationLoadConfigCommand() tea.Cmd {
+// configLoadCommand returns a tea.Cmd that loads config from disk into a fresh *Config. The origin tag travels with the
+// result so the handler can pick the right feedback surface (initialization logs vs push notifications).
+func configLoadCommand(origin configLoadOrigin) tea.Cmd {
 	return func() tea.Msg {
 		loadedConfig, isConfigDefaults, invalidLibraryPaths, err := config.Load()
 
-		return initializationLoadConfigResultMessage{
+		return configLoadedMessage{
 			config:              loadedConfig,
 			isConfigDefaults:    isConfigDefaults,
 			invalidLibraryPaths: invalidLibraryPaths,
 			err:                 err,
+			origin:              origin,
 		}
 	}
 }

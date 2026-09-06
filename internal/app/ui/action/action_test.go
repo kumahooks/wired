@@ -13,6 +13,7 @@ var (
 	_ Action = QuitAction{}
 	_ Action = OpenWhichKeyAction{}
 	_ Action = ReloadConfigAction{}
+	_ Action = ReloadConfigFromInitAction{}
 	_ Action = ProceedFromInitAction{}
 	_ Action = ActionCommand{Command: nil}
 )

@@ -19,6 +19,7 @@ Completely unorganized and without a deep thought behind.
 - [ ] Last.fm scrobbling.
 - [ ] Radio integration.
 - [ ] Dedicated logger purely for the file discovery/parsing pipeline (parse errors are currently swallowed and nothing is logged).
+	- [ ] Maybe it's better to have a dedicated logger service as a core to be used in many different places?
 
 ? - Maybe this is a bad idea. Needs more thought.
 

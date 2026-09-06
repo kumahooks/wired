@@ -20,73 +20,69 @@ func (model *UIModel) showInitializationScreen() {
 	}
 }
 
-// handleInitializationLoadConfigResult processes a initializationLoadConfigResultMessage.
-func (model *UIModel) handleInitializationLoadConfigResult(message initializationLoadConfigResultMessage) tea.Cmd {
+// handleConfigLoadedMessage processes a configLoadedMessage. Feedback and failure branch on the origin: initialization
+// logs into its screen buffer and chains the library cache load, while user actions push notifications only.
+func (model *UIModel) handleConfigLoadedMessage(message configLoadedMessage) tea.Cmd {
+	// feedback branches a notification log on the type of `message.origin`.
+	var feedback func(string, initializing.LogType)
+
+	if message.origin == configLoadOriginInit {
+		feedback = func(text string, level initializing.LogType) {
+			model.initializationModel.AppendLog(text, level)
+		}
+	} else {
+		feedback = func(text string, level initializing.LogType) {
+			switch level {
+			case initializing.LogError, initializing.LogWarning:
+				model.PushNotification(text)
+			}
+		}
+	}
+
 	if message.err != nil {
-		model.showInitializationScreen()
-		model.initializationModel.AppendLog(message.err.Error(), initializing.LogError)
-		model.initializationModel.SetConfigError()
+		feedback(message.err.Error(), initializing.LogError)
+
+		if message.origin == configLoadOriginInit {
+			model.showInitializationScreen()
+			model.initializationModel.SetConfigError()
+		}
 
 		return nil
 	}
 
 	if message.isConfigDefaults {
-		model.initializationModel.AppendLog("no config file found, loading one using defaults~", initializing.LogNormal)
+		feedback("no config file found, loading one using defaults~", initializing.LogNormal)
 	}
 
 	// Publish the loaded config through the shared pointer so the orchestrator and the UI see the same values.
 	*model.config = *message.config
 	model.libraryStatsModel.SetLibraryPaths(model.config.LibrariesPaths)
-	model.initializationModel.AppendLog("config loaded successfully~", initializing.LogNormal)
+	feedback("config loaded successfully~", initializing.LogNormal)
 
-	// Parses and apply the config's loaded theme.
-	model.initializationModel.AppendLog("loading themes...", initializing.LogNormal)
-
+	// Load and apply the config's loaded theme.
+	feedback("loading themes...", initializing.LogNormal)
 	model.theme = theme.New(model.config.Theme)
-	model.initializationModel.ApplyTheme(model.theme)
-	model.libraryStatsModel.ApplyTheme(model.theme)
-	model.whichkeyModel.ApplyTheme(model.theme)
-	model.notificationModel.ApplyTheme(model.theme)
+	model.applyThemeToComponents()
+	feedback("theme loaded successfully~", initializing.LogNormal)
 
-	model.initializationModel.AppendLog("theme loaded successfully~", initializing.LogNormal)
-
-	// Parses and apply the config's loaded keybinds.
-	model.initializationModel.AppendLog("resolving keybindings...", initializing.LogNormal)
-	resolvedKeyMap, err := keymap.New(model.config.Keybinds)
-	if err != nil {
-		model.showInitializationScreen()
-
-		model.initializationModel.AppendLog(err.Error(), initializing.LogError)
-		model.initializationModel.AppendLog("falling back to default keybindings...", initializing.LogError)
-
-		model.initializationModel.ApplyKeyMap(model.keyMap)
-		model.whichkeyModel.SetBindings(model.commandBindingsFor(model.state))
-		model.whichkeyModel.ApplyCloseKeybinding(model.keyMap.GoBack)
-
-		model.initializationModel.AppendLog(
-			"keybindings failed to load, fallbacking to previous bindings",
-			initializing.LogError,
-		)
-
-		model.initializationModel.SetConfigError()
-
-		return nil
+	// Parse and apply the config's loaded keybinds.
+	feedback("resolving keybindings...", initializing.LogNormal)
+	resolvedKeyMap, keymapErr := keymap.New(model.config.Keybinds)
+	if keymapErr != nil {
+		return model.handleConfigLoadedKeymapError(message.origin, feedback, keymapErr)
 	}
 	model.keyMap = resolvedKeyMap
-	model.initializationModel.ApplyKeyMap(model.keyMap)
-	model.libraryStatsModel.ApplyKeyMap(model.keyMap)
-	model.whichkeyModel.SetBindings(model.commandBindingsFor(model.state))
-	model.whichkeyModel.ApplyCloseKeybinding(model.keyMap.GoBack)
-	model.initializationModel.AppendLog("keybindings loaded successfully~", initializing.LogNormal)
+	model.applyKeyMapToComponents()
+	feedback("keybindings loaded successfully~", initializing.LogNormal)
 
-	// If the user has any invalid path in it's config, we notify it as a log warning in the initialization component.
+	// If the user has any invalid path in its config, report it.
 	if len(message.invalidLibraryPaths) > 0 {
-		var pluralSuffix string = ""
+		pluralSuffix := ""
 		if len(message.invalidLibraryPaths) > 1 {
 			pluralSuffix = "s"
 		}
 
-		model.initializationModel.AppendLog(
+		feedback(
 			fmt.Sprintf(
 				"invalid path%s found (╥﹏╥): %s",
 				pluralSuffix,
@@ -96,8 +92,54 @@ func (model *UIModel) handleInitializationLoadConfigResult(message initializatio
 		)
 	}
 
-	// Once we load configs, we attempt to load any library cache.
-	return initializationLoadLibraryCacheCommand()
+	// Only the initialization pipeline continues into the library cache load.
+	if message.origin == configLoadOriginInit {
+		return initializationLoadLibraryCacheCommand()
+	}
+
+	// For a user config reload push notification for the success.
+	model.PushNotification("config loaded successfully~")
+
+	return nil
+}
+
+// applyThemeToComponents rebuilds every component's style from the UIModel's current theme.
+func (model *UIModel) applyThemeToComponents() {
+	model.initializationModel.ApplyTheme(model.theme)
+	model.libraryStatsModel.ApplyTheme(model.theme)
+	model.whichkeyModel.ApplyTheme(model.theme)
+	model.notificationModel.ApplyTheme(model.theme)
+}
+
+// handleConfigLoadedKeymapError handles keymap.New failing during a config load. Initialization logs the failure and
+// marks a config error for the user to fix. In an error scenarioo, the previously resolved keymap is kept in both cases.
+func (model *UIModel) handleConfigLoadedKeymapError(
+	origin configLoadOrigin,
+	feedback func(string, initializing.LogType),
+	keymapErr error,
+) tea.Cmd {
+	if origin == configLoadOriginInit {
+		model.showInitializationScreen()
+
+		feedback(keymapErr.Error(), initializing.LogError)
+		feedback("keybindings failed to load, fallbacking to previous bindings x_x", initializing.LogError)
+
+		model.initializationModel.SetConfigError()
+		return nil
+	}
+
+	feedback(fmt.Sprintf("keybindings failed to load: %s", keymapErr.Error()), initializing.LogError)
+	feedback("keeping previous keybindings x_x", initializing.LogError)
+
+	return nil
+}
+
+// applyKeyMapToComponents pushes the UIModel's current keymap to every component that renders or matches keys.
+func (model *UIModel) applyKeyMapToComponents() {
+	model.initializationModel.ApplyKeyMap(model.keyMap)
+	model.libraryStatsModel.ApplyKeyMap(model.keyMap)
+	model.whichkeyModel.SetBindings(model.commandBindingsFor(model.state))
+	model.whichkeyModel.ApplyCloseKeybinding(model.keyMap.GoBack)
 }
 
 // handleInitializationLoadLibraryCacheResult routes the user depending on whether a library cache exists. A cache hit

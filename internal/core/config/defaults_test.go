@@ -81,7 +81,9 @@ func TestDefaults(t *testing.T) {
 	assertKeybinds("go_back", defaults.Keybinds.GoBack)
 	assertKeybinds("open_actions", defaults.Keybinds.OpenActions)
 
+	assertKeybinds("actions.playlist", defaults.Keybinds.Actions.Playlist)
 	assertKeybinds("actions.library_stats", defaults.Keybinds.Actions.LibraryStats)
+	assertKeybinds("actions.reload_config", defaults.Keybinds.Actions.ReloadConfig)
 }
 
 func TestDefaultsTOMLRoundTrip(t *testing.T) {

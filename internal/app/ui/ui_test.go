@@ -57,8 +57,8 @@ func TestInitReturnsNonNilCmd(t *testing.T) {
 	model, err := New(context.Background(), testutil.DefaultKeyMap(t), &configValue, audio.NewLibrary())
 	require.NoError(t, err)
 
-	// Init returns initializationLoadConfigCommand, which calls config.Load against the real user config dir. We do
-	// not execute it here because that would touch the real filesystem.
+	// Init returns configLoadCommand, which calls config.Load against the real user config dir. We do not execute it
+	// here because that would touch the real filesystem.
 	command := model.Init()
 	require.NotNil(t, command, "Init() returned nil cmd, want a non-nil tea.Cmd")
 }
@@ -79,34 +79,39 @@ func TestBindingsForOmitsCurrentStateAction(t *testing.T) {
 
 	// TODO: this will not scale well.. ;x
 	tests := []struct {
-		name         string
-		state        uiState
-		wantPlaylist bool
-		wantLibStats bool
+		name             string
+		state            uiState
+		wantPlaylist     bool
+		wantLibStats     bool
+		wantReloadConfig bool
 	}{
 		{
-			name:         "bootstrapping has no bindings",
-			state:        uiBootstrapping,
-			wantPlaylist: false,
-			wantLibStats: false,
+			name:             "bootstrapping has no bindings",
+			state:            uiBootstrapping,
+			wantPlaylist:     false,
+			wantLibStats:     false,
+			wantReloadConfig: false,
 		},
 		{
-			name:         "initializing has no bindings",
-			state:        uiInitializing,
-			wantPlaylist: false,
-			wantLibStats: false,
+			name:             "initializing has no bindings",
+			state:            uiInitializing,
+			wantPlaylist:     false,
+			wantLibStats:     false,
+			wantReloadConfig: false,
 		},
 		{
-			name:         "playlist omits open playlist",
-			state:        uiPlaylist,
-			wantPlaylist: false,
-			wantLibStats: true,
+			name:             "playlist omits open playlist",
+			state:            uiPlaylist,
+			wantPlaylist:     false,
+			wantLibStats:     true,
+			wantReloadConfig: true,
 		},
 		{
-			name:         "library stats omits open library stats",
-			state:        uiLibraryStats,
-			wantPlaylist: true,
-			wantLibStats: false,
+			name:             "library stats omits open library stats",
+			state:            uiLibraryStats,
+			wantPlaylist:     true,
+			wantLibStats:     false,
+			wantReloadConfig: true,
 		},
 	}
 
@@ -120,18 +125,21 @@ func TestBindingsForOmitsCurrentStateAction(t *testing.T) {
 
 			bindings := model.commandBindingsFor(test.state)
 
-			var gotPlaylist, gotLibStats bool
+			var gotPlaylist, gotLibStats, gotReloadConfig bool
 			for _, binding := range bindings {
 				switch binding.Action.(type) {
 				case action.OpenPlaylistAction:
 					gotPlaylist = true
 				case action.OpenLibraryStatsAction:
 					gotLibStats = true
+				case action.ReloadConfigAction:
+					gotReloadConfig = true
 				}
 			}
 
 			assert.Equal(t, test.wantPlaylist, gotPlaylist, "playlist binding presence mismatch")
 			assert.Equal(t, test.wantLibStats, gotLibStats, "library stats binding presence mismatch")
+			assert.Equal(t, test.wantReloadConfig, gotReloadConfig, "reload config binding presence mismatch")
 		})
 	}
 }

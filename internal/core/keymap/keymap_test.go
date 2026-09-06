@@ -80,6 +80,13 @@ func TestNewHappyPath(t *testing.T) {
 			wantKey:  bindings.Actions.LibraryStats[0],
 			wantKeys: bindings.Actions.LibraryStats,
 		},
+		{
+			name:     "actions reload config",
+			binding:  func() string { return keyMap.Actions.ReloadConfig.Help().Key },
+			keys:     func() []string { return keyMap.Actions.ReloadConfig.Keys() },
+			wantKey:  bindings.Actions.ReloadConfig[0],
+			wantKeys: bindings.Actions.ReloadConfig,
+		},
 	}
 
 	for _, test := range tests {
@@ -164,6 +171,14 @@ func TestNewEmptyBindingErrors(t *testing.T) {
 			},
 			wantError: "[keymap:New] library_stats must have at least one binding",
 		},
+		{
+			name: "empty actions.reload_config fails",
+			emptyFunc: func(bindings config.KeybindMapping) config.KeybindMapping {
+				bindings.Actions.ReloadConfig = []string{}
+				return bindings
+			},
+			wantError: "[keymap:New] reload_config must have at least one binding",
+		},
 	}
 
 	for _, test := range tests {
@@ -175,6 +190,65 @@ func TestNewEmptyBindingErrors(t *testing.T) {
 			_, err := New(bindings)
 			require.Error(t, err)
 			assert.True(t, strings.Contains(err.Error(), test.wantError))
+		})
+	}
+}
+
+func TestNewDuplicateKeyErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		collideFunc  func(config.KeybindMapping) config.KeybindMapping
+		wantKeyError string
+	}{
+		{
+			name: "reload_config colliding with library_stats fails",
+			collideFunc: func(bindings config.KeybindMapping) config.KeybindMapping {
+				bindings.Actions.ReloadConfig = bindings.Actions.LibraryStats
+				return bindings
+			},
+			wantKeyError: `[keymap:New] duplicate keybinding "l"`,
+		},
+		{
+			name: "quit colliding with select fails",
+			collideFunc: func(bindings config.KeybindMapping) config.KeybindMapping {
+				bindings.Quit = bindings.Select
+				return bindings
+			},
+			wantKeyError: `[keymap:New] duplicate keybinding "enter"`,
+		},
+		{
+			name: "duplicate key within one action fails",
+			collideFunc: func(bindings config.KeybindMapping) config.KeybindMapping {
+				bindings.Actions.ReloadConfig = []string{"x", "x"}
+				return bindings
+			},
+			wantKeyError: `[keymap:New] duplicate keybinding "x"`,
+		},
+		{
+			name: "same key in general and action namespaces is allowed",
+			collideFunc: func(bindings config.KeybindMapping) config.KeybindMapping {
+				bindings.Actions.ReloadConfig = []string{"enter"}
+				return bindings
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			bindings := test.collideFunc(config.Defaults().Keybinds)
+
+			_, err := New(bindings)
+			if test.wantKeyError == "" {
+				assert.NoError(t, err)
+				return
+			}
+
+			require.Error(t, err)
+			assert.True(t, strings.Contains(err.Error(), test.wantKeyError))
 		})
 	}
 }

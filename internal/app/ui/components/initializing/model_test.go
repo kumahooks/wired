@@ -199,11 +199,11 @@ func TestHandleMessage(t *testing.T) {
 			wantCursorSet: true,
 		},
 		{
-			name:        "Select on reload returns ReloadConfigAction",
+			name:        "Select on reload returns ReloadConfigFromInitAction",
 			message:     tea.KeyPressMsg{Code: tea.KeyEnter},
 			setupMode:   modeConfigError,
 			setupCursor: 0,
-			wantAction:  action.ReloadConfigAction{},
+			wantAction:  action.ReloadConfigFromInitAction{},
 		},
 		{
 			name:        "Select on proceed returns ProceedFromInitAction",

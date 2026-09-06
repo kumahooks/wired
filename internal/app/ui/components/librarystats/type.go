@@ -11,7 +11,6 @@ type actionButton int
 const (
 	scanFullLibraryAction actionButton = iota
 	scanNewLibraryAction
-	reloadConfigAction
 )
 
 // button is a selectable action rendered in the button row.

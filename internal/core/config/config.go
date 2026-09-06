@@ -44,6 +44,7 @@ type ThemeConfig struct {
 type ActionsMapping struct {
 	Playlist     []string `toml:"playlist"`
 	LibraryStats []string `toml:"library_stats"`
+	ReloadConfig []string `toml:"reload_config"`
 }
 
 type KeybindMapping struct {
@@ -145,6 +146,7 @@ func (config *Config) validateConfigValues() error {
 
 	nonEmptyArray("keybinds.actions.playlist", config.Keybinds.Actions.Playlist)
 	nonEmptyArray("keybinds.actions.library_stats", config.Keybinds.Actions.LibraryStats)
+	nonEmptyArray("keybinds.actions.reload_config", config.Keybinds.Actions.ReloadConfig)
 
 	hexColor("theme.surface", config.Theme.Surface)
 	hexColor("theme.surface_alt", config.Theme.SurfaceAlt)
