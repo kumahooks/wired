@@ -86,7 +86,7 @@ const (
 	pathsCardTitle     = "LIBRARY PATHS" // the title for the "library paths" card.
 	pathsCardEmptyText = "no library paths"
 
-	rediscoverButtonLabel = "discover library files"         // the "discover library files" button's label.
+	rediscoverButtonLabel = "scan library (full)"            // the "scan library (full)" button's label.
 	rediscoverStatusText  = "found %d audio files..."        // the discovery status line below the button, while file discovery runs.
 	rediscoverFoundText   = "%d audio files have been found" // the first status line shown while the metatag parsing phase runs.
 	rediscoverParsingText = "parsing %d/%d files"            // the second status line shown while the metatag parsing phase runs.
