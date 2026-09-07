@@ -6,4 +6,8 @@ const (
 	maxVisibleLogLines = 5
 	buttonSpacing      = " "
 	hintSeparator      = " · "
+
+	minRenderWidth  = logAreaWidth + 4
+	minRenderHeight = maxVisibleLogLines + 8
+	smallWindowText = "the window is too small to start wire(d)."
 )

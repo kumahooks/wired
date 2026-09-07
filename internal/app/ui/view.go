@@ -15,7 +15,6 @@ func (model *UIModel) View() tea.View {
 }
 
 func (model *UIModel) viewContent() string {
-	// TODO: eventually every component must express their minimum sizes, I think... I wonder what is the best architecture here.
 	if model.windowWidth < minWindowWidth || model.windowHeight < minWindowHeight {
 		return "terminal size is too small"
 	}

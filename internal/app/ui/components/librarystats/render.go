@@ -94,11 +94,7 @@ func (model *Model) renderHeader() string {
 func (model *Model) renderGrid(windowWidth int, windowHeight int) string {
 	if windowWidth < compactGridWidth || windowHeight < compactGridLines {
 		wrappedMessage := ansi.Wordwrap(smallWindowText, max(windowWidth, 0), " ")
-
-		return model.style.muted.
-			Width(max(windowWidth, 0)).
-			Align(lipgloss.Center).
-			Render(wrappedMessage)
+		return model.style.muted.Width(max(windowWidth, 0)).Align(lipgloss.Center).Render(wrappedMessage)
 	}
 
 	cards := screenCards

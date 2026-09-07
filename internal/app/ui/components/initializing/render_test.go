@@ -42,6 +42,18 @@ func TestRenderAllErrorLogs(t *testing.T) {
 	testutil.AssertSnapshot(t, "render_all_errors", model.Render(80, 24))
 }
 
+func TestRenderTooSmallWindow(t *testing.T) {
+	t.Parallel()
+
+	model := New(testutil.DefaultKeyMap(t))
+	model.AppendLog("config loaded successfully", LogNormal)
+
+	rendered := testutil.StripANSI(model.Render(minRenderWidth-1, 24))
+	assert.Contains(t, rendered, smallWindowText, "render output:\n%s", rendered)
+
+	testutil.AssertSnapshot(t, "render_too_small", model.Render(40, 10))
+}
+
 func TestRenderContainsCardHeader(t *testing.T) {
 	t.Parallel()
 

@@ -4,10 +4,16 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // Render returns the full-screen init view with the card (log area and buttons) centered in it.
 func (model *Model) Render(windowWidth int, windowHeight int) string {
+	if windowWidth < minRenderWidth || windowHeight < minRenderHeight {
+		wrappedMessage := ansi.Wordwrap(smallWindowText, max(windowWidth, 0), " ")
+		return model.style.hint.Width(windowWidth).Align(lipgloss.Center).Render(wrappedMessage)
+	}
+
 	card := model.buildCard()
 
 	return lipgloss.Place(windowWidth, windowHeight, lipgloss.Center, lipgloss.Center, card)
