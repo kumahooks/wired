@@ -69,11 +69,12 @@ func (model *Model) Render(windowWidth int, windowHeight int) string {
 	content := lipgloss.JoinVertical(
 		lipgloss.Center,
 		model.renderHeader(),
-		model.renderGrid(max(windowWidth, 0)),
+		model.renderGrid(max(windowWidth, 0), max(windowHeight, 0)),
 		model.renderDiscoveryStatusLines(max(windowWidth, 0)),
 	)
 
-	return lipgloss.Place(windowWidth, windowHeight, lipgloss.Center, lipgloss.Center, content)
+	placed := lipgloss.Place(windowWidth, windowHeight, lipgloss.Center, lipgloss.Center, content)
+	return lipgloss.NewStyle().MaxWidth(windowWidth).MaxHeight(windowHeight).Render(placed)
 }
 
 // renderHeader draws the screen title, separator, and subtitle.
@@ -85,10 +86,21 @@ func (model *Model) renderHeader() string {
 	return headerTitle + headerSeparator + headerSubtitle
 }
 
-// renderGrid composes four card groups, and the button line. In order: "Library Size"+"Library Paths" as libraryColumnGroup,
-// "Metadata Health"+"Files by Format" as metadataFormatColumnGroup, "Top Artists" as topArtistsColumn, and lengthsRow,
-// which horizontally renders "Track Lengths"+"Album Lengths". Finally below these two rows, we render the action buttons.
-func (model *Model) renderGrid(windowWidth int) string {
+// renderGrid composes the card groups, and the button line, dropping groups the window cannot fit.
+// - On width: below fullGridWidth, the "Top Artists" column (and its placeholder) is dropped.
+// - On height: below fullGridLines, the lengths row ("Track Lengths"+"Album Lengths") is dropped.
+//
+// When even the compacted grid cannot fit, a message about the window size is rendered instead.
+func (model *Model) renderGrid(windowWidth int, windowHeight int) string {
+	if windowWidth < compactGridWidth || windowHeight < compactGridLines {
+		wrappedMessage := ansi.Wordwrap(smallWindowText, max(windowWidth, 0), " ")
+
+		return model.style.muted.
+			Width(max(windowWidth, 0)).
+			Align(lipgloss.Center).
+			Render(wrappedMessage)
+	}
+
 	cards := screenCards
 
 	libraryColumnGroup := lipgloss.JoinVertical(
@@ -103,25 +115,35 @@ func (model *Model) renderGrid(windowWidth int) string {
 		model.renderCard(cards.filesByFormat),
 	)
 
-	topArtistsColumn := lipgloss.JoinVertical(
-		lipgloss.Left,
-		model.renderCard(cards.topArtists),
-		model.renderCard(cards.placeholder),
-	)
+	rows := make([]string, 0, 3)
 
-	columnsRow := lipgloss.JoinHorizontal(lipgloss.Top, libraryColumnGroup, metadataFormatColumnGroup, topArtistsColumn)
-	lengthsRow := lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		model.renderCard(cards.trackLengths),
-		model.renderCard(cards.albumLengths),
-	)
+	if windowWidth < fullGridWidth {
+		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Top, libraryColumnGroup, metadataFormatColumnGroup))
+	} else {
+		topArtistsColumn := lipgloss.JoinVertical(
+			lipgloss.Left,
+			model.renderCard(cards.topArtists),
+			model.renderCard(cards.placeholder),
+		)
 
-	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		columnsRow,
-		lengthsRow,
-		lipgloss.NewStyle().PaddingLeft(buttonRowLeftPadding).Render(model.renderButtonsRow()),
-	)
+		rows = append(
+			rows,
+			lipgloss.JoinHorizontal(lipgloss.Top, libraryColumnGroup, metadataFormatColumnGroup, topArtistsColumn),
+		)
+	}
+
+	// on width clamping the lengths row vanishes along with the top artists column.
+	if windowWidth >= lengthsRowWidth && windowHeight >= fullGridLines {
+		rows = append(rows, lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			model.renderCard(cards.trackLengths),
+			model.renderCard(cards.albumLengths),
+		))
+	}
+
+	rows = append(rows, lipgloss.NewStyle().PaddingLeft(buttonRowLeftPadding).Render(model.renderButtonsRow()))
+
+	return lipgloss.JoinVertical(lipgloss.Left, rows...)
 }
 
 // renderCard wraps drawn content in the bordered box with the title set as the first line.

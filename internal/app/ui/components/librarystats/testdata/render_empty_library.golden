@@ -1,29 +1,24 @@
-                            library stats · present day // present time                           
-╭─────────────────────────╮╭──────────────────────────────────╮╭─────────────────────────────────╮
-│LIBRARY SIZE             ││METADATA HEALTH                   ││TOP ARTISTS                      │
-│files total            --││no title                        --││by files                         │
-│bytes total            --││no artist                       --││--                               │
-│avg bytes              --││no album                        --││by albums                        │
-│heaviest               --││duplicates                      --││--                               │
-╰─────────────────────────╯╰──────────────────────────────────╯│by playtime                      │
-╭─────────────────────────╮╭──────────────────────────────────╮│--                               │
-│LIBRARY PATHS            ││FILES BY FORMAT                   ││                                 │
-│no library paths         ││--                                ││                                 │
-│                         ││                                  ││                                 │
-│                         ││                                  ││                                 │
-│                         ││                                  ││                                 │
-│                         ││                                  ││                                 │
-│                         ││                                  │╰─────────────────────────────────╯
-│                         ││                                  │╭─────────────────────────────────╮
-│                         ││                                  ││PLACEHOLDER                      │
-│                         ││                                  ││                                 │
-╰─────────────────────────╯╰──────────────────────────────────╯╰─────────────────────────────────╯
-╭───────────────────────────────────────────────╮╭───────────────────────────────────────────────╮
-│TRACK LENGTHS                                  ││ALBUM LENGTHS                                  │
-│no duration data                               ││no duration data                               │
-│                                               ││                                               │
-│                                               ││                                               │
-╰───────────────────────────────────────────────╯╰───────────────────────────────────────────────╯
-   scan library (full)     scan library (new only)                                                
-                                                                                                  
-                                                                                                  
+                   library stats · present day // present time                  
+         ╭─────────────────────────╮╭──────────────────────────────────╮        
+         │LIBRARY SIZE             ││METADATA HEALTH                   │        
+         │files total            --││no title                        --│        
+         │bytes total            --││no artist                       --│        
+         │avg bytes              --││no album                        --│        
+         │heaviest               --││duplicates                      --│        
+         ╰─────────────────────────╯╰──────────────────────────────────╯        
+         ╭─────────────────────────╮╭──────────────────────────────────╮        
+         │LIBRARY PATHS            ││FILES BY FORMAT                   │        
+         │no library paths         ││--                                │        
+         │                         ││                                  │        
+         │                         ││                                  │        
+         │                         ││                                  │        
+         │                         ││                                  │        
+         │                         ││                                  │        
+         │                         ││                                  │        
+         │                         ││                                  │        
+         │                         ││                                  │        
+         ╰─────────────────────────╯╰──────────────────────────────────╯        
+            scan library (full)     scan library (new only)                     
+                                                                                
+                                                                                
+                                                                                

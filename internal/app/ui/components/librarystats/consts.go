@@ -6,8 +6,21 @@ const (
 	smallCardWidth = 34 // the smallest width a card can render at.
 	labelWidth     = 12 // the fixed width reserved for the row labels/keys.
 
-	// the terminal width from which the grid splits into three columns.
-	threeColumnsMinWidth = 3*smallCardWidth + 2*borderWidth + 4
+	// the terminal width thresholds of the grid's layout tiers.
+	fullGridWidth    = librarySizeCardWidth + metadataFormatGroupWidth + topArtistsCardWidth
+	compactGridWidth = librarySizeCardWidth + metadataFormatGroupWidth
+	lengthsRowWidth  = 2 * lengthsGroupWidth // the lengths row renders two side-by-side length cards.
+
+	// the terminal height thresholds of the grid's layout tiers.
+	cardVerticalOverhead = 3 // the vertical space a card's borders and title line consume.
+	headerLines          = 1 // the header's fixed line count.
+	buttonRowLines       = 1 // the buttons row's fixed line count.
+
+	// the columns row is a stack of two cards per column group.
+	columnsRowLines  = librarySizeCardLines + pathsCardLines + 2*cardVerticalOverhead
+	lengthsRowLines  = lengthsGroupLines + cardVerticalOverhead
+	fullGridLines    = headerLines + columnsRowLines + lengthsRowLines + buttonRowLines + discoveryStatusLines
+	compactGridLines = headerLines + columnsRowLines + buttonRowLines + discoveryStatusLines
 
 	buttonRowLeftPadding = 1 // column of whitespaces kept at the left of the actions buttons.
 	discoveryStatusLines = 2 // the fixed line count of the discovery status lines below the grid.
@@ -30,7 +43,7 @@ const (
 	formatCardBarWidth         = 8                  // the glyph width of the format bars.
 
 	lengthsGroupWidth      = smallCardWidth + 15 // the pinned width of the "track lengths" and "album lengths" cards.
-	lengthsGroupLines      = 3                   // lengthsGroupLines is the fixed inner content height of the length cards.
+	lengthsGroupLines      = 3                   // the fixed inner content height of the length cards.
 	lengthsGroupLabelWidth = 9                   // the narrower label/key width the length cards use.
 
 	topArtistsCardSections       = 3                  // how many sub-sections the top artists card hold.
@@ -99,4 +112,7 @@ const (
 	scanStatusText  = "found %d audio files..."        // the discovery status line below the button, while file discovery runs.
 	scanFoundText   = "%d audio files have been found" // the first status line shown while the metatag parsing phase runs.
 	scanParsingText = "parsing %d/%d files"            // the second status line shown while the metatag parsing phase runs.
+
+	// the message rendered in place of the grid when the window cannot fit any layout tier.
+	smallWindowText = "the window is too small to render the library stats."
 )

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"charm.land/lipgloss/v2"
 	"github.com/stretchr/testify/assert"
 
 	"wired/internal/core/audio"
@@ -34,6 +35,111 @@ func TestRenderEmptyLibraryWithLeaderboards(t *testing.T) {
 	model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
 
 	testutil.AssertSnapshot(t, "render_empty_library_with_leaderboards", model.Render(120, 40))
+}
+
+func TestRenderCompactGridDropsArtistsAndLengths(t *testing.T) {
+	t.Parallel()
+
+	model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
+
+	rendered := testutil.StripANSI(model.Render(80, 40))
+	assert.Contains(t, rendered, "LIBRARY SIZE", "render output:\n%s", rendered)
+	assert.Contains(t, rendered, "METADATA HEALTH", "render output:\n%s", rendered)
+	assert.NotContains(t, rendered, "TOP ARTISTS", "render output:\n%s", rendered)
+	assert.NotContains(t, rendered, "PLACEHOLDER", "render output:\n%s", rendered)
+	assert.NotContains(t, rendered, "TRACK LENGTHS", "render output:\n%s", rendered)
+	assert.NotContains(t, rendered, "ALBUM LENGTHS", "render output:\n%s", rendered)
+}
+
+func TestRenderWideShortWindowKeepsArtistsDropsLengths(t *testing.T) {
+	t.Parallel()
+
+	model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
+
+	rendered := testutil.StripANSI(model.Render(120, 24))
+	assert.Contains(t, rendered, "TOP ARTISTS", "render output:\n%s", rendered)
+	assert.NotContains(t, rendered, "TRACK LENGTHS", "render output:\n%s", rendered)
+	assert.NotContains(t, rendered, "ALBUM LENGTHS", "render output:\n%s", rendered)
+}
+
+func TestRenderGridFitsWindowHeight(t *testing.T) {
+	t.Parallel()
+
+	for _, windowSize := range []struct {
+		width  int
+		height int
+	}{
+		{120, fullGridLines},       // exact full-grid fit.
+		{120, fullGridLines - 1},   // lengths row must drop, grid must still fit.
+		{80, compactGridLines},     // exact compact-grid fit.
+		{80, compactGridLines - 1}, // must degrade to the small-window message.
+		{40, 10},                   // tiny window, message path.
+	} {
+		model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
+
+		rendered := model.Render(windowSize.width, windowSize.height)
+		assert.True(
+			t,
+			lipgloss.Height(rendered) <= windowSize.height && lipgloss.Width(rendered) <= windowSize.width,
+			"render at %dx%d overflows the window:\n%s",
+			windowSize.width,
+			windowSize.height,
+			testutil.StripANSI(rendered),
+		)
+	}
+}
+
+func TestRenderBoundaryWidthsSwitchTiers(t *testing.T) {
+	t.Parallel()
+
+	model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
+
+	// at exactly fullGridWidth the artists column fits; one column narrower it drops.
+	withArtists := testutil.StripANSI(model.Render(fullGridWidth, 40))
+	assert.Contains(t, withArtists, "TOP ARTISTS", "render output:\n%s", withArtists)
+
+	withoutArtists := testutil.StripANSI(model.Render(fullGridWidth-1, 40))
+	assert.NotContains(t, withoutArtists, "TOP ARTISTS", "render output:\n%s", withoutArtists)
+
+	// at exactly lengthsRowWidth (== fullGridWidth) the lengths row fits; one narrower it drops.
+	withLengths := testutil.StripANSI(model.Render(lengthsRowWidth, 40))
+	assert.Contains(t, withLengths, "TRACK LENGTHS", "render output:\n%s", withLengths)
+
+	withoutLengths := testutil.StripANSI(model.Render(lengthsRowWidth-1, 40))
+	assert.NotContains(t, withoutLengths, "TRACK LENGTHS", "render output:\n%s", withoutLengths)
+}
+
+func TestRenderBoundaryHeightsSwitchTiers(t *testing.T) {
+	t.Parallel()
+
+	model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
+
+	// at exactly fullGridLines the lengths row fits, one shorter it drops (artists still fit).
+	withLengths := testutil.StripANSI(model.Render(120, fullGridLines))
+	assert.Contains(t, withLengths, "TRACK LENGTHS", "render output:\n%s", withLengths)
+
+	withoutLengths := testutil.StripANSI(model.Render(120, fullGridLines-1))
+	assert.NotContains(t, withoutLengths, "TRACK LENGTHS", "render output:\n%s", withoutLengths)
+
+	// at exactly compactGridLines the compact grid fits, one shorter it degrades to the message.
+	compact := testutil.StripANSI(model.Render(80, compactGridLines))
+	assert.Contains(t, compact, "LIBRARY SIZE", "render output:\n%s", compact)
+
+	degenerate := testutil.StripANSI(model.Render(80, compactGridLines-1))
+	assert.Contains(t, degenerate, smallWindowText, "render output:\n%s", degenerate)
+}
+
+func TestRenderTinyWindowShowsSizeMessage(t *testing.T) {
+	t.Parallel()
+
+	model := New(testutil.DefaultKeyMap(t), audio.NewLibrary())
+
+	rendered := testutil.StripANSI(model.Render(40, 10))
+	assert.Contains(t, rendered, "the window is too small", "render output:\n%s", rendered)
+	assert.Contains(t, rendered, "library stats.", "render output:\n%s", rendered)
+	assert.NotContains(t, rendered, "LIBRARY SIZE", "render output:\n%s", rendered)
+
+	testutil.AssertSnapshot(t, "render_empty_library_tiny_window", model.Render(40, 10))
 }
 
 func TestRenderPopulatedLibraryWithLeaderboards(t *testing.T) {
