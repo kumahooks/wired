@@ -23,7 +23,6 @@ func (model *UIModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	// Library discovery:
 	// Step 1: discovering audio files at the library paths.
 	case discoverFilesStartMessage:
-		model.PushNotification("starting library discovery...")
 		commands = append(commands, model.handleDiscoverFilesStartMessage(message))
 	// Step 2.1: start parsing the discovered files' metatags.
 	case discoverFilesResultMessage:

@@ -182,6 +182,12 @@ func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 // handleDiscoverFilesStartMessage stores the discovery's cancel func so reload/quit can abort the current discovery,
 // seeds the live counter at zero, and starts both the progress tick chain and the result waiter.
 func (model *UIModel) handleDiscoverFilesStartMessage(message discoverFilesStartMessage) tea.Cmd {
+	if len(model.config.LibrariesPaths) == 0 {
+		model.PushNotification("there is no library path to scan w_w")
+		return nil
+	}
+
+	model.PushNotification("starting library discovery...")
 	model.libraryDiscoveryCancel = message.discoveryCancel
 	model.libraryDiscoveryGeneration = message.generation
 	model.libraryStatsModel.StartDiscovery()
