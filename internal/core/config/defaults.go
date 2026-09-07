@@ -30,6 +30,10 @@ func Defaults() Config {
 		Keybinds: KeybindMapping{
 			MoveLeft:    []string{"h", "left"},
 			MoveRight:   []string{"l", "right"},
+			MoveUp:      []string{"k", "up"},
+			MoveDown:    []string{"j", "down"},
+			MoveTop:     []string{"g"},
+			MoveBottom:  []string{"G"},
 			Select:      []string{"enter"},
 			Quit:        []string{"ctrl+d"},
 			GoBack:      []string{"escape"},

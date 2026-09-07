@@ -185,6 +185,8 @@ func TestConfigLoadedInitOriginHappyPath(t *testing.T) {
 	customConfig.Keybinds.MoveRight = []string{"k"}
 	customConfig.Keybinds.Select = []string{"enter"}
 	customConfig.Keybinds.Quit = []string{"q"}
+	customConfig.Keybinds.MoveUp = []string{"ctrl+k"}
+	customConfig.Keybinds.MoveDown = []string{"ctrl+j"}
 	customConfig.LibrariesPaths = []string{t.TempDir()}
 
 	_, command := model.Update(configLoadedMessage{
@@ -332,6 +334,8 @@ func TestHandleUserConfigLoadedHappyPath(t *testing.T) {
 	customConfig.Keybinds.MoveRight = []string{"k"}
 	customConfig.Keybinds.Select = []string{"enter"}
 	customConfig.Keybinds.Quit = []string{"q"}
+	customConfig.Keybinds.MoveUp = []string{"ctrl+k"}
+	customConfig.Keybinds.MoveDown = []string{"ctrl+j"}
 	customConfig.LibrariesPaths = []string{t.TempDir()}
 
 	_, command := model.Update(configLoadedMessage{

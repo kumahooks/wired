@@ -107,6 +107,25 @@ func TestAppendLogAccumulatesInOrder(t *testing.T) {
 	}
 }
 
+func TestAppendLogAnchorsScrollOffset(t *testing.T) {
+	t.Parallel()
+
+	model := New(defaultKeyMap(t))
+	for range maxVisibleLogLines + 2 {
+		model.AppendLog("line", LogNormal)
+	}
+
+	model.moveLogScroll(2)
+	wantScrollOffset := 2
+	assert.Equal(t, wantScrollOffset, model.scrollOffset)
+
+	model.AppendLog("late line", LogNormal)
+
+	// The offset grows with the buffer so the visible window stays anchored on the same lines.
+	wantScrollOffset = 3
+	assert.Equal(t, wantScrollOffset, model.scrollOffset)
+}
+
 func TestButtonsForMode(t *testing.T) {
 	t.Parallel()
 

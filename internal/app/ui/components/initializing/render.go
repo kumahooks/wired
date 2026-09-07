@@ -42,12 +42,17 @@ func (model *Model) renderLogArea() string {
 
 // visibleLogRows returns the rendered log lines that fit in the fixed log area (at most maxVisibleLogLines).
 func (model *Model) visibleLogRows() []string {
-	startIndex := 0
-	if len(model.logLines) > maxVisibleLogLines {
-		startIndex = len(model.logLines) - maxVisibleLogLines
+	startIndex := len(model.logLines) - maxVisibleLogLines - model.scrollOffset
+	if startIndex < 0 {
+		startIndex = 0
 	}
 
-	visibleLines := model.logLines[startIndex:]
+	endIndex := startIndex + maxVisibleLogLines
+	if endIndex > len(model.logLines) {
+		endIndex = len(model.logLines)
+	}
+
+	visibleLines := model.logLines[startIndex:endIndex]
 	logRows := make([]string, 0, len(visibleLines))
 
 	for _, entry := range visibleLines {

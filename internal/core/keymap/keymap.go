@@ -18,6 +18,10 @@ type ActionsKeyMap struct {
 type KeyMap struct {
 	MoveLeft    key.Binding
 	MoveRight   key.Binding
+	MoveUp      key.Binding
+	MoveDown    key.Binding
+	MoveTop     key.Binding
+	MoveBottom  key.Binding
 	Select      key.Binding
 	Quit        key.Binding
 	GoBack      key.Binding
@@ -30,6 +34,10 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 	// General keybinds.
 	moveLeftKeys := canonicalTeaKeyNames(bindings.MoveLeft)
 	moveRightKeys := canonicalTeaKeyNames(bindings.MoveRight)
+	moveUpKeys := canonicalTeaKeyNames(bindings.MoveUp)
+	moveDownKeys := canonicalTeaKeyNames(bindings.MoveDown)
+	moveTopKeys := canonicalTeaKeyNames(bindings.MoveTop)
+	moveBottomKeys := canonicalTeaKeyNames(bindings.MoveBottom)
 	selectKeys := canonicalTeaKeyNames(bindings.Select)
 	quitKeys := canonicalTeaKeyNames(bindings.Quit)
 	goBackKeys := canonicalTeaKeyNames(bindings.GoBack)
@@ -43,6 +51,18 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 	}
 	if len(bindings.MoveRight) == 0 {
 		return KeyMap{}, fmt.Errorf("[keymap:New] move_right must have at least one binding")
+	}
+	if len(bindings.MoveUp) == 0 {
+		return KeyMap{}, fmt.Errorf("[keymap:New] move_up must have at least one binding")
+	}
+	if len(bindings.MoveDown) == 0 {
+		return KeyMap{}, fmt.Errorf("[keymap:New] move_down must have at least one binding")
+	}
+	if len(bindings.MoveTop) == 0 {
+		return KeyMap{}, fmt.Errorf("[keymap:New] move_top must have at least one binding")
+	}
+	if len(bindings.MoveBottom) == 0 {
+		return KeyMap{}, fmt.Errorf("[keymap:New] move_bottom must have at least one binding")
 	}
 	if len(bindings.Select) == 0 {
 		return KeyMap{}, fmt.Errorf("[keymap:New] select must have at least one binding")
@@ -71,6 +91,10 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 	generalKeys := [][]string{
 		moveLeftKeys,
 		moveRightKeys,
+		moveUpKeys,
+		moveDownKeys,
+		moveTopKeys,
+		moveBottomKeys,
 		selectKeys,
 		quitKeys,
 		goBackKeys,
@@ -92,6 +116,10 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 	return KeyMap{
 		MoveLeft:    newBinding(moveLeftKeys, "move left"),
 		MoveRight:   newBinding(moveRightKeys, "move right"),
+		MoveUp:      newBinding(moveUpKeys, "scroll up"),
+		MoveDown:    newBinding(moveDownKeys, "scroll down"),
+		MoveTop:     newBinding(moveTopKeys, "scroll to top"),
+		MoveBottom:  newBinding(moveBottomKeys, "scroll to bottom"),
 		Select:      newBinding(selectKeys, "select"),
 		Quit:        newBinding(quitKeys, "quit"),
 		GoBack:      newBinding(goBackKeys, "go back"),

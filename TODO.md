@@ -1,7 +1,7 @@
 Completely unorganized and without a deep thought behind.
 
 - [x] Leader key to trigger commands similar to nvim?
-- [ ] Initialization screen supports j/k to move up/down the log lines.
+- [x] Initialization screen supports j/k to move up/down the log lines.
 - [X] Metatag parsing of audio files.
 - [X] Organization and definitions of albums and music, based on the retrieved metatag.
 - [X] Cache of previously scanned files.

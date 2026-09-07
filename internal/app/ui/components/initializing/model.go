@@ -47,6 +47,10 @@ func (model *Model) AppendLog(line string, logType LogType) {
 		text:    fmt.Sprintf("[%d] %s", model.logCount, line),
 		logType: logType,
 	})
+
+	if model.scrollOffset > 0 {
+		model.scrollOffset++
+	}
 }
 
 // HandleMessage handles keyboard navigation and actions for the button row.
@@ -61,6 +65,12 @@ func (model *Model) HandleMessage(message tea.Msg) action.Action {
 		model.moveCursor(-1)
 	case key.Matches(keyPress, model.keyMap.MoveRight):
 		model.moveCursor(1)
+	case key.Matches(keyPress, model.keyMap.MoveUp):
+		model.moveLogScroll(1)
+	case key.Matches(keyPress, model.keyMap.MoveDown):
+		model.moveLogScroll(-1)
+	case key.Matches(keyPress, model.keyMap.MoveBottom):
+		model.moveLogScrollToTail()
 	case key.Matches(keyPress, model.keyMap.Select):
 		if len(model.buttons) == 0 {
 			return action.NoAction{}
@@ -72,6 +82,21 @@ func (model *Model) HandleMessage(message tea.Msg) action.Action {
 		case proceedAction:
 			return action.ProceedFromInitAction{}
 		}
+	}
+
+	// The "gg" sequence: the first move_top press only arms the sequence, any other key disarms it.
+	// TODO: if eventually wired has other sequence shortcuts (here or elsewhere), maybe revisiting this into a proper
+	// sequence keybinds system will be necessary...
+	switch {
+	case key.Matches(keyPress, model.keyMap.MoveTop):
+		if model.pendingTopKey {
+			model.pendingTopKey = false
+			model.moveLogScrollToHead()
+		} else {
+			model.pendingTopKey = true
+		}
+	default:
+		model.pendingTopKey = false
 	}
 
 	return action.NoAction{}

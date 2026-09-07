@@ -50,6 +50,10 @@ type ActionsMapping struct {
 type KeybindMapping struct {
 	MoveLeft    []string       `toml:"move_left"`
 	MoveRight   []string       `toml:"move_right"`
+	MoveUp      []string       `toml:"move_up"`
+	MoveDown    []string       `toml:"move_down"`
+	MoveTop     []string       `toml:"move_top"`
+	MoveBottom  []string       `toml:"move_bottom"`
 	Select      []string       `toml:"select"`
 	Quit        []string       `toml:"quit"`
 	GoBack      []string       `toml:"go_back"`
@@ -139,6 +143,10 @@ func (config *Config) validateConfigValues() error {
 
 	nonEmptyArray("keybinds.move_left", config.Keybinds.MoveLeft)
 	nonEmptyArray("keybinds.move_right", config.Keybinds.MoveRight)
+	nonEmptyArray("keybinds.move_up", config.Keybinds.MoveUp)
+	nonEmptyArray("keybinds.move_down", config.Keybinds.MoveDown)
+	nonEmptyArray("keybinds.move_top", config.Keybinds.MoveTop)
+	nonEmptyArray("keybinds.move_bottom", config.Keybinds.MoveBottom)
 	nonEmptyArray("keybinds.select", config.Keybinds.Select)
 	nonEmptyArray("keybinds.quit", config.Keybinds.Quit)
 	nonEmptyArray("keybinds.go_back", config.Keybinds.GoBack)

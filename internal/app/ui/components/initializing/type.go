@@ -52,6 +52,12 @@ type Model struct {
 	logLines []logLine
 	logCount int
 
+	// scrollOffset is how many log lines the viewport is scrolled up from the tail.
+	scrollOffset int
+
+	// pendingTopKey arms the scroll-to-top sequence (default is "gg").
+	pendingTopKey bool
+
 	// mode decides which buttons are shown to the user depending on the config and cache state.
 	mode initMode
 
