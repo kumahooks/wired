@@ -555,11 +555,34 @@ func TestHandleDiscoverFilesStartMessage(t *testing.T) {
 		generation:      7,
 	}
 
-	_, command := model.Update(message)
+	modelWithPaths := *model
+	modelWithPaths.config.LibrariesPaths = []string{t.TempDir()}
+	_, command := modelWithPaths.Update(message)
 
-	require.NotNil(t, model.libraryDiscoveryCancel, "discoveryCancel = nil, want the cancel func")
-	assert.Equal(t, uint64(7), model.libraryDiscoveryGeneration)
+	require.NotNil(t, modelWithPaths.libraryDiscoveryCancel, "discoveryCancel = nil, want the cancel func")
+	assert.Equal(t, uint64(7), modelWithPaths.libraryDiscoveryGeneration)
 	require.NotNil(t, command, "returned cmd = nil, want the progress tick cmd")
+}
+
+func TestHandleDiscoverFilesStartMessageWithoutLibraryPaths(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+	assert.Empty(t, model.config.LibrariesPaths)
+
+	_, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	message := discoverFilesStartMessage{
+		progress:        audio.NewDiscoveryProgress(),
+		discoveryCancel: cancel,
+		generation:      7,
+	}
+
+	_, _ = model.Update(message)
+
+	require.Nil(t, model.libraryDiscoveryCancel, "discoveryCancel set despite no library paths")
+	assert.True(t, model.notificationModel.HasActiveNotifications(), "want the no-paths notification")
 }
 
 func TestHandleDiscoveryProgressTickMessage(t *testing.T) {
