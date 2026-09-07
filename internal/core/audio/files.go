@@ -76,7 +76,7 @@ func DiscoverFiles(
 
 		walkDirectory := func(path string, entry fs.DirEntry, err error) error {
 			if err != nil {
-				// If the very first directory errors, we should return it. Otherwise we just continue.
+				// If the very first directory errors, it should return. Otherwise, just continue.
 				if path == currentRoot {
 					return err
 				}
@@ -173,7 +173,7 @@ func parseAudioFileMetaTag(audioFile *AudioFile) {
 	}
 	defer file.Close()
 
-	// TODO: we made wiretag return idiomatic Go errors, but honestly this is kinda bad... can we improve there?
+	// TODO: wiretag was made to return idiomatic Go errors, but honestly this is kinda bad... can this be improved?
 	title, _ := file.Title()
 	artist, _ := file.Artist()
 	album, _ := file.Album()

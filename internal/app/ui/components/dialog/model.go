@@ -55,8 +55,8 @@ func (model *Model) ApplyKeyMap(resolvedKeyMap keymap.KeyMap) {
 	model.keyMap = resolvedKeyMap
 }
 
-// HandleMessage handles keyboard navigation between the two buttons and their selection. We drop keys within the key grace
-// period to avoid the user confirming an action by mistake.
+// HandleMessage handles keyboard navigation between the two buttons and their selection. Keys within the key grace period
+// are dropped to avoid the user confirming an action by mistake.
 func (model *Model) HandleMessage(message tea.Msg) action.Action {
 	keyPress, ok := message.(tea.KeyPressMsg)
 	if !ok || !model.isOpen {

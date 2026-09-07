@@ -57,8 +57,7 @@ func TestInitReturnsNonNilCmd(t *testing.T) {
 	model, err := New(context.Background(), testutil.DefaultKeyMap(t), &configValue, audio.NewLibrary())
 	require.NoError(t, err)
 
-	// Init returns configLoadCommand, which calls config.Load against the real user config dir. We do not execute it
-	// here because that would touch the real filesystem.
+	// Init returns configLoadCommand, which calls config.Load against the real user config dir.
 	command := model.Init()
 	require.NotNil(t, command, "Init() returned nil cmd, want a non-nil tea.Cmd")
 }

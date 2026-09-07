@@ -52,7 +52,7 @@ func LoadCache() (map[string]*AudioFile, error) {
 		return nil, fmt.Errorf("[audio:LoadCache] unmarshal cache file: %w", err)
 	}
 
-	// JSON null entries unmarshal as nil pointers, so we drop them here so consumers never see a nil *AudioFile.
+	// JSON null entries unmarshal as nil pointers, so dropping them here in order for consumers to never see a nil *AudioFile.
 	for filePath, audioFile := range cacheResult {
 		if audioFile == nil {
 			delete(cacheResult, filePath)

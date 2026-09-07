@@ -5,7 +5,7 @@ import (
 )
 
 type Model struct {
-	// isVisible is the flag that decides whether we are in the middle of a whichkey combo or not. It is what makes an
+	// isVisible is the flag that decides whether the user is in the middle of a whichkey combo or not. It is what makes an
 	// action sink into this component, render the card with the actions mapped, etc.
 	isVisible bool
 

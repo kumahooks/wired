@@ -38,7 +38,7 @@ type WiredOrchestrator struct {
 func New(ctx context.Context) (*WiredOrchestrator, error) {
 	orchestrator := &WiredOrchestrator{}
 
-	// We store a cancel context mainly just to shutdown cleanly.
+	// Store a cancel context mainly just to shutdown cleanly.
 	orchestrator.cancelContext, orchestrator.cancelFunction = context.WithCancel(ctx)
 
 	// Loads the default configs and keymaps, so the user is not left stuck in case their custom config is broken.

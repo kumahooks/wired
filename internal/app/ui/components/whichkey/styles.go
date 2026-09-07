@@ -22,7 +22,7 @@ func newStyle(resolvedTheme theme.Theme) Style {
 		// card renders as a simple area with no background color and with no bottom padding.
 		card: lipgloss.NewStyle().Padding(1, 2, 0, 2),
 
-		// for each action key mapped in this component, we style the key, separator (->), and description, separately.
+		// for each action key mapped in this component styles the key, separator (->), and description, separately.
 		key:         lipgloss.NewStyle().Foreground(resolvedTheme.AccentPrompt),
 		separator:   lipgloss.NewStyle().Foreground(resolvedTheme.Track),
 		description: lipgloss.NewStyle().Foreground(resolvedTheme.AccentDeep),

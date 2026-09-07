@@ -18,7 +18,7 @@ const (
 )
 
 // ThemeConfig holds the color palette as #RRGGBB hex strings, read directly from TOML.
-// TODO: I loaded all my color palette from my webserver. Eventually we should delete the colors we won't be using :)
+// TODO: I loaded all my color palette from my webserver. Eventually it's wise to delete the unused colors :)
 type ThemeConfig struct {
 	Surface           string `toml:"surface"`
 	SurfaceAlt        string `toml:"surface_alt"`

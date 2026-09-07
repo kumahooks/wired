@@ -77,7 +77,7 @@ func (model *Model) renderButtonRow() string {
 	for position, action := range visibleActions {
 		buttonIndex := model.canonicalIndexForVisible(action)
 
-		// Between every button we add the spacer.
+		// Between every button there's a spacer.
 		if position > 0 {
 			buttonsRendering = append(buttonsRendering, buttonSpacing)
 		}

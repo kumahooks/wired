@@ -293,7 +293,7 @@ func TestConfigLoadedInitOriginLibrariesEmitsCacheLoad(t *testing.T) {
 }
 
 func TestConfigLoadedInitOriginEmptyLibraryCacheWarnsUser(t *testing.T) {
-	// The cache load command reads the real user config dir, so we set it like this.
+	// The cache load command reads the real user config dir, so set it like this.
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	model := newTestUI(t)

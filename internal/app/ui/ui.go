@@ -91,7 +91,7 @@ func New(
 
 // Init is the first function that will be called. It returns an optional initial command. (bubbletea's own words)
 func (model *UIModel) Init() tea.Cmd {
-	// Init sends a tea.Cmd message to load the user's config. It's the very first thing we run, getting the app ready to use.
+	// Init sends a tea.Cmd message to load the user's config. It's the very first thing ran, getting the app ready to use.
 	model.isConfigLoading = true
 	return configLoadCommand(configLoadOriginInit)
 }

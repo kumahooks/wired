@@ -11,7 +11,7 @@ import (
 // composeOverlays stacks every visible overlay on top of the base view.
 //
 // TODO: a new Compositor flattens and z-sorts the layer tree on every call, and View calls this once per frame.
-// this *could* be problematic... if we have performance issues later we should definitely revisit this.
+// this *could* be problematic... if wired starts getting performance issues later on, it will be necessary to revisit this.
 // for reference, crush avoids this by drawing into a uv.ScreenBuffer.
 func (model *UIModel) composeOverlays(base string) string {
 	baseLayer := lipgloss.NewLayer(base)
