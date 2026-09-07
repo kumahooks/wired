@@ -98,6 +98,12 @@ func DiscoverFiles(
 				return nil
 			}
 
+			if library != nil {
+				if _, known := library.File[path]; known {
+					return nil
+				}
+			}
+
 			filesCount++
 
 			var fileSizeBytes int64
@@ -191,6 +197,21 @@ func parseAudioFileMetaTag(audioFile *AudioFile) {
 	audioFile.Bitrate = bitrate
 	audioFile.Samplerate = samplerate
 	audioFile.Channels = channels
+}
+
+// UntaggedFiles returns the library's files that have no parsed metatags.
+func (library *Library) UntaggedFiles() []*AudioFile {
+	untaggedFiles := make([]*AudioFile, 0, len(library.File))
+
+	for _, audioFile := range library.File {
+		if audioFile == nil || audioFile.Artist != "" || audioFile.Title != "" || audioFile.Album != "" {
+			continue
+		}
+
+		untaggedFiles = append(untaggedFiles, audioFile)
+	}
+
+	return untaggedFiles
 }
 
 // BuildLibraryIndexes creates the ByAlbum and ByArtist indexes from the parsed files.

@@ -630,9 +630,12 @@ func TestHandleDiscoverFilesResultMessageCurrentGeneration(t *testing.T) {
 	sentinelCanceled := false
 	model.libraryDiscoveryCancel = func() { sentinelCanceled = true }
 
+	discoveredProgress := audio.NewDiscoveryProgress()
+	discoveredProgress.AddDiscovered(1)
+
 	_, command := model.Update(discoverFilesResultMessage{
 		library:    audio.NewLibrary(),
-		progress:   audio.NewDiscoveryProgress(),
+		progress:   discoveredProgress,
 		err:        nil,
 		generation: 10,
 	})
@@ -1135,7 +1138,7 @@ func TestDiscoverFilesStartCommandAsync(t *testing.T) {
 	contextForDiscovery, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	startCommand := discoverFilesStartCommand(contextForDiscovery, 1, []string{libraryDir}, audio.NewLibrary())
+	startCommand := discoverFilesStartCommand(contextForDiscovery, 1, []string{libraryDir}, audio.NewLibrary(), false)
 	startMessage := executeCmd(t, startCommand).(discoverFilesStartMessage)
 
 	// The start message carries its own progress reporter, and the discovery goroutine reports into it.
@@ -1235,6 +1238,80 @@ func TestHandleMetatagParseStartMessageStaleGeneration(t *testing.T) {
 	assert.Equal(t, uint64(10), model.libraryDiscoveryGeneration, "stale parse start moved the generation")
 }
 
+func TestHandleDiscoverFilesResultMessageNewOnlyParsesUntaggedOnly(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+	model.libraryDiscoveryGeneration = 10
+
+	library := audio.NewLibrary()
+	library.Add("/untagged.flac", 1)
+	library.Add("/parsed.flac", 1)
+	library.File["/parsed.flac"].Title = "Fool"
+	library.File["/parsed.flac"].Artist = "bôa"
+
+	discoveredProgress := audio.NewDiscoveryProgress()
+	discoveredProgress.AddDiscovered(1)
+
+	_, command := model.Update(discoverFilesResultMessage{
+		library:    library,
+		progress:   discoveredProgress,
+		err:        nil,
+		generation: 10,
+		onlyNew:    true,
+	})
+
+	require.NotNil(t, command, "returned cmd should be the next-step parse cmd")
+	assert.Equal(t, 1, discoveredProgress.DiscoveredCount())
+
+	// The parse start message must carry only the untagged snapshot, not the whole library.
+	parseStart := executeCmd(t, command).(metatagParseStartMessage)
+	require.NotNil(t, parseStart.progress)
+	assert.Equal(t, uint64(10), parseStart.generation)
+}
+
+func TestHandleDiscoverFilesResultMessageNewOnlyNothingFound(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+	model.libraryDiscoveryGeneration = 10
+	model.libraryDiscoveryCancel = func() {}
+
+	_, command := model.Update(discoverFilesResultMessage{
+		library:    audio.NewLibrary(),
+		progress:   audio.NewDiscoveryProgress(),
+		err:        nil,
+		generation: 10,
+		onlyNew:    true,
+	})
+
+	// The only cmd is the notification expiry tick.
+	require.NotNil(t, command, "expected the notification expiry cmd")
+	assert.True(
+		t,
+		model.notificationModel.HasActiveNotifications(),
+		"expected a notification when a new-only scan finds nothing",
+	)
+}
+
+func TestHandleDiscoverFilesResultMessageFullNothingFoundNotifies(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+	model.libraryDiscoveryGeneration = 10
+	model.libraryDiscoveryCancel = func() {}
+
+	_, command := model.Update(discoverFilesResultMessage{
+		library:    audio.NewLibrary(),
+		progress:   audio.NewDiscoveryProgress(),
+		err:        nil,
+		generation: 10,
+		onlyNew:    false,
+	})
+
+	assert.Nil(t, command, "a full scan finding nothing should push no notification cmd")
+}
+
 func TestHandleMetatagParseResultMessageSuccess(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
@@ -1245,7 +1322,8 @@ func TestHandleMetatagParseResultMessageSuccess(t *testing.T) {
 	model.libraryDiscoveryCancel = func() {}
 
 	command := model.handleMetatagParseResultMessage(metatagParseResultMessage{
-		generation: 4,
+		parsedCount: 0,
+		generation:  4,
 	})
 
 	assert.Nil(t, command)
@@ -1263,13 +1341,21 @@ func TestHandleMetatagParseResultMessageSuccess(t *testing.T) {
 
 	populatedLibrary := audio.NewLibrary()
 	populatedLibrary.Add("/some/path.flac", 1)
+	populatedLibrary.Add("/other/path.flac", 1)
 	populatedLibrary.File["/some/path.flac"].Artist = "bôa"
 	model.library = populatedLibrary
+
+	// The notification must report the parse's own count, which on a new-only scan is a library subset.
 	model.handleMetatagParseResultMessage(metatagParseResultMessage{
-		generation: 4,
+		parsedCount: 1,
+		generation:  4,
 	})
 
 	assert.Len(t, populatedLibrary.ByArtist["bôa"], 1, "expected artist index entry after the rebuild")
+
+	renderedNotifications := testutil.StripANSI(model.notificationModel.Render(80, 24))
+	assert.Contains(t, renderedNotifications, "1 files have been discovered")
+	assert.NotContains(t, renderedNotifications, "2 files have been discovered")
 }
 
 func TestHandleMetatagParseResultMessageStaleGeneration(t *testing.T) {

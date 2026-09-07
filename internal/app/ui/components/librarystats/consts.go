@@ -90,10 +90,11 @@ const (
 	scanFullButtonLabel = "scan library (full)"     // the "scan library (full)" button's label.
 	scanNewButtonLabel  = "scan library (new only)" // the "scan library (new only)" button's label.
 
-	// the confirm dialog opened by the "scan library (full)" button.
-	scanFullDialogText         = "a full scan rebuilds the library from scratch, wiping and overwriting the current cache."
-	scanFullDialogConfirmLabel = "scan"
-	scanFullDialogCancelLabel  = "cancel"
+	// the confirm dialog opened by the "scan library (full)" and "scan library (new)" buttons.
+	scanFullDialogText     = "a full scan rebuilds the library from scratch, wiping and overwriting the current cache."
+	scanNewDialogText      = "a new scan searches for files not yet scanned and append to the current file cache."
+	scanDialogConfirmLabel = "scan"
+	scanDialogCancelLabel  = "cancel"
 
 	scanStatusText  = "found %d audio files..."        // the discovery status line below the button, while file discovery runs.
 	scanFoundText   = "%d audio files have been found" // the first status line shown while the metatag parsing phase runs.

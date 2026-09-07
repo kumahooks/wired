@@ -125,6 +125,18 @@ func (model *UIModel) handleComponentAction(act action.Action) tea.Cmd {
 			model.libraryDiscoveryGeneration,
 			model.config.LibrariesPaths,
 			model.library,
+			false,
+		)
+	case action.DiscoverLibraryNewAction:
+		model.cancelCurrentLibraryDiscovery()
+
+		model.libraryDiscoveryGeneration++
+		return discoverFilesStartCommand(
+			model.orchestratorContext,
+			model.libraryDiscoveryGeneration,
+			model.config.LibrariesPaths,
+			model.library,
+			true,
 		)
 
 	// Initialization screen actions

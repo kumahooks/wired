@@ -104,12 +104,17 @@ func (model *Model) HandleMessage(message tea.Msg) action.Action {
 		case scanFullLibraryAction:
 			return action.OpenConfirmDialogAction{
 				Text:          scanFullDialogText,
-				ConfirmLabel:  scanFullDialogConfirmLabel,
-				CancelLabel:   scanFullDialogCancelLabel,
+				ConfirmLabel:  scanDialogConfirmLabel,
+				CancelLabel:   scanDialogCancelLabel,
 				ConfirmAction: action.DiscoverLibraryFullAction{},
 			}
 		case scanNewLibraryAction:
-			return action.NoAction{} // TODO
+			return action.OpenConfirmDialogAction{
+				Text:          scanNewDialogText,
+				ConfirmLabel:  scanDialogConfirmLabel,
+				CancelLabel:   scanDialogCancelLabel,
+				ConfirmAction: action.DiscoverLibraryNewAction{},
+			}
 		}
 	}
 

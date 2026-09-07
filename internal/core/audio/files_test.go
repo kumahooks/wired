@@ -178,6 +178,46 @@ func TestDiscoverFilesEmptyRoots(t *testing.T) {
 	assert.Equal(t, 0, got)
 }
 
+func TestDiscoverFilesSkipsKnownPaths(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	want := buildAudioTree(t, root)
+
+	library := NewLibrary()
+
+	firstCount, err := DiscoverFiles(context.Background(), []string{root}, library, nil)
+	require.NoError(t, err)
+	assert.Equal(t, want, firstCount)
+
+	// A second walk over the same tree must find nothing new, without any flag from the caller.
+	secondCount, err := DiscoverFiles(context.Background(), []string{root}, library, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 0, secondCount)
+	assert.Len(t, library.File, want, "the library should be untouched by the second walk")
+}
+
+func TestLibraryUntaggedFiles(t *testing.T) {
+	t.Parallel()
+
+	library := NewLibrary()
+	library.Add("/untagged.flac", 1)
+	library.Add("/parsed.flac", 1)
+	library.Add("/titleonly.flac", 1)
+	library.Add("/nilentry.mp3", 1)
+	library.File["/nilentry.mp3"] = nil
+
+	library.File["/parsed.flac"].Title = "Fool"
+	library.File["/parsed.flac"].Artist = "bôa"
+	library.File["/parsed.flac"].Album = "Twilight"
+	library.File["/titleonly.flac"].Title = "Fool"
+
+	untaggedFiles := library.UntaggedFiles()
+
+	require.Len(t, untaggedFiles, 1)
+	assert.Equal(t, "/untagged.flac", untaggedFiles[0].Path)
+}
+
 func TestParseFilesParsesMetatags(t *testing.T) {
 	t.Parallel()
 

@@ -218,13 +218,29 @@ func (model *UIModel) handleDiscoverFilesResultMessage(message discoverFilesResu
 		return nil
 	}
 
+	if message.progress.DiscoveredCount() == 0 {
+		if message.onlyNew {
+			model.PushNotification("no new files have been found~")
+		}
+
+		model.libraryDiscoveryCancel = nil
+		model.libraryStatsModel.FinishDiscovery()
+
+		return nil
+	}
+
 	parseContext, parseCancel := context.WithCancel(model.orchestratorContext)
 	model.libraryDiscoveryCancel = parseCancel
 
-	// The parse goroutine works on a snapshot of the discovered snapshotFiles and never touches the library's maps.
-	snapshotFiles := make([]*audio.AudioFile, 0, len(message.library.File))
-	for _, audioFile := range message.library.File {
-		snapshotFiles = append(snapshotFiles, audioFile)
+	// The parse goroutine works on a snapshot of the library's files and never touches the library's maps.
+	var snapshotFiles []*audio.AudioFile
+	if message.onlyNew {
+		snapshotFiles = message.library.UntaggedFiles()
+	} else {
+		snapshotFiles = make([]*audio.AudioFile, 0, len(message.library.File))
+		for _, audioFile := range message.library.File {
+			snapshotFiles = append(snapshotFiles, audioFile)
+		}
 	}
 
 	message.progress.SetDiscoveryDone()
@@ -277,7 +293,7 @@ func (model *UIModel) handleMetatagParseResultMessage(message metatagParseResult
 	model.libraryStatsModel.FinishDiscovery()
 
 	model.PushNotification(
-		fmt.Sprintf("%d files have been discovered and parsed successfully", model.library.FilesCount()),
+		fmt.Sprintf("%d files have been discovered and parsed successfully", message.parsedCount),
 	)
 
 	return nil

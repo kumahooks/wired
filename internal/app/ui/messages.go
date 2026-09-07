@@ -38,6 +38,7 @@ type discoverFilesStartMessage struct {
 	result          <-chan discoverFilesResultMessage
 	discoveryCancel context.CancelFunc
 	generation      uint64
+	onlyNew         bool
 }
 
 // discoverFilesResultMessage is produced when the discovery finishes, carrying the discovered files and the shared
@@ -47,6 +48,7 @@ type discoverFilesResultMessage struct {
 	progress   *audio.DiscoveryProgress
 	err        error
 	generation uint64
+	onlyNew    bool
 }
 
 // metatagParseStartMessage is produced on demand by the user. It carries the DiscoveryProgress the parse reports
@@ -64,10 +66,11 @@ type discoveryProgressTickMessage struct {
 	generation uint64
 }
 
-// metatagParseResultMessage is produced when the metatag parse finishes, carrying the parsed counts.
+// metatagParseResultMessage is produced when the metatag parse finishes, carrying the count of files it attempted.
 type metatagParseResultMessage struct {
-	err        error
-	generation uint64
+	parsedCount int
+	err         error
+	generation  uint64
 }
 
 // notificationExpireMessage is produced by notificationExpireCommand after a notification's lifetime ends.

@@ -57,6 +57,7 @@ func discoverFilesStartCommand(
 	generation uint64,
 	rootPaths []string,
 	library *audio.Library,
+	onlyNew bool,
 ) tea.Cmd {
 	return func() tea.Msg {
 		progress := audio.NewDiscoveryProgress()
@@ -71,6 +72,7 @@ func discoverFilesStartCommand(
 				progress:   progress,
 				err:        err,
 				generation: generation,
+				onlyNew:    onlyNew,
 			}
 		}()
 
@@ -79,6 +81,7 @@ func discoverFilesStartCommand(
 			result:          resultChannel,
 			discoveryCancel: discoveryCancel,
 			generation:      generation,
+			onlyNew:         onlyNew,
 		}
 	}
 }
@@ -117,11 +120,12 @@ func parseFilesMetatagStartCommand(
 	return func() tea.Msg {
 		resultChannel := make(chan metatagParseResultMessage, 1)
 		go func() {
-			_, err := audio.ParseFiles(parseContext, files, progress)
+			parsedCount, err := audio.ParseFiles(parseContext, files, progress)
 
 			resultChannel <- metatagParseResultMessage{
-				err:        err,
-				generation: generation,
+				parsedCount: parsedCount,
+				err:         err,
+				generation:  generation,
 			}
 		}()
 
