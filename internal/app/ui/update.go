@@ -84,6 +84,11 @@ func (model *UIModel) handleKeyPressMsg(message tea.KeyPressMsg) tea.Cmd {
 		return nil
 	}
 
+	// The confirm dialog, while open, consumes every key so the underlying screen stays frozen.
+	if model.dialogModel.IsOpen() {
+		return model.handleComponentAction(model.dialogModel.HandleMessage(message))
+	}
+
 	if model.state == uiInitializing {
 		return model.handleComponentAction(model.initializationModel.HandleMessage(message))
 	}
@@ -157,6 +162,9 @@ func (model *UIModel) handleComponentAction(act action.Action) tea.Cmd {
 
 		return configLoadCommand(configLoadOriginUser)
 
+	case action.OpenConfirmDialogAction:
+		model.dialogModel.Open(act.Text, act.ConfirmLabel, act.CancelLabel, act.ConfirmAction)
+		return nil
 	case action.ActionCommand:
 		return act.Command
 	default:

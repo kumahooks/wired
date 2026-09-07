@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"wired/internal/app/ui/action"
+	"wired/internal/app/ui/components/dialog"
 	"wired/internal/app/ui/components/initializing"
 	"wired/internal/core/audio"
 	"wired/internal/core/config"
@@ -34,6 +35,9 @@ func isTeaQuit(command tea.Cmd) bool {
 
 	return ok
 }
+
+// dialogKeyGraceTestMargin is the extra delay tests add past the dialog's key grace quiet period so keys are accepted.
+const dialogKeyGraceTestMargin = 50 * time.Millisecond
 
 // executeCmd runs a command with a short timeout and returns its message. It fails the test on timeout.
 func executeCmd(t *testing.T, command tea.Cmd) tea.Msg {
@@ -833,6 +837,151 @@ func TestHandleKeyPressMsgWhichKeyDoesNotSinkIntoInitializing(t *testing.T) {
 	assert.False(t, model.whichkeyModel.IsVisible(), "whichkey must not capture keys during initialization")
 }
 
+func TestHandleKeyPressMsgDialogGate(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		prepare        func(model *UIModel)
+		keyPress       tea.KeyPressMsg
+		wantDialogOpen bool
+		wantDiscovery  bool
+	}{
+		{
+			name: "key inside the grace quiet period is dropped",
+			prepare: func(model *UIModel) {
+				model.setState(uiLibraryStats)
+				model.handleComponentAction(action.OpenConfirmDialogAction{
+					Text:          "question?",
+					ConfirmAction: action.DiscoverLibraryFullAction{},
+				})
+			},
+			keyPress:       tea.KeyPressMsg{Code: 'h', Text: "h"},
+			wantDialogOpen: true,
+			wantDiscovery:  false,
+		},
+		{
+			name: "key after the grace quiet period reaches the dialog",
+			prepare: func(model *UIModel) {
+				model.setState(uiLibraryStats)
+				model.handleComponentAction(action.OpenConfirmDialogAction{
+					Text:          "question?",
+					ConfirmAction: action.DiscoverLibraryFullAction{},
+				})
+				time.Sleep(dialog.KeyGraceQuietPeriod + dialogKeyGraceTestMargin)
+			},
+			keyPress:       tea.KeyPressMsg{Code: 'h', Text: "h"},
+			wantDialogOpen: true,
+			wantDiscovery:  false,
+		},
+		{
+			name: "go back closes the dialog without dispatching",
+			prepare: func(model *UIModel) {
+				model.setState(uiLibraryStats)
+				model.handleComponentAction(action.OpenConfirmDialogAction{
+					Text:          "question?",
+					ConfirmAction: action.DiscoverLibraryFullAction{},
+				})
+				time.Sleep(dialog.KeyGraceQuietPeriod + dialogKeyGraceTestMargin)
+			},
+			keyPress:       tea.KeyPressMsg{Code: tea.KeyEscape},
+			wantDialogOpen: false,
+			wantDiscovery:  false,
+		},
+		{
+			name: "keys while the dialog is open do not reach the whichkey overlay",
+			prepare: func(model *UIModel) {
+				model.setState(uiLibraryStats)
+				model.handleComponentAction(action.OpenConfirmDialogAction{
+					Text:          "question?",
+					ConfirmAction: action.DiscoverLibraryFullAction{},
+				})
+				time.Sleep(dialog.KeyGraceQuietPeriod + dialogKeyGraceTestMargin)
+				model.whichkeyModel.SetBindings(model.commandBindingsFor(uiLibraryStats))
+				model.whichkeyModel.HandleMessage(tea.KeyPressMsg{Code: ' '})
+			},
+			keyPress:       tea.KeyPressMsg{Code: 'x', Text: "x"},
+			wantDialogOpen: true,
+			wantDiscovery:  false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			model := newTestUI(t)
+			test.prepare(model)
+			whichKeyVisibleBefore := model.whichkeyModel.IsVisible()
+
+			_, command := model.Update(test.keyPress)
+
+			assert.Equal(t, test.wantDialogOpen, model.dialogModel.IsOpen(), "dialog visibility mismatch")
+			assert.Equal(
+				t,
+				whichKeyVisibleBefore,
+				model.whichkeyModel.IsVisible(),
+				"whichkey visibility must not change while the dialog gate holds the key",
+			)
+
+			if test.wantDiscovery {
+				require.NotNil(t, command, "confirm must return the discovery start cmd")
+
+				startMessage := executeCmd(t, command)
+				_, isDiscoveryStart := startMessage.(discoverFilesStartMessage)
+				assert.True(t, isDiscoveryStart, "confirm must dispatch the discovery pipeline start")
+			} else {
+				assert.Nil(t, command, "returned cmd = non-nil, want nil")
+			}
+		})
+	}
+}
+
+func TestHandleKeyPressMsgDialogConfirmDispatchesDiscovery(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+	model.setState(uiLibraryStats)
+	model.handleComponentAction(action.OpenConfirmDialogAction{
+		Text:          "question?",
+		ConfirmAction: action.DiscoverLibraryFullAction{},
+	})
+
+	// Cross the key grace quiet period (which absorbs the open keypress's auto-repeat tail), then move the cursor to
+	// the confirm button before confirming.
+	time.Sleep(dialog.KeyGraceQuietPeriod + dialogKeyGraceTestMargin)
+	model.Update(tea.KeyPressMsg{Code: 'h', Text: "h"})
+
+	_, command := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+
+	require.NotNil(t, command, "confirm must return the discovery start cmd")
+	assert.False(t, model.dialogModel.IsOpen(), "confirm must close the dialog")
+
+	startMessage := executeCmd(t, command)
+	start, isDiscoveryStart := startMessage.(discoverFilesStartMessage)
+	require.True(t, isDiscoveryStart, "confirm must dispatch the discovery pipeline start")
+
+	// The dispatched action runs the same pipeline as a direct DiscoverLibraryFullAction: it starts from scratch under
+	// the first generation, carrying the cancel func the root registers when the start message is handled.
+	require.NotNil(t, start.discoveryCancel, "discovery start must carry the cancel func")
+	assert.Equal(t, uint64(1), start.generation, "confirm must start the first discovery generation")
+}
+
+func TestHandleKeyPressMsgQuitWhileDialogOpen(t *testing.T) {
+	t.Parallel()
+
+	model := newTestUI(t)
+	model.setState(uiLibraryStats)
+	model.handleComponentAction(action.OpenConfirmDialogAction{
+		Text:          "question?",
+		ConfirmAction: action.DiscoverLibraryFullAction{},
+	})
+
+	_, command := model.Update(tea.KeyPressMsg{Mod: tea.ModCtrl, Code: 'd'})
+
+	require.True(t, isTeaQuit(command), "quit must stay reachable while the dialog is open")
+}
+
 func TestHandleComponentAction(t *testing.T) {
 	t.Parallel()
 
@@ -912,6 +1061,14 @@ func TestHandleComponentAction(t *testing.T) {
 			skipLogCheck: true,
 		},
 		{
+			name: "OpenConfirmDialogAction opens the dialog and returns nil",
+			action: action.OpenConfirmDialogAction{
+				Text:          "question?",
+				ConfirmAction: action.DiscoverLibraryFullAction{},
+			},
+			skipLogCheck: true,
+		},
+		{
 			name:         "unknown action returns nil",
 			action:       struct{}{},
 			skipLogCheck: true,
@@ -935,6 +1092,10 @@ func TestHandleComponentAction(t *testing.T) {
 				require.NotNil(t, command, "returned cmd = nil, want non-nil")
 			} else {
 				assert.Nil(t, command, "returned cmd = non-nil, want nil")
+			}
+
+			if _, isOpenDialog := test.action.(action.OpenConfirmDialogAction); isOpenDialog {
+				assert.True(t, model.dialogModel.IsOpen(), "OpenConfirmDialogAction must open the dialog")
 			}
 
 			if test.wantCanceled {

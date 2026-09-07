@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -56,8 +58,8 @@ func TestNewHappyPath(t *testing.T) {
 			name:     "go back",
 			binding:  func() string { return keyMap.GoBack.Help().Key },
 			keys:     func() []string { return keyMap.GoBack.Keys() },
-			wantKey:  bindings.GoBack[0],
-			wantKeys: bindings.GoBack,
+			wantKey:  "esc", // canonicalized from the config's "escape" spelling.
+			wantKeys: []string{"esc"},
 		},
 		{
 			name:     "open actions",
@@ -192,6 +194,49 @@ func TestNewEmptyBindingErrors(t *testing.T) {
 			assert.True(t, strings.Contains(err.Error(), test.wantError))
 		})
 	}
+}
+
+func TestNewGoBackMatchesRealEscapeKeypress(t *testing.T) {
+	t.Parallel()
+
+	// The default config spells the escape key "escape", but bubbletea renders the keypress as "esc".
+	bindings := config.Defaults().Keybinds
+	keyMap, err := New(bindings)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"esc"}, keyMap.GoBack.Keys(), "escape must canonicalize to bubbletea's keystroke spelling")
+	assert.Equal(t, "esc", keyMap.GoBack.Help().Key, "help key must show the canonical spelling")
+	assert.True(
+		t,
+		key.Matches(tea.KeyPressMsg{Code: tea.KeyEscape}, keyMap.GoBack),
+		"GoBack must match a real escape keypress",
+	)
+}
+
+func TestNewCanonicalizationDeduplicatesAliases(t *testing.T) {
+	t.Parallel()
+
+	// "escape" and "esc" are the same physical key after canonicalization.
+	bindings := config.Defaults().Keybinds
+	bindings.GoBack = []string{"escape", "esc"}
+
+	_, err := New(bindings)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `[keymap:New] duplicate keybinding "esc"`)
+}
+
+func TestNewCanonicalizationPreservesUnknownNames(t *testing.T) {
+	t.Parallel()
+
+	// Printable keys and unaliased control names must pass through untouched.
+	bindings := config.Defaults().Keybinds
+	bindings.GoBack = []string{"q"}
+
+	keyMap, err := New(bindings)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"q"}, keyMap.GoBack.Keys())
 }
 
 func TestNewDuplicateKeyErrors(t *testing.T) {

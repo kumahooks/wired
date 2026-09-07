@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"wired/internal/app/ui/action"
+	"wired/internal/app/ui/components/dialog"
 	"wired/internal/app/ui/components/initializing"
 	"wired/internal/app/ui/components/librarystats"
 	"wired/internal/app/ui/components/notification"
@@ -56,6 +57,7 @@ type UIModel struct {
 	libraryStatsModel   *librarystats.Model
 	whichkeyModel       *whichkey.Model
 	notificationModel   *notification.Model
+	dialogModel         *dialog.Model
 }
 
 // New initializes the UIModel, which is basically the UI orchestrator of the application. It starts with the state
@@ -77,10 +79,12 @@ func New(
 		libraryStatsModel:   librarystats.New(defaultKeyMap, audioLibrary),
 		whichkeyModel:       whichkey.New(),
 		notificationModel:   notification.New(),
+		dialogModel:         dialog.New(),
 		library:             audioLibrary,
 	}
 
 	model.whichkeyModel.SetBindings(model.commandBindingsFor(model.state))
+	model.dialogModel.ApplyKeyMap(defaultKeyMap)
 
 	return model, nil
 }

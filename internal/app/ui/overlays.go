@@ -3,6 +3,7 @@ package ui
 import (
 	"charm.land/lipgloss/v2"
 
+	"wired/internal/app/ui/components/dialog"
 	"wired/internal/app/ui/components/notification"
 	"wired/internal/app/ui/components/whichkey"
 )
@@ -28,6 +29,15 @@ func (model *UIModel) composeOverlays(base string) string {
 	if model.notificationModel.HasActiveNotifications() {
 		baseLayer.AddLayers(notification.Anchor(
 			model.notificationModel.Render(model.windowWidth, model.windowHeight),
+			model.windowWidth,
+			model.windowHeight,
+		))
+	}
+
+	// the confirm dialog is a modal question rendered on top of every other overlay.
+	if model.dialogModel.IsOpen() {
+		baseLayer.AddLayers(dialog.Anchor(
+			model.dialogModel.Render(),
 			model.windowWidth,
 			model.windowHeight,
 		))

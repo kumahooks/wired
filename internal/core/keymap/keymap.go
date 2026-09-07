@@ -28,6 +28,16 @@ type KeyMap struct {
 // New initializes all of the keybindings recognized by the application.
 func New(bindings config.KeybindMapping) (KeyMap, error) {
 	// General keybinds.
+	moveLeftKeys := canonicalTeaKeyNames(bindings.MoveLeft)
+	moveRightKeys := canonicalTeaKeyNames(bindings.MoveRight)
+	selectKeys := canonicalTeaKeyNames(bindings.Select)
+	quitKeys := canonicalTeaKeyNames(bindings.Quit)
+	goBackKeys := canonicalTeaKeyNames(bindings.GoBack)
+	openActionsKeys := canonicalTeaKeyNames(bindings.OpenActions)
+	playlistKeys := canonicalTeaKeyNames(bindings.Actions.Playlist)
+	libraryStatsKeys := canonicalTeaKeyNames(bindings.Actions.LibraryStats)
+	reloadConfigKeys := canonicalTeaKeyNames(bindings.Actions.ReloadConfig)
+
 	if len(bindings.MoveLeft) == 0 {
 		return KeyMap{}, fmt.Errorf("[keymap:New] move_left must have at least one binding")
 	}
@@ -59,17 +69,17 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 	}
 
 	generalKeys := [][]string{
-		bindings.MoveLeft,
-		bindings.MoveRight,
-		bindings.Select,
-		bindings.Quit,
-		bindings.GoBack,
-		bindings.OpenActions,
+		moveLeftKeys,
+		moveRightKeys,
+		selectKeys,
+		quitKeys,
+		goBackKeys,
+		openActionsKeys,
 	}
 	actionKeys := [][]string{
-		bindings.Actions.Playlist,
-		bindings.Actions.LibraryStats,
-		bindings.Actions.ReloadConfig,
+		playlistKeys,
+		libraryStatsKeys,
+		reloadConfigKeys,
 	}
 
 	if err := rejectDuplicateKeys(generalKeys); err != nil {
@@ -80,17 +90,17 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 	}
 
 	return KeyMap{
-		MoveLeft:    newBinding(bindings.MoveLeft, "move left"),
-		MoveRight:   newBinding(bindings.MoveRight, "move right"),
-		Select:      newBinding(bindings.Select, "select"),
-		Quit:        newBinding(bindings.Quit, "quit"),
-		GoBack:      newBinding(bindings.GoBack, "go back"),
-		OpenActions: newBinding(bindings.OpenActions, "open actions"),
+		MoveLeft:    newBinding(moveLeftKeys, "move left"),
+		MoveRight:   newBinding(moveRightKeys, "move right"),
+		Select:      newBinding(selectKeys, "select"),
+		Quit:        newBinding(quitKeys, "quit"),
+		GoBack:      newBinding(goBackKeys, "go back"),
+		OpenActions: newBinding(openActionsKeys, "open actions"),
 
 		Actions: ActionsKeyMap{
-			Playlist:     newBinding(bindings.Actions.Playlist, "playlist screen"),
-			LibraryStats: newBinding(bindings.Actions.LibraryStats, "library stats screen"),
-			ReloadConfig: newBinding(bindings.Actions.ReloadConfig, "reload config"),
+			Playlist:     newBinding(playlistKeys, "playlist screen"),
+			LibraryStats: newBinding(libraryStatsKeys, "library stats screen"),
+			ReloadConfig: newBinding(reloadConfigKeys, "reload config"),
 		},
 	}, nil
 }
@@ -102,6 +112,26 @@ func newBinding(keys []string, description string) key.Binding {
 		key.WithKeys(keys...),
 		key.WithHelp(primary, description),
 	)
+}
+
+// keyAliases maps config-spelled key names to bubbletea's rendered keystroke strings.
+var keyAliases = map[string]string{
+	"escape": "esc",
+}
+
+// canonicalTeaKeyNames rewrites config key names to the runtime keystroke spelling the key.Matches comparison uses.
+func canonicalTeaKeyNames(keys []string) []string {
+	canonicalKeys := make([]string, 0, len(keys))
+	for _, keyName := range keys {
+		if alias, isAliased := keyAliases[keyName]; isAliased {
+			canonicalKeys = append(canonicalKeys, alias)
+			continue
+		}
+
+		canonicalKeys = append(canonicalKeys, keyName)
+	}
+
+	return canonicalKeys
 }
 
 // rejectDuplicateKeys rejects any key string appearing in more than one of the given binding lists, or twice in one list.

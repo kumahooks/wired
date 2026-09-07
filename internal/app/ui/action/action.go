@@ -46,6 +46,15 @@ type OpenLibraryStatsAction struct{}
 // DiscoverLibraryFullAction requests a full re-discovery of the known library paths.
 type DiscoverLibraryFullAction struct{}
 
+// OpenConfirmDialogAction requests the confirm dialog to open. The dialog carries ConfirmAction as data and dispatches
+// it through the same action switch once the user confirms.
+type OpenConfirmDialogAction struct {
+	Text          string
+	ConfirmLabel  string
+	CancelLabel   string
+	ConfirmAction Action
+}
+
 // ProceedFromInitAction requests to proceed to the next state, from init state.
 type ProceedFromInitAction struct{}
 

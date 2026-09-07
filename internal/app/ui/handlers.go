@@ -109,6 +109,7 @@ func (model *UIModel) applyThemeToComponents() {
 	model.libraryStatsModel.ApplyTheme(model.theme)
 	model.whichkeyModel.ApplyTheme(model.theme)
 	model.notificationModel.ApplyTheme(model.theme)
+	model.dialogModel.ApplyTheme(model.theme)
 }
 
 // handleConfigLoadedKeymapError handles keymap.New failing during a config load. Initialization logs the failure and
@@ -138,6 +139,7 @@ func (model *UIModel) handleConfigLoadedKeymapError(
 func (model *UIModel) applyKeyMapToComponents() {
 	model.initializationModel.ApplyKeyMap(model.keyMap)
 	model.libraryStatsModel.ApplyKeyMap(model.keyMap)
+	model.dialogModel.ApplyKeyMap(model.keyMap)
 	model.whichkeyModel.SetBindings(model.commandBindingsFor(model.state))
 	model.whichkeyModel.ApplyCloseKeybinding(model.keyMap.GoBack)
 }

@@ -102,7 +102,12 @@ func (model *Model) HandleMessage(message tea.Msg) action.Action {
 
 		switch model.buttons[model.cursorPosition].action {
 		case scanFullLibraryAction:
-			return action.DiscoverLibraryFullAction{}
+			return action.OpenConfirmDialogAction{
+				Text:          scanFullDialogText,
+				ConfirmLabel:  scanFullDialogConfirmLabel,
+				CancelLabel:   scanFullDialogCancelLabel,
+				ConfirmAction: action.DiscoverLibraryFullAction{},
+			}
 		case scanNewLibraryAction:
 			return action.NoAction{} // TODO
 		}
