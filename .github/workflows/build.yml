@@ -1,0 +1,63 @@
+name: Build
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Build (linux, amd64)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restore taglib from cache
+        id: taglib-cache
+        uses: actions/cache@v4
+        with:
+          path: /opt/taglib
+          key: taglib-2.3.1-${{ runner.os }}-shared
+
+      - name: Install build tools
+        if: steps.taglib-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config ninja-build zlib1g-dev
+
+      - name: Build taglib 2.3.1
+        if: steps.taglib-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo mkdir -p /opt/taglib
+          sudo chown "$(whoami)" /opt/taglib
+          curl -fsSL -o "$RUNNER_TEMP/taglib.tar.gz" \
+            https://github.com/taglib/taglib/releases/download/v2.3.1/taglib-2.3.1.tar.gz
+          tar -xzf "$RUNNER_TEMP/taglib.tar.gz" -C "$RUNNER_TEMP"
+          cmake -S "$RUNNER_TEMP/taglib-2.3.1" -B "$RUNNER_TEMP/taglib-build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/opt/taglib \
+            -DBUILD_SHARED_LIBS=ON
+          cmake --build "$RUNNER_TEMP/taglib-build"
+          cmake --install "$RUNNER_TEMP/taglib-build"
+
+      - name: Register taglib
+        run: |
+          echo "PKG_CONFIG_PATH=/opt/taglib/lib/pkgconfig" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=/opt/taglib/lib" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build
+        run: go build -trimpath -ldflags="-s -w" -o wired ./cmd/wired
+
+      - name: Archive
+        run: tar -czf wired-linux-amd64.tar.gz wired
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: wired (linux, amd64)
+          path: wired-linux-amd64.tar.gz
+
