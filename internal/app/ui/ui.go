@@ -121,15 +121,24 @@ func (model *UIModel) commandBindingsFor(state uiState) []action.Binding {
 	var bindings []action.Binding
 
 	switch state {
+	case uiLibrary:
+		bindings = append(
+			bindings,
+			action.Binding{Keys: model.keyMap.Actions.Playlist, Action: action.OpenPlaylistAction{}},
+			action.Binding{Keys: model.keyMap.Actions.LibraryStats, Action: action.OpenLibraryStatsAction{}},
+			action.Binding{Keys: model.keyMap.Actions.ReloadConfig, Action: action.ReloadConfigAction{}},
+		)
 	case uiPlaylist:
 		bindings = append(
 			bindings,
+			action.Binding{Keys: model.keyMap.Actions.Library, Action: action.OpenLibraryAction{}},
 			action.Binding{Keys: model.keyMap.Actions.LibraryStats, Action: action.OpenLibraryStatsAction{}},
 			action.Binding{Keys: model.keyMap.Actions.ReloadConfig, Action: action.ReloadConfigAction{}},
 		)
 	case uiLibraryStats:
 		bindings = append(
 			bindings,
+			action.Binding{Keys: model.keyMap.Actions.Library, Action: action.OpenLibraryAction{}},
 			action.Binding{Keys: model.keyMap.Actions.Playlist, Action: action.OpenPlaylistAction{}},
 			action.Binding{Keys: model.keyMap.Actions.ReloadConfig, Action: action.ReloadConfigAction{}},
 		)

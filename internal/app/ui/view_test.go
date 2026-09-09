@@ -71,8 +71,18 @@ func TestViewContentPlaylist(t *testing.T) {
 	rendered := model.viewContent()
 	assert.True(
 		t,
-		strings.Contains(testutil.StripANSI(rendered), "this is the playlist view"),
+		strings.Contains(testutil.StripANSI(rendered), "TODO: this screen Playlist UI is mocked"),
 		"viewContent() missing playlist substring:\n%s",
+		rendered,
+	)
+
+	model.state = uiLibrary
+
+	rendered = model.viewContent()
+	assert.True(
+		t,
+		strings.Contains(testutil.StripANSI(rendered), "TODO: this screen Library UI is mocked"),
+		"viewContent() missing library substring:\n%s",
 		rendered,
 	)
 

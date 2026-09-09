@@ -253,7 +253,7 @@ func TestNewDuplicateKeyErrors(t *testing.T) {
 				bindings.Actions.ReloadConfig = bindings.Actions.LibraryStats
 				return bindings
 			},
-			wantKeyError: `[keymap:New] duplicate keybinding "l"`,
+			wantKeyError: `[keymap:New] duplicate keybinding "s"`,
 		},
 		{
 			name: "quit colliding with select fails",

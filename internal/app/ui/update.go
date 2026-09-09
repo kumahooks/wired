@@ -88,12 +88,25 @@ func (model *UIModel) handleKeyPressMsg(message tea.KeyPressMsg) tea.Cmd {
 		return model.handleComponentAction(model.dialogModel.HandleMessage(message))
 	}
 
+	// The init screen is "unskippable": user must click the "proceed" button to close it.
 	if model.state == uiInitializing {
 		return model.handleComponentAction(model.initializationModel.HandleMessage(message))
 	}
 
+	// The action (whichkey) catalogue takes priority over every "normal" action.
 	if key.Matches(message, model.keyMap.OpenActions) || model.whichkeyModel.IsVisible() {
 		return model.handleComponentAction(model.whichkeyModel.HandleMessage(message))
+	}
+
+	// Screen quick movements if configured.
+	if key.Matches(message, model.keyMap.ViewLibrary) {
+		return model.handleComponentAction(action.OpenLibraryAction{})
+	}
+	if key.Matches(message, model.keyMap.ViewPlaylist) {
+		return model.handleComponentAction(action.OpenPlaylistAction{})
+	}
+	if key.Matches(message, model.keyMap.ViewLibraryStats) {
+		return model.handleComponentAction(action.OpenLibraryStatsAction{})
 	}
 
 	if model.state == uiLibraryStats {
@@ -106,12 +119,6 @@ func (model *UIModel) handleKeyPressMsg(message tea.KeyPressMsg) tea.Cmd {
 // handleComponentAction dispatches an action returned by a component.
 func (model *UIModel) handleComponentAction(act action.Action) tea.Cmd {
 	switch act := act.(type) {
-	case nil, action.NoAction:
-		return nil
-	case action.QuitAction:
-		model.cancelCurrentLibraryDiscovery()
-		return tea.Quit
-
 	// Librarystats screen actions
 	case action.DiscoverLibraryFullAction:
 		model.cancelCurrentLibraryDiscovery()
@@ -156,13 +163,18 @@ func (model *UIModel) handleComponentAction(act action.Action) tea.Cmd {
 		model.setState(uiPlaylist)
 		return nil
 
-	// Whichkey actions
+	// UI movement actions
+	case action.OpenLibraryAction:
+		model.setState(uiLibrary)
+		return nil
 	case action.OpenPlaylistAction:
 		model.setState(uiPlaylist)
 		return nil
 	case action.OpenLibraryStatsAction:
 		model.setState(uiLibraryStats)
 		return nil
+
+	// Whichkey specific actions
 	case action.ReloadConfigAction:
 		model.cancelCurrentLibraryDiscovery()
 
@@ -173,6 +185,12 @@ func (model *UIModel) handleComponentAction(act action.Action) tea.Cmd {
 
 		return configLoadCommand(configLoadOriginUser)
 
+	// Miscellaneous
+	case nil, action.NoAction:
+		return nil
+	case action.QuitAction:
+		model.cancelCurrentLibraryDiscovery()
+		return tea.Quit
 	case action.OpenConfirmDialogAction:
 		model.dialogModel.Open(act.Text, act.ConfirmLabel, act.CancelLabel, act.ConfirmAction)
 		return nil

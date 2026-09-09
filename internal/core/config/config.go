@@ -42,21 +42,29 @@ type ThemeConfig struct {
 }
 
 type ActionsMapping struct {
+	Library      []string `toml:"library"`
 	Playlist     []string `toml:"playlist"`
 	LibraryStats []string `toml:"library_stats"`
 	ReloadConfig []string `toml:"reload_config"`
 }
 
 type KeybindMapping struct {
-	MoveLeft    []string       `toml:"move_left"`
-	MoveRight   []string       `toml:"move_right"`
-	MoveUp      []string       `toml:"move_up"`
-	MoveDown    []string       `toml:"move_down"`
-	MoveTop     []string       `toml:"move_top"`
-	MoveBottom  []string       `toml:"move_bottom"`
-	Select      []string       `toml:"select"`
-	Quit        []string       `toml:"quit"`
-	GoBack      []string       `toml:"go_back"`
+	MoveLeft   []string `toml:"move_left"`
+	MoveRight  []string `toml:"move_right"`
+	MoveUp     []string `toml:"move_up"`
+	MoveDown   []string `toml:"move_down"`
+	MoveTop    []string `toml:"move_top"`
+	MoveBottom []string `toml:"move_bottom"`
+
+	Select []string `toml:"select"`
+	Quit   []string `toml:"quit"`
+	GoBack []string `toml:"go_back"`
+
+	// these are intentionally not validated for emptiness to allow to be optional.
+	ViewLibrary      []string `toml:"view_library"`
+	ViewPlaylist     []string `toml:"view_playlist"`
+	ViewLibraryStats []string `toml:"view_library_stats"`
+
 	OpenActions []string       `toml:"open_actions"`
 	Actions     ActionsMapping `toml:"actions"`
 }
@@ -147,11 +155,13 @@ func (config *Config) validateConfigValues() error {
 	nonEmptyArray("keybinds.move_down", config.Keybinds.MoveDown)
 	nonEmptyArray("keybinds.move_top", config.Keybinds.MoveTop)
 	nonEmptyArray("keybinds.move_bottom", config.Keybinds.MoveBottom)
+
 	nonEmptyArray("keybinds.select", config.Keybinds.Select)
 	nonEmptyArray("keybinds.quit", config.Keybinds.Quit)
 	nonEmptyArray("keybinds.go_back", config.Keybinds.GoBack)
 	nonEmptyArray("keybinds.open_actions", config.Keybinds.OpenActions)
 
+	nonEmptyArray("keybinds.actions.library", config.Keybinds.Actions.Library)
 	nonEmptyArray("keybinds.actions.playlist", config.Keybinds.Actions.Playlist)
 	nonEmptyArray("keybinds.actions.library_stats", config.Keybinds.Actions.LibraryStats)
 	nonEmptyArray("keybinds.actions.reload_config", config.Keybinds.Actions.ReloadConfig)

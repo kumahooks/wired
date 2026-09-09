@@ -155,15 +155,17 @@ func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 		model.PushNotification("there was an error when trying to load the library cache... q_q")
 	}
 
+	// if there are files in the cache treat as success and proceed to the library screen.
 	if message.library.FilesCount() > 0 {
 		model.library.File = message.library.File
 		audio.BuildLibraryIndexes(model.library)
 		model.libraryStatsModel.ComputeStats()
 
-		model.setState(uiPlaylist)
+		model.setState(uiLibrary)
 		return nil
 	}
 
+	// without any cache, show to the user warnings/errors if any, and let them proceed if willing.
 	if len(model.config.LibrariesPaths) > 0 {
 		model.initializationModel.AppendLog(
 			"no songs found, you might want to discover them later~",
@@ -175,7 +177,6 @@ func (model *UIModel) handleInitializationLoadLibraryCacheResult(
 	}
 
 	model.showInitializationScreen()
-
 	return nil
 }
 

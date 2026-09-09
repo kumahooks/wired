@@ -109,7 +109,7 @@ func TestHandleMessage(t *testing.T) {
 		},
 		{
 			name:       "library stats key flips visibility and returns open library stats",
-			message:    tea.KeyPressMsg{Code: 'l'},
+			message:    tea.KeyPressMsg{Code: 's'},
 			wantAction: action.OpenLibraryStatsAction{},
 		},
 		{

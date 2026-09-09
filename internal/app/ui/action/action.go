@@ -37,6 +37,9 @@ type ReloadConfigAction struct{}
 // ReloadConfigFromInitAction requests a config reload from the initialization screen.
 type ReloadConfigFromInitAction struct{}
 
+// OpenLibraryAction goes to the library screen.
+type OpenLibraryAction struct{}
+
 // OpenPlaylistAction goes to the playlist screen.
 type OpenPlaylistAction struct{}
 

@@ -10,21 +10,28 @@ import (
 )
 
 type ActionsKeyMap struct {
+	Library      key.Binding
 	Playlist     key.Binding
 	LibraryStats key.Binding
 	ReloadConfig key.Binding
 }
 
 type KeyMap struct {
-	MoveLeft    key.Binding
-	MoveRight   key.Binding
-	MoveUp      key.Binding
-	MoveDown    key.Binding
-	MoveTop     key.Binding
-	MoveBottom  key.Binding
-	Select      key.Binding
-	Quit        key.Binding
-	GoBack      key.Binding
+	MoveLeft   key.Binding
+	MoveRight  key.Binding
+	MoveUp     key.Binding
+	MoveDown   key.Binding
+	MoveTop    key.Binding
+	MoveBottom key.Binding
+
+	Select key.Binding
+	Quit   key.Binding
+	GoBack key.Binding
+
+	ViewLibrary      key.Binding
+	ViewPlaylist     key.Binding
+	ViewLibraryStats key.Binding
+
 	OpenActions key.Binding
 	Actions     ActionsKeyMap
 }
@@ -38,10 +45,18 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 	moveDownKeys := canonicalTeaKeyNames(bindings.MoveDown)
 	moveTopKeys := canonicalTeaKeyNames(bindings.MoveTop)
 	moveBottomKeys := canonicalTeaKeyNames(bindings.MoveBottom)
+
 	selectKeys := canonicalTeaKeyNames(bindings.Select)
 	quitKeys := canonicalTeaKeyNames(bindings.Quit)
 	goBackKeys := canonicalTeaKeyNames(bindings.GoBack)
+
+	viewLibraryKeys := canonicalTeaKeyNames(bindings.ViewLibrary)
+	viewPlaylistKeys := canonicalTeaKeyNames(bindings.ViewPlaylist)
+	viewLibraryStatsKeys := canonicalTeaKeyNames(bindings.ViewLibraryStats)
+
+	// Action keybinds.
 	openActionsKeys := canonicalTeaKeyNames(bindings.OpenActions)
+	libraryKeys := canonicalTeaKeyNames(bindings.Actions.Library)
 	playlistKeys := canonicalTeaKeyNames(bindings.Actions.Playlist)
 	libraryStatsKeys := canonicalTeaKeyNames(bindings.Actions.LibraryStats)
 	reloadConfigKeys := canonicalTeaKeyNames(bindings.Actions.ReloadConfig)
@@ -81,6 +96,9 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 	if len(bindings.Actions.Playlist) == 0 {
 		return KeyMap{}, fmt.Errorf("[keymap:New] playlist must have at least one binding")
 	}
+	if len(bindings.Actions.Library) == 0 {
+		return KeyMap{}, fmt.Errorf("[keymap:New] library must have at least one binding")
+	}
 	if len(bindings.Actions.LibraryStats) == 0 {
 		return KeyMap{}, fmt.Errorf("[keymap:New] library_stats must have at least one binding")
 	}
@@ -95,12 +113,19 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 		moveDownKeys,
 		moveTopKeys,
 		moveBottomKeys,
+
 		selectKeys,
 		quitKeys,
 		goBackKeys,
+
+		viewLibraryKeys,
+		viewPlaylistKeys,
+		viewLibraryStatsKeys,
+
 		openActionsKeys,
 	}
 	actionKeys := [][]string{
+		libraryKeys,
 		playlistKeys,
 		libraryStatsKeys,
 		reloadConfigKeys,
@@ -114,18 +139,24 @@ func New(bindings config.KeybindMapping) (KeyMap, error) {
 	}
 
 	return KeyMap{
-		MoveLeft:    newBinding(moveLeftKeys, "move left"),
-		MoveRight:   newBinding(moveRightKeys, "move right"),
-		MoveUp:      newBinding(moveUpKeys, "scroll up"),
-		MoveDown:    newBinding(moveDownKeys, "scroll down"),
-		MoveTop:     newBinding(moveTopKeys, "scroll to top"),
-		MoveBottom:  newBinding(moveBottomKeys, "scroll to bottom"),
-		Select:      newBinding(selectKeys, "select"),
+		MoveLeft:   newBinding(moveLeftKeys, "move left"),
+		MoveRight:  newBinding(moveRightKeys, "move right"),
+		MoveUp:     newBinding(moveUpKeys, "scroll up"),
+		MoveDown:   newBinding(moveDownKeys, "scroll down"),
+		MoveTop:    newBinding(moveTopKeys, "scroll to top"),
+		MoveBottom: newBinding(moveBottomKeys, "scroll to bottom"),
+		Select:     newBinding(selectKeys, "select"),
+
 		Quit:        newBinding(quitKeys, "quit"),
 		GoBack:      newBinding(goBackKeys, "go back"),
 		OpenActions: newBinding(openActionsKeys, "open actions"),
 
+		ViewLibrary:      newBinding(viewLibraryKeys, "view library ui"),
+		ViewPlaylist:     newBinding(viewPlaylistKeys, "view playlist ui"),
+		ViewLibraryStats: newBinding(viewLibraryStatsKeys, "view library stats ui"),
+
 		Actions: ActionsKeyMap{
+			Library:      newBinding(libraryKeys, "library screen"),
 			Playlist:     newBinding(playlistKeys, "playlist screen"),
 			LibraryStats: newBinding(libraryStatsKeys, "library stats screen"),
 			ReloadConfig: newBinding(reloadConfigKeys, "reload config"),

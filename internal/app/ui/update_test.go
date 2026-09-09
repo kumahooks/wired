@@ -502,7 +502,7 @@ func TestHandleLoadedLibraryCachePopulatesLibrary(t *testing.T) {
 	})
 
 	assert.Nil(t, command, "no follow-up cmd is expected after loading the cache")
-	assert.Equal(t, uiPlaylist, model.state, "a non-empty cache should skip discovery and land on the playlist")
+	assert.Equal(t, uiLibrary, model.state, "a non-empty cache should skip discovery and land on the library")
 	assert.False(
 		t,
 		model.notificationModel.HasActiveNotifications(),
@@ -801,7 +801,7 @@ func TestHandleKeyPressMsgWhichKeyRouting(t *testing.T) {
 		},
 		{
 			name:         "open actions opens the card and maps library stats key to library stats state",
-			sequence:     []tea.KeyPressMsg{{Code: ' '}, {Code: 'l'}},
+			sequence:     []tea.KeyPressMsg{{Code: ' '}, {Code: 's'}},
 			wantHidden:   true,
 			wantState:    uiLibraryStats,
 			wantStateSet: true,

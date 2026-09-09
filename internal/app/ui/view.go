@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"fmt"
+
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 )
@@ -30,28 +32,23 @@ func (model *UIModel) baseView() string {
 		return ""
 	case uiInitializing:
 		return model.initializationModel.Render(model.windowWidth, model.windowHeight)
+	case uiLibrary:
+		return model.mockedTODOScreen("Library UI")
 	case uiPlaylist:
-		return model.playlistView()
+		return model.mockedTODOScreen("Playlist UI")
 	case uiLibraryStats:
-		return model.libraryStatsView()
+		return model.libraryStatsModel.Render(model.windowWidth, model.windowHeight)
 	default:
 		return ""
 	}
 }
 
-// playlistView centers the playlist message on the terminal. Temporary shit.
-// TODO: this should be its own component I think
-func (model *UIModel) playlistView() string {
+func (model *UIModel) mockedTODOScreen(screen string) string {
 	return lipgloss.Place(
 		model.windowWidth,
 		model.windowHeight,
 		lipgloss.Center,
 		lipgloss.Center,
-		"this is the playlist view~ TODO: actually implement this lol",
+		fmt.Sprintf("TODO: this screen %s is mocked", screen),
 	)
-}
-
-// libraryStatsView renders the library stats screen through its component.
-func (model *UIModel) libraryStatsView() string {
-	return model.libraryStatsModel.Render(model.windowWidth, model.windowHeight)
 }

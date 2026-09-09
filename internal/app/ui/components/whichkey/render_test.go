@@ -32,7 +32,7 @@ func TestRenderContainsCommandEntry(t *testing.T) {
 	rendered := testutil.StripANSI(model.Render(40, 10))
 
 	assert.Contains(t, rendered, "p -> playlist")
-	assert.Contains(t, rendered, "l -> library stats")
+	assert.Contains(t, rendered, "s -> library stats")
 }
 
 func TestMappedActions(t *testing.T) {

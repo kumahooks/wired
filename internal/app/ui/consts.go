@@ -8,6 +8,7 @@ type uiState uint8
 const (
 	uiBootstrapping uiState = iota
 	uiInitializing
+	uiLibrary
 	uiPlaylist
 	uiLibraryStats
 )
