@@ -18,6 +18,8 @@ Completely unorganized and without a deep thought behind.
 - [ ] View: Currently playing track visualization, including spectrum, cover if any, lyrics if any.
 - [ ] Last.fm scrobbling.
 - [ ] Radio integration.
+- [ ] Metatag editing in librarystats view.
+- [ ] Librarystats dump to a file.
 - [ ] Dedicated logger purely for the file discovery/parsing pipeline (parse errors are currently swallowed and nothing is logged).
 	- [ ] Maybe it's better to have a dedicated logger service as a core to be used in many different places?
 

@@ -1,7 +1,6 @@
 package initializing
 
 import (
-	"reflect"
 	"strconv"
 	"testing"
 
@@ -255,7 +254,7 @@ func TestHandleMessage(t *testing.T) {
 
 			gotAction := model.HandleMessage(test.message)
 
-			assert.Equal(t, reflect.TypeOf(test.wantAction), reflect.TypeOf(gotAction))
+			assert.Equal(t, test.wantAction, gotAction)
 
 			if test.wantCursorSet {
 				assert.Equal(t, test.wantCursor, model.cursorPosition)
